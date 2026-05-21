@@ -45,7 +45,16 @@ class MusicKitNotifier extends AsyncNotifier<MusicKitState> {
     if (current == null) return;
     state = AsyncData(current.copyWith(isSearching: true, searchResults: []));
     try {
-      final results = await ref.read(musicKitServiceProvider).search(query);
+      final service = ref.read(musicKitServiceProvider);
+      if (state.value!.authStatus != 'authorized') {
+        final status = await service.authorize();
+        state = AsyncData(state.value!.copyWith(authStatus: status));
+        if (status != 'authorized') {
+          state = AsyncData(state.value!.copyWith(isSearching: false));
+          return;
+        }
+      }
+      final results = await service.search(query);
       state = AsyncData(
         state.value!.copyWith(isSearching: false, searchResults: results),
       );

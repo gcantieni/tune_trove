@@ -7,7 +7,7 @@ analyze:
 	flutter analyze
 
 run-macos:
-	flutter run -d macos --no-pub --dart-define=MOCK_MUSICKIT=true
+	flutter run -d macos --no-pub
 
 run-ios:
 	flutter run -d iPhone --no-pub
