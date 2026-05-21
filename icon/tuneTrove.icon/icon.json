@@ -66,16 +66,9 @@
           }
         },
         {
-          "fill" : "none",
-          "image-name" : "lid 3.svg",
-          "name" : "lid",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
+          "hidden" : false,
+          "image-name" : "lid.svg",
+          "name" : "lid"
         }
       ],
       "position" : {
