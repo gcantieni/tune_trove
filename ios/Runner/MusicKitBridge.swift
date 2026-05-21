@@ -105,12 +105,7 @@ class MusicKitBridge: NSObject {
                         result(FlutterError(code: "BAD_ARGS", message: "rate required", details: nil))
                         return
                     }
-                    // ApplicationMusicPlayer.Options is iOS-only.
-#if canImport(UIKit)
-                    if #available(iOS 16, *) {
-                        ApplicationMusicPlayer.shared.options.playbackRate = Float(rate)
-                    }
-#endif
+                    ApplicationMusicPlayer.shared.state.playbackRate = Float(rate)
                     result(nil)
 
                 case "setRepeatMode":
@@ -228,13 +223,23 @@ class MusicKitBridge: NSObject {
         }
 #endif
 
-        player.queue = [song]
-        try await player.play()
-
+        // Set state and start the timer *before* play() so the observation
+        // loop is running even if play() throws (macOS daemon timeout).
         currentSong      = song
         currentStartTime = startTime
         currentEndTime   = endTime
+        player.queue     = [song]
         startPlaybackObservation(loopCount: loopCount)
+
+#if canImport(AppKit)
+        // On macOS, ApplicationMusicPlayer.shared may log a Music daemon
+        // connection timeout ("applicationQueuePlayer ... ping did not pong")
+        // and throw, but playback still starts via the system Music process.
+        // The observation timer already running will detect the status change.
+        try? await player.play()
+#else
+        try await player.play()
+#endif
     }
 
     // MARK: - Observation
@@ -244,18 +249,30 @@ class MusicKitBridge: NSObject {
     // status-change detection (by diffing against lastEmittedStatus).
 
     private func startPlaybackObservation(loopCount: Int) {
-        stopPlaybackObservation()
-        loopRemaining = loopCount
-        lastEmittedStatus = "unknown"
-
-        positionTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            self?.tick()
+        // Dispatch entirely to the main queue: this method is called from a
+        // Swift concurrency Task that resumes on the cooperative thread pool,
+        // where Timer.scheduledTimer would target a run loop that never runs.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.positionTimer?.invalidate()
+            self.loopRemaining = loopCount
+            self.lastEmittedStatus = "unknown"
+            self.positionTimer = Timer.scheduledTimer(
+                withTimeInterval: 0.1,
+                repeats: true
+            ) { [weak self] _ in
+                self?.tick()
+            }
         }
     }
 
     private func stopPlaybackObservation() {
-        positionTimer?.invalidate()
-        positionTimer = nil
+        // May be called from a Task (cooperative thread) or from the main thread.
+        // Always dispatch to main to match where the timer was scheduled.
+        DispatchQueue.main.async { [weak self] in
+            self?.positionTimer?.invalidate()
+            self?.positionTimer = nil
+        }
     }
 
     private func tick() {

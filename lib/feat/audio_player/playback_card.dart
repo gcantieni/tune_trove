@@ -227,7 +227,7 @@ class _SpeedSlider extends ConsumerWidget {
         Slider(
           value: rate,
           min: 0.5,
-          max: 1.5,
+          max: 1.25,
           onChanged: (v) =>
               ref.read(audioPlayerProvider.notifier).setPlaybackRate(v),
         ),
@@ -243,7 +243,7 @@ class _SpeedSlider extends ConsumerWidget {
                   style: labelStyle,
                 ),
               ),
-              Text('150%', style: dimStyle),
+              Text('125%', style: dimStyle),
             ],
           ),
         ),

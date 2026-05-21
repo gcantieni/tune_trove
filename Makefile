@@ -1,4 +1,4 @@
-.PHONY: format analyze test coverage lcov bump publish-ios publish-macos publish-android deps run-macos run-ios icon
+.PHONY: format analyze test coverage lcov bump publish-ios publish-macos publish-android deps run-macos run-ios build-macos build-ios build-android icon
 
 format:
 	dart format lib/
@@ -11,6 +11,15 @@ run-macos:
 
 run-ios:
 	flutter run -d iPhone --no-pub
+
+build-macos:
+	flutter build macos
+
+build-ios:
+	flutter build ios
+
+build-android:
+	flutter build appbundle
 
 deps:
 	flutter pub get
