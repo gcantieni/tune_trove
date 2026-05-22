@@ -96,21 +96,6 @@
           "hidden" : false,
           "image-name" : "glow.svg",
           "name" : "glow"
-        },
-        {
-          "fill" : "none",
-          "glass" : false,
-          "hidden" : true,
-          "image-name" : "bg.svg",
-          "name" : "bg",
-          "opacity" : 0.5,
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
         }
       ],
       "name" : "Group",

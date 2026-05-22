@@ -19,8 +19,8 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" image="LaunchImage" translatesAutoresizingMaskIntoConstraints="NO" id="YRO-k0-Ey4">
-                                <rect key="frame" x="26" y="255.33333333333334" width="341.33333333333331" height="341.33333333333326"/>
+                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" image="TuneTrove" translatesAutoresizingMaskIntoConstraints="NO" id="YRO-k0-Ey4">
+                                <rect key="frame" x="132.66666666666666" y="362" width="127.99999999999997" height="128"/>
                             </imageView>
                         </subviews>
                         <color key="backgroundColor" red="0.23921568627450979" green="0.41960784313725491" blue="0.22745098039215686" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
@@ -36,6 +36,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="LaunchImage" width="341.33334350585938" height="341.33334350585938"/>
+        <image name="TuneTrove" width="128" height="128"/>
     </resources>
 </document>

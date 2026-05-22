@@ -212,17 +212,6 @@ class MusicKitBridge: NSObject {
         let response = try await request.response()
         guard let song = response.items.first else { return }
 
-        // ApplicationMusicPlayer.Options (startTime/endTime/playbackRate) is iOS-only.
-#if canImport(UIKit)
-        if #available(iOS 16, *) {
-            var options = ApplicationMusicPlayer.Options()
-            if let start = startTime { options.startTime  = start }
-            if let end   = endTime   { options.endTime    = end   }
-            options.playbackRate = Float(playbackRate)
-            player.options = options
-        }
-#endif
-
         // Set state and start the timer *before* play() so the observation
         // loop is running even if play() throws (macOS daemon timeout).
         currentSong      = song
@@ -240,6 +229,9 @@ class MusicKitBridge: NSObject {
 #else
         try await player.play()
 #endif
+
+        if let start = startTime { player.playbackTime = start }
+        player.state.playbackRate = Float(playbackRate)
     }
 
     // MARK: - Observation
