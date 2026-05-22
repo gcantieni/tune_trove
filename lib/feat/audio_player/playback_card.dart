@@ -69,7 +69,7 @@ class PlaybackCard extends ConsumerWidget {
             ),
             if (isCurrent) ...[
               const SizedBox(height: 4),
-              const _PlaybackSlider(),
+              const _ScrubbingSlider(),
               if (playerState.isLooping && duration > 0) ...[
                 const SizedBox(height: 8),
                 const _LoopRangeSlider(),
@@ -84,47 +84,186 @@ class PlaybackCard extends ConsumerWidget {
   }
 }
 
-class _PlaybackSlider extends ConsumerStatefulWidget {
-  const _PlaybackSlider();
+class _ScrubbingSlider extends ConsumerStatefulWidget {
+  const _ScrubbingSlider();
 
   @override
-  ConsumerState<_PlaybackSlider> createState() => _PlaybackSliderState();
+  ConsumerState<_ScrubbingSlider> createState() => _ScrubbingSliderState();
 }
 
-class _PlaybackSliderState extends ConsumerState<_PlaybackSlider> {
-  double? _dragValue;
+class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
+  double? _scrubValue;
+  Offset? _dragStart;
+  double? _dragStartValue;
+  bool _isDragging = false;
+  double _multiplier = 1.0;
   String? _lastTrackUri;
+
+  static const _thumbDiameter = 20.0;
+  static const _trackHeight = 4.0;
+  static const _horizontalMargin = 12.0;
+
+  double _multiplierForVertical(double dist) {
+    if (dist < 40) return 1.0;
+    if (dist < 80) return 0.25;
+    if (dist < 130) return 0.05;
+    return 0.01;
+  }
+
+  String? _labelForMultiplier(double m) {
+    if (m >= 1.0) return null;
+    if (m >= 0.25) return 'Quarter Speed';
+    if (m >= 0.05) return 'Fine';
+    return 'Ultra-fine';
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(audioPlayerProvider);
     final duration = state.duration;
 
-    // Reset drag value when the active track changes.
     if (state.trackUri != _lastTrackUri) {
       _lastTrackUri = state.trackUri;
-      _dragValue = null;
+      _scrubValue = null;
+      _dragStart = null;
+      _dragStartValue = null;
+      _isDragging = false;
     }
 
-    final position = _dragValue ?? state.position;
-    final sliderValue = duration > 0 ? position.clamp(0.0, duration) : 0.0;
-    final labelStyle = Theme.of(
-      context,
-    ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace', fontSize: 11);
+    final position = duration > 0
+        ? (_scrubValue ?? state.position).clamp(0.0, duration)
+        : 0.0;
+    final fraction = duration > 0 ? position / duration : 0.0;
+
+    final scheme = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+      fontFamily: 'monospace',
+      fontSize: 11,
+    );
+    final speedLabelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
 
     return Column(
       children: [
-        Slider(
-          value: duration > 0 ? sliderValue : 0.0,
-          max: duration > 0 ? duration : 1,
-          onChanged: duration > 0
-              ? (v) => setState(() => _dragValue = v)
-              : null,
-          onChangeEnd: duration > 0
-              ? (v) {
-                  ref.read(audioPlayerProvider.notifier).seek(v);
-                  setState(() => _dragValue = null);
-                }
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final effectiveWidth =
+                constraints.maxWidth - _horizontalMargin * 2 - _thumbDiameter;
+
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanStart: duration > 0
+                  ? (details) {
+                      setState(() {
+                        _dragStart = details.localPosition;
+                        _dragStartValue = _scrubValue ?? state.position;
+                        _isDragging = true;
+                        _multiplier = 1.0;
+                      });
+                    }
+                  : null,
+              onPanUpdate: duration > 0
+                  ? (details) {
+                      if (_dragStart == null || _dragStartValue == null) return;
+                      final dx =
+                          details.localPosition.dx - _dragStart!.dx;
+                      final vertDist =
+                          (details.localPosition.dy - _dragStart!.dy).abs();
+                      final multiplier = _multiplierForVertical(vertDist);
+                      final delta =
+                          dx * multiplier * duration / effectiveWidth;
+                      setState(() {
+                        _multiplier = multiplier;
+                        _scrubValue =
+                            (_dragStartValue! + delta).clamp(0.0, duration);
+                      });
+                    }
+                  : null,
+              onPanEnd: duration > 0
+                  ? (_) {
+                      if (_scrubValue != null) {
+                        ref
+                            .read(audioPlayerProvider.notifier)
+                            .seek(_scrubValue!);
+                      }
+                      setState(() {
+                        _isDragging = false;
+                        _scrubValue = null;
+                        _dragStart = null;
+                        _dragStartValue = null;
+                        _multiplier = 1.0;
+                      });
+                    }
+                  : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: _horizontalMargin,
+                  vertical: 16,
+                ),
+                child: SizedBox(
+                  height: _thumbDiameter,
+                  child: Stack(
+                    alignment: Alignment.centerLeft,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Inactive track
+                      Positioned(
+                        left: _thumbDiameter / 2,
+                        right: _thumbDiameter / 2,
+                        child: Container(
+                          height: _trackHeight,
+                          decoration: BoxDecoration(
+                            color: scheme.onSurfaceVariant
+                                .withValues(alpha: 0.24),
+                            borderRadius:
+                                BorderRadius.circular(_trackHeight / 2),
+                          ),
+                        ),
+                      ),
+                      // Active track
+                      if (fraction > 0)
+                        Positioned(
+                          left: _thumbDiameter / 2,
+                          child: Container(
+                            width: effectiveWidth * fraction,
+                            height: _trackHeight,
+                            decoration: BoxDecoration(
+                              color: scheme.primary,
+                              borderRadius:
+                                  BorderRadius.circular(_trackHeight / 2),
+                            ),
+                          ),
+                        ),
+                      // Thumb
+                      Positioned(
+                        left: effectiveWidth * fraction,
+                        child: Container(
+                          width: _thumbDiameter,
+                          height: _thumbDiameter,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        // Speed label — fixed height so layout doesn't jump
+        SizedBox(
+          height: 16,
+          child: _isDragging && _multiplier < 1.0
+              ? Center(
+                  child: Text(
+                    _labelForMultiplier(_multiplier) ?? '',
+                    style: speedLabelStyle,
+                  ),
+                )
               : null,
         ),
         Padding(
