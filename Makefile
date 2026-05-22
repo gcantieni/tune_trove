@@ -1,5 +1,8 @@
 .PHONY: format analyze test coverage lcov bump publish-ios publish-macos publish-android deps run-macos run-ios build-macos build-ios build-android icon
 
+clean:
+	rm -rf ~/Library/Developer/Xcode/DerivedData/Runner-*
+
 format:
 	dart format lib/
 
