@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +72,12 @@ class AppDatabase extends _$AppDatabase {
           schema.tuneRecording,
           schema.tuneRecording.performedKey,
         );
+      },
+      from6To7: (m, schema) async {
+        // Change start_time/end_time from INTEGER to REAL for sub-second
+        // precision. TableMigration recreates the table; existing integer
+        // values are preserved as-is and read as doubles by the new RealColumn.
+        await m.alterTable(TableMigration(schema.tuneRecording));
       },
     ),
   );

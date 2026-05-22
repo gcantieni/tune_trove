@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 /// Dialog that edits link details (timestamps + performed key) for a
-/// tune–recording pair. Returns `({int? start, int? end, String? performedKey})`
+/// tune–recording pair. Returns `({double? start, double? end, String? performedKey})`
 /// on save, or `null` if cancelled. All fields are optional.
 class TimestampEditorDialog extends StatefulWidget {
-  final int? initialStart;
-  final int? initialEnd;
+  final double? initialStart;
+  final double? initialEnd;
   final String? initialPerformedKey;
 
   const TimestampEditorDialog({
@@ -29,12 +29,10 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
   void initState() {
     super.initState();
     _startController = TextEditingController(
-      text: widget.initialStart == null
-          ? ''
-          : formatSeconds(widget.initialStart),
+      text: widget.initialStart == null ? '' : formatTime(widget.initialStart),
     );
     _endController = TextEditingController(
-      text: widget.initialEnd == null ? '' : formatSeconds(widget.initialEnd),
+      text: widget.initialEnd == null ? '' : formatTime(widget.initialEnd),
     );
     _keyController = TextEditingController(
       text: widget.initialPerformedKey ?? '',
@@ -51,15 +49,15 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
 
   String? _validateTime(String? raw) {
     if (raw == null || raw.trim().isEmpty) return null;
-    return parseSeconds(raw) == null ? 'Use mm:ss or seconds' : null;
+    return parseTime(raw) == null ? 'Use m:ss.cc or seconds' : null;
   }
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     final key = _keyController.text.trim();
     Navigator.of(context).pop((
-      start: parseSeconds(_startController.text),
-      end: parseSeconds(_endController.text),
+      start: parseTime(_startController.text),
+      end: parseTime(_endController.text),
       performedKey: key.isEmpty ? null : key,
     ));
   }
@@ -77,7 +75,7 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
               controller: _startController,
               decoration: const InputDecoration(
                 labelText: 'Start',
-                hintText: 'mm:ss (leave blank for none)',
+                hintText: 'm:ss.cc (leave blank for none)',
               ),
               validator: _validateTime,
             ),
@@ -86,7 +84,7 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
               controller: _endController,
               decoration: const InputDecoration(
                 labelText: 'End',
-                hintText: 'mm:ss (leave blank for none)',
+                hintText: 'm:ss.cc (leave blank for none)',
               ),
               validator: _validateTime,
             ),
@@ -112,25 +110,38 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
   }
 }
 
-String formatSeconds(int? sec) {
+String formatTime(double? sec) {
   if (sec == null) return '—:—';
-  final m = sec ~/ 60;
-  final s = sec % 60;
-  return '$m:${s.toString().padLeft(2, '0')}';
+  final totalCs = (sec * 100).round();
+  final m = totalCs ~/ 6000;
+  final s = (totalCs % 6000) ~/ 100;
+  final cs = totalCs % 100;
+  return '$m:${s.toString().padLeft(2, '0')}.${cs.toString().padLeft(2, '0')}';
 }
 
-int? parseSeconds(String raw) {
+double? parseTime(String raw) {
   final s = raw.trim();
   if (s.isEmpty) return null;
   if (s.contains(':')) {
-    final parts = s.split(':');
-    if (parts.length != 2) return null;
-    final m = int.tryParse(parts[0]);
-    final sec = int.tryParse(parts[1]);
-    if (m == null || sec == null || sec < 0 || sec >= 60 || m < 0) return null;
-    return m * 60 + sec;
+    final colonParts = s.split(':');
+    if (colonParts.length != 2) return null;
+    final m = int.tryParse(colonParts[0]);
+    if (m == null || m < 0) return null;
+    final secPart = colonParts[1];
+    if (secPart.contains('.')) {
+      final dotParts = secPart.split('.');
+      if (dotParts.length != 2) return null;
+      final sec = int.tryParse(dotParts[0]);
+      final cs = int.tryParse(dotParts[1].padRight(2, '0').substring(0, 2));
+      if (sec == null || cs == null || sec < 0 || sec >= 60 || cs < 0 || cs > 99) return null;
+      return m * 60 + sec + cs / 100.0;
+    } else {
+      final sec = int.tryParse(secPart);
+      if (sec == null || sec < 0 || sec >= 60) return null;
+      return (m * 60 + sec).toDouble();
+    }
   }
-  final n = int.tryParse(s);
+  final n = double.tryParse(s);
   if (n == null || n < 0) return null;
   return n;
 }

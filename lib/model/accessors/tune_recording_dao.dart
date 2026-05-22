@@ -25,8 +25,8 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
   Future<int> linkTuneToRecording(
     int tuneId,
     int recordingId, {
-    int? startTime,
-    int? endTime,
+    double? startTime,
+    double? endTime,
     String? performedKey,
   }) {
     return transaction(() async {

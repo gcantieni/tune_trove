@@ -1126,22 +1126,22 @@ class $TuneRecordingTable extends TuneRecording
     'startTime',
   );
   @override
-  late final GeneratedColumn<int> startTime = GeneratedColumn<int>(
+  late final GeneratedColumn<double> startTime = GeneratedColumn<double>(
     'start_time',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _endTimeMeta = const VerificationMeta(
     'endTime',
   );
   @override
-  late final GeneratedColumn<int> endTime = GeneratedColumn<int>(
+  late final GeneratedColumn<double> endTime = GeneratedColumn<double>(
     'end_time',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _performersMeta = const VerificationMeta(
@@ -1251,11 +1251,11 @@ class $TuneRecordingTable extends TuneRecording
         data['${effectivePrefix}recording_id'],
       )!,
       startTime: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.double,
         data['${effectivePrefix}start_time'],
       ),
       endTime: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.double,
         data['${effectivePrefix}end_time'],
       ),
       performers: attachedDatabase.typeMapping.read(
@@ -1280,11 +1280,11 @@ class TuneRecordingData extends DataClass
   final int tuneId;
   final int recordingId;
 
-  /// Start timestamp in seconds
-  final int? startTime;
+  /// Start timestamp in seconds (fractional, hundredths precision)
+  final double? startTime;
 
-  /// End timestamp in seconds
-  final int? endTime;
+  /// End timestamp in seconds (fractional, hundredths precision)
+  final double? endTime;
 
   /// Free text for names of performers if known
   final String? performers;
@@ -1306,10 +1306,10 @@ class TuneRecordingData extends DataClass
     map['tune_id'] = Variable<int>(tuneId);
     map['recording_id'] = Variable<int>(recordingId);
     if (!nullToAbsent || startTime != null) {
-      map['start_time'] = Variable<int>(startTime);
+      map['start_time'] = Variable<double>(startTime);
     }
     if (!nullToAbsent || endTime != null) {
-      map['end_time'] = Variable<int>(endTime);
+      map['end_time'] = Variable<double>(endTime);
     }
     if (!nullToAbsent || performers != null) {
       map['performers'] = Variable<String>(performers);
@@ -1347,8 +1347,8 @@ class TuneRecordingData extends DataClass
     return TuneRecordingData(
       tuneId: serializer.fromJson<int>(json['tuneId']),
       recordingId: serializer.fromJson<int>(json['recordingId']),
-      startTime: serializer.fromJson<int?>(json['startTime']),
-      endTime: serializer.fromJson<int?>(json['endTime']),
+      startTime: serializer.fromJson<double?>(json['startTime']),
+      endTime: serializer.fromJson<double?>(json['endTime']),
       performers: serializer.fromJson<String?>(json['performers']),
       performedKey: serializer.fromJson<String?>(json['performedKey']),
     );
@@ -1359,8 +1359,8 @@ class TuneRecordingData extends DataClass
     return <String, dynamic>{
       'tuneId': serializer.toJson<int>(tuneId),
       'recordingId': serializer.toJson<int>(recordingId),
-      'startTime': serializer.toJson<int?>(startTime),
-      'endTime': serializer.toJson<int?>(endTime),
+      'startTime': serializer.toJson<double?>(startTime),
+      'endTime': serializer.toJson<double?>(endTime),
       'performers': serializer.toJson<String?>(performers),
       'performedKey': serializer.toJson<String?>(performedKey),
     };
@@ -1369,8 +1369,8 @@ class TuneRecordingData extends DataClass
   TuneRecordingData copyWith({
     int? tuneId,
     int? recordingId,
-    Value<int?> startTime = const Value.absent(),
-    Value<int?> endTime = const Value.absent(),
+    Value<double?> startTime = const Value.absent(),
+    Value<double?> endTime = const Value.absent(),
     Value<String?> performers = const Value.absent(),
     Value<String?> performedKey = const Value.absent(),
   }) => TuneRecordingData(
@@ -1435,8 +1435,8 @@ class TuneRecordingData extends DataClass
 class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
   final Value<int> tuneId;
   final Value<int> recordingId;
-  final Value<int?> startTime;
-  final Value<int?> endTime;
+  final Value<double?> startTime;
+  final Value<double?> endTime;
   final Value<String?> performers;
   final Value<String?> performedKey;
   final Value<int> rowid;
@@ -1462,8 +1462,8 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
   static Insertable<TuneRecordingData> custom({
     Expression<int>? tuneId,
     Expression<int>? recordingId,
-    Expression<int>? startTime,
-    Expression<int>? endTime,
+    Expression<double>? startTime,
+    Expression<double>? endTime,
     Expression<String>? performers,
     Expression<String>? performedKey,
     Expression<int>? rowid,
@@ -1482,8 +1482,8 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
   TuneRecordingCompanion copyWith({
     Value<int>? tuneId,
     Value<int>? recordingId,
-    Value<int?>? startTime,
-    Value<int?>? endTime,
+    Value<double?>? startTime,
+    Value<double?>? endTime,
     Value<String?>? performers,
     Value<String?>? performedKey,
     Value<int>? rowid,
@@ -1509,10 +1509,10 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
       map['recording_id'] = Variable<int>(recordingId.value);
     }
     if (startTime.present) {
-      map['start_time'] = Variable<int>(startTime.value);
+      map['start_time'] = Variable<double>(startTime.value);
     }
     if (endTime.present) {
-      map['end_time'] = Variable<int>(endTime.value);
+      map['end_time'] = Variable<double>(endTime.value);
     }
     if (performers.present) {
       map['performers'] = Variable<String>(performers.value);
@@ -2806,8 +2806,8 @@ typedef $$TuneRecordingTableCreateCompanionBuilder =
     TuneRecordingCompanion Function({
       required int tuneId,
       required int recordingId,
-      Value<int?> startTime,
-      Value<int?> endTime,
+      Value<double?> startTime,
+      Value<double?> endTime,
       Value<String?> performers,
       Value<String?> performedKey,
       Value<int> rowid,
@@ -2816,8 +2816,8 @@ typedef $$TuneRecordingTableUpdateCompanionBuilder =
     TuneRecordingCompanion Function({
       Value<int> tuneId,
       Value<int> recordingId,
-      Value<int?> startTime,
-      Value<int?> endTime,
+      Value<double?> startTime,
+      Value<double?> endTime,
       Value<String?> performers,
       Value<String?> performedKey,
       Value<int> rowid,
@@ -2842,12 +2842,12 @@ class $$TuneRecordingTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get startTime => $composableBuilder(
+  ColumnFilters<double> get startTime => $composableBuilder(
     column: $table.startTime,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get endTime => $composableBuilder(
+  ColumnFilters<double> get endTime => $composableBuilder(
     column: $table.endTime,
     builder: (column) => ColumnFilters(column),
   );
@@ -2882,12 +2882,12 @@ class $$TuneRecordingTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get startTime => $composableBuilder(
+  ColumnOrderings<double> get startTime => $composableBuilder(
     column: $table.startTime,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get endTime => $composableBuilder(
+  ColumnOrderings<double> get endTime => $composableBuilder(
     column: $table.endTime,
     builder: (column) => ColumnOrderings(column),
   );
@@ -2920,10 +2920,10 @@ class $$TuneRecordingTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get startTime =>
+  GeneratedColumn<double> get startTime =>
       $composableBuilder(column: $table.startTime, builder: (column) => column);
 
-  GeneratedColumn<int> get endTime =>
+  GeneratedColumn<double> get endTime =>
       $composableBuilder(column: $table.endTime, builder: (column) => column);
 
   GeneratedColumn<String> get performers => $composableBuilder(
@@ -2974,8 +2974,8 @@ class $$TuneRecordingTableTableManager
               ({
                 Value<int> tuneId = const Value.absent(),
                 Value<int> recordingId = const Value.absent(),
-                Value<int?> startTime = const Value.absent(),
-                Value<int?> endTime = const Value.absent(),
+                Value<double?> startTime = const Value.absent(),
+                Value<double?> endTime = const Value.absent(),
                 Value<String?> performers = const Value.absent(),
                 Value<String?> performedKey = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2992,8 +2992,8 @@ class $$TuneRecordingTableTableManager
               ({
                 required int tuneId,
                 required int recordingId,
-                Value<int?> startTime = const Value.absent(),
-                Value<int?> endTime = const Value.absent(),
+                Value<double?> startTime = const Value.absent(),
+                Value<double?> endTime = const Value.absent(),
                 Value<String?> performers = const Value.absent(),
                 Value<String?> performedKey = const Value.absent(),
                 Value<int> rowid = const Value.absent(),

@@ -521,7 +521,7 @@ class _LinkedRecordingRow extends ConsumerWidget {
               onPressed: () => _editTimes(context, ref),
               child: Text(
                 [
-                  '${formatSeconds(link.startTime)} – ${formatSeconds(link.endTime)}',
+                  '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
                   if (link.performedKey != null &&
                       link.performedKey!.isNotEmpty)
                     link.performedKey!,
@@ -546,7 +546,7 @@ class _LinkedRecordingRow extends ConsumerWidget {
   Future<void> _editTimes(BuildContext context, WidgetRef ref) async {
     final link = entry.link;
     final result =
-        await showDialog<({int? start, int? end, String? performedKey})>(
+        await showDialog<({double? start, double? end, String? performedKey})>(
           context: context,
           builder: (_) => TimestampEditorDialog(
             initialStart: link.startTime,

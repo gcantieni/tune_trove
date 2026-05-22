@@ -29,11 +29,11 @@ Future<void> _launchUrl(BuildContext context, String url) async {
   }
 }
 
-String _withTimestamp(String url, int seconds) {
+String _withTimestamp(String url, double seconds) {
   final uri = Uri.tryParse(url);
   if (uri == null) return url;
   final params = Map<String, String>.from(uri.queryParameters);
-  params['t'] = seconds.toString();
+  params['t'] = seconds.floor().toString();
   return uri.replace(queryParameters: params).toString();
 }
 
@@ -251,7 +251,7 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
         onLibraryTune: (tune) async {
           if (!mounted) return;
           final details =
-              await showDialog<({int? start, int? end, String? performedKey})>(
+              await showDialog<({double? start, double? end, String? performedKey})>(
                 context: context,
                 builder: (_) =>
                     TimestampEditorDialog(initialPerformedKey: tune.key),
@@ -402,14 +402,14 @@ class _LinkedTuneRow extends ConsumerWidget {
             TextButton(
               onPressed: () => _editTimes(context, ref),
               child: Text(
-                '${formatSeconds(link.startTime)} – ${formatSeconds(link.endTime)}',
+                '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
                 style: const TextStyle(fontFamily: 'monospace'),
               ),
             ),
             if (kind == RecordingLinkKind.youtube && link.startTime != null)
               IconButton(
                 icon: const Icon(Icons.play_circle_outline, size: 18),
-                tooltip: 'Open at ${formatSeconds(link.startTime)}',
+                tooltip: 'Open at ${formatTime(link.startTime)}',
                 onPressed: () => _launchUrl(
                   context,
                   _withTimestamp(recordingUrl, link.startTime!),
@@ -418,13 +418,13 @@ class _LinkedTuneRow extends ConsumerWidget {
             if (isLocalOrApple && link.startTime != null)
               IconButton(
                 icon: const Icon(Icons.play_circle_outline, size: 18),
-                tooltip: 'Play from ${formatSeconds(link.startTime)}',
+                tooltip: 'Play from ${formatTime(link.startTime)}',
                 onPressed: () => ref
                     .read(audioPlayerProvider.notifier)
                     .playWithBounds(
                       recordingUrl,
-                      start: link.startTime?.toDouble(),
-                      end: link.endTime?.toDouble(),
+                      start: link.startTime,
+                      end: link.endTime,
                     ),
               ),
             if (showSaveLoop)
@@ -450,7 +450,7 @@ class _LinkedTuneRow extends ConsumerWidget {
   Future<void> _editTimes(BuildContext context, WidgetRef ref) async {
     final link = entry.link;
     final result =
-        await showDialog<({int? start, int? end, String? performedKey})>(
+        await showDialog<({double? start, double? end, String? performedKey})>(
           context: context,
           builder: (_) => TimestampEditorDialog(
             initialStart: link.startTime,
@@ -469,8 +469,8 @@ class _LinkedTuneRow extends ConsumerWidget {
 
   Future<void> _saveLoop(WidgetRef ref, AudioPlayerState playerState) async {
     final updated = entry.link.copyWith(
-      startTime: drift.Value(playerState.loopStart.round()),
-      endTime: drift.Value(playerState.loopEnd.round()),
+      startTime: drift.Value(playerState.loopStart),
+      endTime: drift.Value(playerState.loopEnd),
     );
     await ref.read(databaseProvider).tuneRecordingDao.updateLink(updated);
   }

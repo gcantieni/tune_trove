@@ -142,10 +142,11 @@ class _PlaybackSliderState extends ConsumerState<_PlaybackSlider> {
   }
 
   String _fmt(double s) {
-    final sec = s.round();
-    final m = sec ~/ 60;
-    final r = (sec % 60).toString().padLeft(2, '0');
-    return '$m:$r';
+    final totalCs = (s * 100).round();
+    final m = totalCs ~/ 6000;
+    final sec = (totalCs % 6000) ~/ 100;
+    final cs = totalCs % 100;
+    return '$m:${sec.toString().padLeft(2, '0')}.${cs.toString().padLeft(2, '0')}';
   }
 }
 
@@ -200,10 +201,11 @@ class _LoopRangeSlider extends ConsumerWidget {
   }
 
   String _fmt(double s) {
-    final sec = s.round();
-    final m = sec ~/ 60;
-    final r = (sec % 60).toString().padLeft(2, '0');
-    return '$m:$r';
+    final totalCs = (s * 100).round();
+    final m = totalCs ~/ 6000;
+    final sec = (totalCs % 6000) ~/ 100;
+    final cs = totalCs % 100;
+    return '$m:${sec.toString().padLeft(2, '0')}.${cs.toString().padLeft(2, '0')}';
   }
 }
 
