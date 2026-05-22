@@ -115,7 +115,7 @@ class LocalFileBackend implements AudioPlayerBackend {
   }
 }
 
-final localFileBackendProvider = Provider<LocalFileBackend>((ref) {
+final localFileBackendProvider = Provider<AudioPlayerBackend>((ref) {
   final backend = LocalFileBackend();
   ref.onDispose(backend.dispose);
   return backend;

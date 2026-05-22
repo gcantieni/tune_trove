@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:tune_trove/feat/audio_player/audio_player_notifier.dart';
+import 'package:tune_trove/feat/audio_player/audio_player_state.dart';
 import 'package:tune_trove/feat/audio_player/playback_card.dart';
 import 'package:tune_trove/feat/music_kit/music_kit_notifier.dart';
 import 'package:tune_trove/feat/recording_list/recording_link_kind.dart';
@@ -363,6 +365,14 @@ class _LinkedTuneRow extends ConsumerWidget {
       if (tune.key != null && tune.key!.isNotEmpty) tune.key!,
     ].join(' · ');
 
+    final kind = recordingLinkKindOf(recordingUrl);
+    final isLocalOrApple =
+        kind == RecordingLinkKind.file || kind == RecordingLinkKind.appleMusic;
+    final playerState = ref.watch(audioPlayerProvider);
+    final isThisRecordingActive = playerState.trackUri == recordingUrl;
+    final showSaveLoop =
+        isLocalOrApple && isThisRecordingActive && playerState.isLooping;
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 2),
       child: ListTile(
@@ -379,8 +389,7 @@ class _LinkedTuneRow extends ConsumerWidget {
                 style: const TextStyle(fontFamily: 'monospace'),
               ),
             ),
-            if (recordingLinkKindOf(recordingUrl) == RecordingLinkKind.youtube &&
-                link.startTime != null)
+            if (kind == RecordingLinkKind.youtube && link.startTime != null)
               IconButton(
                 icon: const Icon(Icons.play_circle_outline, size: 18),
                 tooltip: 'Open at ${formatSeconds(link.startTime)}',
@@ -388,6 +397,24 @@ class _LinkedTuneRow extends ConsumerWidget {
                   context,
                   _withTimestamp(recordingUrl, link.startTime!),
                 ),
+              ),
+            if (isLocalOrApple && link.startTime != null)
+              IconButton(
+                icon: const Icon(Icons.play_circle_outline, size: 18),
+                tooltip: 'Play from ${formatSeconds(link.startTime)}',
+                onPressed: () => ref
+                    .read(audioPlayerProvider.notifier)
+                    .playWithBounds(
+                      recordingUrl,
+                      start: link.startTime?.toDouble(),
+                      end: link.endTime?.toDouble(),
+                    ),
+              ),
+            if (showSaveLoop)
+              IconButton(
+                icon: const Icon(Icons.save_alt, size: 18),
+                tooltip: 'Save loop as timestamps',
+                onPressed: () => _saveLoop(ref, playerState),
               ),
             IconButton(
               icon: const Icon(Icons.close, size: 18),
@@ -416,6 +443,14 @@ class _LinkedTuneRow extends ConsumerWidget {
     final updated = link.copyWith(
       startTime: drift.Value(result.start),
       endTime: drift.Value(result.end),
+    );
+    await ref.read(databaseProvider).tuneRecordingDao.updateLink(updated);
+  }
+
+  Future<void> _saveLoop(WidgetRef ref, AudioPlayerState playerState) async {
+    final updated = entry.link.copyWith(
+      startTime: drift.Value(playerState.loopStart.round()),
+      endTime: drift.Value(playerState.loopEnd.round()),
     );
     await ref.read(databaseProvider).tuneRecordingDao.updateLink(updated);
   }

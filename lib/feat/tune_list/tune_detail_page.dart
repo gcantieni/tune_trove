@@ -430,8 +430,7 @@ class _AddToSetDialog extends ConsumerWidget {
       error: (e, _) => AlertDialog(content: Text('Error: $e')),
       data: (allSets) {
         final currentSetIds =
-            currentEntriesAsync.value?.map((e) => e.tuneSet.id).toSet() ??
-            {};
+            currentEntriesAsync.value?.map((e) => e.tuneSet.id).toSet() ?? {};
         final available = allSets
             .where((s) => !currentSetIds.contains(s.id))
             .toList();

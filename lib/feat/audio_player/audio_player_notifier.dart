@@ -87,6 +87,32 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     );
   }
 
+  Future<void> playWithBounds(
+    String trackUri, {
+    required double? start,
+    required double? end,
+  }) async {
+    final backend = _backendFor(trackUri);
+    _subscribeTo(backend);
+    if (start != null && end != null) {
+      state = AudioPlayerState(
+        trackUri: state.trackUri,
+        status: state.status,
+        position: state.position,
+        duration: state.duration,
+        title: state.title,
+        subtitle: state.subtitle,
+        playbackRate: state.playbackRate,
+        isLooping: true,
+        loopStart: start,
+        loopEnd: end,
+      );
+      await backend.play(trackUri, startTime: start);
+    } else {
+      await backend.play(trackUri, startTime: start);
+    }
+  }
+
   Future<void> pause() => _activeBackend?.pause() ?? Future.value();
 
   Future<void> resume() => _activeBackend?.resume() ?? Future.value();
