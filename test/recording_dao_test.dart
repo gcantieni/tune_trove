@@ -146,6 +146,33 @@ void main() {
       await future;
     });
 
+    test('findIdByUrl returns id for matching url', () async {
+      final dao = RecordingDao(db);
+      final now = DateTime.now();
+
+      await dao.insertRecording(
+        RecordingsCompanion(
+          name: const drift.Value('Target'),
+          url: const drift.Value('app-data:target.m4a'),
+          createdAt: drift.Value(now),
+        ),
+      );
+      await dao.insertRecording(
+        RecordingsCompanion(
+          name: const drift.Value('Other'),
+          url: const drift.Value('app-data:other.m4a'),
+          createdAt: drift.Value(now),
+        ),
+      );
+
+      final targetId = (await dao.getAll())
+          .firstWhere((r) => r.url == 'app-data:target.m4a')
+          .id;
+
+      expect(await dao.findIdByUrl('app-data:target.m4a'), targetId);
+      expect(await dao.findIdByUrl('app-data:missing.m4a'), isNull);
+    });
+
     test('watchRecording emits on update', () async {
       final dao = RecordingDao(db);
       final now = DateTime.now();

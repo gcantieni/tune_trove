@@ -18,6 +18,14 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
   Future<List<Recording>> getAll() => select(recordings).get();
   Future<Recording?> getRecording(int id) =>
       (select(recordings)..where((r) => r.id.equals(id))).getSingleOrNull();
+  Future<int?> findIdByUrl(String url) async {
+    final row =
+        await (select(recordings)
+              ..where((r) => r.url.equals(url))
+              ..limit(1))
+            .getSingleOrNull();
+    return row?.id;
+  }
 
   // read reactive
   Stream<List<Recording>> watchAllRecordings() => select(recordings).watch();
