@@ -131,6 +131,10 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
                             .read(databaseProvider)
                             .setTuneDao
                             .removeTuneFromSet(entry.link.id),
+                        onKeyChanged: (key) => ref
+                            .read(databaseProvider)
+                            .setTuneDao
+                            .updateKey(entry.link.id, key),
                       );
                     },
                     onReorder: (oldIndex, newIndex) {

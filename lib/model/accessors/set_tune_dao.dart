@@ -62,6 +62,11 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
   Future<void> removeTuneFromSet(int setTuneId) =>
       (delete(setTune)..where((t) => t.id.equals(setTuneId))).go();
 
+  Future<void> updateKey(int setTuneId, String? key) =>
+      (update(setTune)..where((t) => t.id.equals(setTuneId))).write(
+        SetTuneCompanion(key: Value(key)),
+      );
+
   Future<void> reorderTune(int setId, int oldIndex, int newIndex) async {
     await transaction(() async {
       final rows =

@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -78,6 +78,9 @@ class AppDatabase extends _$AppDatabase {
         // precision. TableMigration recreates the table; existing integer
         // values are preserved as-is and read as doubles by the new RealColumn.
         await m.alterTable(TableMigration(schema.tuneRecording));
+      },
+      from7To8: (m, schema) async {
+        await m.addColumn(schema.setTune, schema.setTune.key);
       },
     ),
   );

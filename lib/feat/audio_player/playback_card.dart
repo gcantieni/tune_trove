@@ -136,13 +136,12 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
     final fraction = duration > 0 ? position / duration : 0.0;
 
     final scheme = Theme.of(context).colorScheme;
-    final labelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-      fontFamily: 'monospace',
-      fontSize: 11,
-    );
-    final speedLabelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: scheme.onSurfaceVariant,
-    );
+    final labelStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace', fontSize: 11);
+    final speedLabelStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
 
     return Column(
       children: [
@@ -166,17 +165,17 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
               onPanUpdate: duration > 0
                   ? (details) {
                       if (_dragStart == null || _dragStartValue == null) return;
-                      final dx =
-                          details.localPosition.dx - _dragStart!.dx;
+                      final dx = details.localPosition.dx - _dragStart!.dx;
                       final vertDist =
                           (details.localPosition.dy - _dragStart!.dy).abs();
                       final multiplier = _multiplierForVertical(vertDist);
-                      final delta =
-                          dx * multiplier * duration / effectiveWidth;
+                      final delta = dx * multiplier * duration / effectiveWidth;
                       setState(() {
                         _multiplier = multiplier;
-                        _scrubValue =
-                            (_dragStartValue! + delta).clamp(0.0, duration);
+                        _scrubValue = (_dragStartValue! + delta).clamp(
+                          0.0,
+                          duration,
+                        );
                       });
                     }
                   : null,
@@ -214,10 +213,12 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
                         child: Container(
                           height: _trackHeight,
                           decoration: BoxDecoration(
-                            color: scheme.onSurfaceVariant
-                                .withValues(alpha: 0.24),
-                            borderRadius:
-                                BorderRadius.circular(_trackHeight / 2),
+                            color: scheme.onSurfaceVariant.withValues(
+                              alpha: 0.24,
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              _trackHeight / 2,
+                            ),
                           ),
                         ),
                       ),
@@ -230,8 +231,9 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
                             height: _trackHeight,
                             decoration: BoxDecoration(
                               color: scheme.primary,
-                              borderRadius:
-                                  BorderRadius.circular(_trackHeight / 2),
+                              borderRadius: BorderRadius.circular(
+                                _trackHeight / 2,
+                              ),
                             ),
                           ),
                         ),
@@ -299,8 +301,7 @@ class _ScrubbingRangeSlider extends ConsumerStatefulWidget {
       _ScrubbingRangeSliderState();
 }
 
-class _ScrubbingRangeSliderState
-    extends ConsumerState<_ScrubbingRangeSlider> {
+class _ScrubbingRangeSliderState extends ConsumerState<_ScrubbingRangeSlider> {
   Offset? _dragStart;
   double? _dragStartValue;
   _Thumb? _activeThumb;
@@ -361,153 +362,157 @@ class _ScrubbingRangeSliderState
       fontSize: 11,
       color: tertiary,
     );
-    final speedLabelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: scheme.onSurfaceVariant,
-    );
+    final speedLabelStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
 
     return Column(
       children: [
-        LayoutBuilder(builder: (context, constraints) {
-          final effectiveWidth =
-              constraints.maxWidth - _horizontalMargin * 2 - _thumbDiameter;
-          final startThumbX = effectiveWidth * startFraction;
-          final endThumbX = effectiveWidth * endFraction;
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final effectiveWidth =
+                constraints.maxWidth - _horizontalMargin * 2 - _thumbDiameter;
+            final startThumbX = effectiveWidth * startFraction;
+            final endThumbX = effectiveWidth * endFraction;
 
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onPanStart: (details) {
-              // Subtract horizontal margin to get position within track area.
-              final touchX = details.localPosition.dx - _horizontalMargin;
-              final thumb = _nearestThumb(
-                touchX,
-                startThumbX + _thumbDiameter / 2,
-                endThumbX + _thumbDiameter / 2,
-              );
-              setState(() {
-                _dragStart = details.localPosition;
-                _dragStartValue =
-                    thumb == _Thumb.start ? loopStart : loopEnd;
-                _activeThumb = thumb;
-                _lastThumb = thumb;
-                _isDragging = true;
-                _multiplier = 1.0;
-                _scrubValue = _dragStartValue;
-              });
-            },
-            onPanUpdate: (details) {
-              if (_dragStart == null ||
-                  _dragStartValue == null ||
-                  _activeThumb == null) return;
-              final dx = details.localPosition.dx - _dragStart!.dx;
-              final vertDist =
-                  (details.localPosition.dy - _dragStart!.dy).abs();
-              final multiplier = _multiplierForVertical(vertDist);
-              final delta = dx * multiplier * duration / effectiveWidth;
-              final raw = _dragStartValue! + delta;
-              // Prevent the two thumbs from crossing each other.
-              final clamped = _activeThumb == _Thumb.start
-                  ? raw.clamp(0.0, displayEnd)
-                  : raw.clamp(displayStart, duration);
-              setState(() {
-                _multiplier = multiplier;
-                _scrubValue = clamped;
-              });
-            },
-            onPanEnd: (_) {
-              if (_scrubValue != null && _activeThumb != null) {
-                final notifier = ref.read(audioPlayerProvider.notifier);
-                final s = ref.read(audioPlayerProvider);
-                if (_activeThumb == _Thumb.start) {
-                  notifier.setLoopBounds(
-                    _scrubValue!,
-                    s.loopEnd.clamp(0.0, duration),
-                  );
-                } else {
-                  notifier.setLoopBounds(
-                    s.loopStart.clamp(0.0, duration),
-                    _scrubValue!,
-                  );
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanStart: (details) {
+                // Subtract horizontal margin to get position within track area.
+                final touchX = details.localPosition.dx - _horizontalMargin;
+                final thumb = _nearestThumb(
+                  touchX,
+                  startThumbX + _thumbDiameter / 2,
+                  endThumbX + _thumbDiameter / 2,
+                );
+                setState(() {
+                  _dragStart = details.localPosition;
+                  _dragStartValue = thumb == _Thumb.start ? loopStart : loopEnd;
+                  _activeThumb = thumb;
+                  _lastThumb = thumb;
+                  _isDragging = true;
+                  _multiplier = 1.0;
+                  _scrubValue = _dragStartValue;
+                });
+              },
+              onPanUpdate: (details) {
+                if (_dragStart == null ||
+                    _dragStartValue == null ||
+                    _activeThumb == null)
+                  return;
+                final dx = details.localPosition.dx - _dragStart!.dx;
+                final vertDist = (details.localPosition.dy - _dragStart!.dy)
+                    .abs();
+                final multiplier = _multiplierForVertical(vertDist);
+                final delta = dx * multiplier * duration / effectiveWidth;
+                final raw = _dragStartValue! + delta;
+                // Prevent the two thumbs from crossing each other.
+                final clamped = _activeThumb == _Thumb.start
+                    ? raw.clamp(0.0, displayEnd)
+                    : raw.clamp(displayStart, duration);
+                setState(() {
+                  _multiplier = multiplier;
+                  _scrubValue = clamped;
+                });
+              },
+              onPanEnd: (_) {
+                if (_scrubValue != null && _activeThumb != null) {
+                  final notifier = ref.read(audioPlayerProvider.notifier);
+                  final s = ref.read(audioPlayerProvider);
+                  if (_activeThumb == _Thumb.start) {
+                    notifier.setLoopBounds(
+                      _scrubValue!,
+                      s.loopEnd.clamp(0.0, duration),
+                    );
+                  } else {
+                    notifier.setLoopBounds(
+                      s.loopStart.clamp(0.0, duration),
+                      _scrubValue!,
+                    );
+                  }
                 }
-              }
-              setState(() {
-                _isDragging = false;
-                _scrubValue = null;
-                _dragStart = null;
-                _dragStartValue = null;
-                _activeThumb = null;
-                _multiplier = 1.0;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: _horizontalMargin,
-                vertical: 16,
-              ),
-              child: SizedBox(
-                height: _thumbDiameter,
-                child: Stack(
-                  alignment: Alignment.centerLeft,
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Inactive track (full width)
-                    Positioned(
-                      left: _thumbDiameter / 2,
-                      right: _thumbDiameter / 2,
-                      child: Container(
-                        height: _trackHeight,
-                        decoration: BoxDecoration(
-                          color: tertiary.withValues(alpha: 0.24),
-                          borderRadius:
-                              BorderRadius.circular(_trackHeight / 2),
+                setState(() {
+                  _isDragging = false;
+                  _scrubValue = null;
+                  _dragStart = null;
+                  _dragStartValue = null;
+                  _activeThumb = null;
+                  _multiplier = 1.0;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: _horizontalMargin,
+                  vertical: 16,
+                ),
+                child: SizedBox(
+                  height: _thumbDiameter,
+                  child: Stack(
+                    alignment: Alignment.centerLeft,
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Inactive track (full width)
+                      Positioned(
+                        left: _thumbDiameter / 2,
+                        right: _thumbDiameter / 2,
+                        child: Container(
+                          height: _trackHeight,
+                          decoration: BoxDecoration(
+                            color: tertiary.withValues(alpha: 0.24),
+                            borderRadius: BorderRadius.circular(
+                              _trackHeight / 2,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    // Active range between the two thumbs
-                    Positioned(
-                      left: _thumbDiameter / 2 +
-                          effectiveWidth * startFraction,
-                      child: Container(
-                        width: (effectiveWidth *
-                                (endFraction - startFraction))
-                            .clamp(0.0, double.infinity),
-                        height: _trackHeight,
-                        decoration: BoxDecoration(
-                          color: tertiary,
-                          borderRadius:
-                              BorderRadius.circular(_trackHeight / 2),
+                      // Active range between the two thumbs
+                      Positioned(
+                        left:
+                            _thumbDiameter / 2 + effectiveWidth * startFraction,
+                        child: Container(
+                          width:
+                              (effectiveWidth * (endFraction - startFraction))
+                                  .clamp(0.0, double.infinity),
+                          height: _trackHeight,
+                          decoration: BoxDecoration(
+                            color: tertiary,
+                            borderRadius: BorderRadius.circular(
+                              _trackHeight / 2,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    // Start thumb
-                    Positioned(
-                      left: startThumbX,
-                      child: Container(
-                        width: _thumbDiameter,
-                        height: _thumbDiameter,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: tertiary,
+                      // Start thumb
+                      Positioned(
+                        left: startThumbX,
+                        child: Container(
+                          width: _thumbDiameter,
+                          height: _thumbDiameter,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: tertiary,
+                          ),
                         ),
                       ),
-                    ),
-                    // End thumb
-                    Positioned(
-                      left: endThumbX,
-                      child: Container(
-                        width: _thumbDiameter,
-                        height: _thumbDiameter,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: tertiary,
+                      // End thumb
+                      Positioned(
+                        left: endThumbX,
+                        child: Container(
+                          width: _thumbDiameter,
+                          height: _thumbDiameter,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: tertiary,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
         // Speed label — fixed height so layout doesn't jump
         SizedBox(
           height: 16,

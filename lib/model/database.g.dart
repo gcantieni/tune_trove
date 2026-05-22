@@ -1894,8 +1894,17 @@ class $SetTuneTable extends SetTune with TableInfo<$SetTuneTable, SetTuneData> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
   @override
-  List<GeneratedColumn> get $columns => [id, setId, tuneId, position];
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, setId, tuneId, position, key];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1935,6 +1944,12 @@ class $SetTuneTable extends SetTune with TableInfo<$SetTuneTable, SetTuneData> {
     } else if (isInserting) {
       context.missing(_positionMeta);
     }
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    }
     return context;
   }
 
@@ -1960,6 +1975,10 @@ class $SetTuneTable extends SetTune with TableInfo<$SetTuneTable, SetTuneData> {
         DriftSqlType.int,
         data['${effectivePrefix}position'],
       )!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      ),
     );
   }
 
@@ -1974,11 +1993,13 @@ class SetTuneData extends DataClass implements Insertable<SetTuneData> {
   final int setId;
   final int tuneId;
   final int position;
+  final String? key;
   const SetTuneData({
     required this.id,
     required this.setId,
     required this.tuneId,
     required this.position,
+    this.key,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1987,6 +2008,9 @@ class SetTuneData extends DataClass implements Insertable<SetTuneData> {
     map['set_id'] = Variable<int>(setId);
     map['tune_id'] = Variable<int>(tuneId);
     map['position'] = Variable<int>(position);
+    if (!nullToAbsent || key != null) {
+      map['key'] = Variable<String>(key);
+    }
     return map;
   }
 
@@ -1996,6 +2020,7 @@ class SetTuneData extends DataClass implements Insertable<SetTuneData> {
       setId: Value(setId),
       tuneId: Value(tuneId),
       position: Value(position),
+      key: key == null && nullToAbsent ? const Value.absent() : Value(key),
     );
   }
 
@@ -2009,6 +2034,7 @@ class SetTuneData extends DataClass implements Insertable<SetTuneData> {
       setId: serializer.fromJson<int>(json['setId']),
       tuneId: serializer.fromJson<int>(json['tuneId']),
       position: serializer.fromJson<int>(json['position']),
+      key: serializer.fromJson<String?>(json['key']),
     );
   }
   @override
@@ -2019,22 +2045,30 @@ class SetTuneData extends DataClass implements Insertable<SetTuneData> {
       'setId': serializer.toJson<int>(setId),
       'tuneId': serializer.toJson<int>(tuneId),
       'position': serializer.toJson<int>(position),
+      'key': serializer.toJson<String?>(key),
     };
   }
 
-  SetTuneData copyWith({int? id, int? setId, int? tuneId, int? position}) =>
-      SetTuneData(
-        id: id ?? this.id,
-        setId: setId ?? this.setId,
-        tuneId: tuneId ?? this.tuneId,
-        position: position ?? this.position,
-      );
+  SetTuneData copyWith({
+    int? id,
+    int? setId,
+    int? tuneId,
+    int? position,
+    Value<String?> key = const Value.absent(),
+  }) => SetTuneData(
+    id: id ?? this.id,
+    setId: setId ?? this.setId,
+    tuneId: tuneId ?? this.tuneId,
+    position: position ?? this.position,
+    key: key.present ? key.value : this.key,
+  );
   SetTuneData copyWithCompanion(SetTuneCompanion data) {
     return SetTuneData(
       id: data.id.present ? data.id.value : this.id,
       setId: data.setId.present ? data.setId.value : this.setId,
       tuneId: data.tuneId.present ? data.tuneId.value : this.tuneId,
       position: data.position.present ? data.position.value : this.position,
+      key: data.key.present ? data.key.value : this.key,
     );
   }
 
@@ -2044,13 +2078,14 @@ class SetTuneData extends DataClass implements Insertable<SetTuneData> {
           ..write('id: $id, ')
           ..write('setId: $setId, ')
           ..write('tuneId: $tuneId, ')
-          ..write('position: $position')
+          ..write('position: $position, ')
+          ..write('key: $key')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, setId, tuneId, position);
+  int get hashCode => Object.hash(id, setId, tuneId, position, key);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2058,7 +2093,8 @@ class SetTuneData extends DataClass implements Insertable<SetTuneData> {
           other.id == this.id &&
           other.setId == this.setId &&
           other.tuneId == this.tuneId &&
-          other.position == this.position);
+          other.position == this.position &&
+          other.key == this.key);
 }
 
 class SetTuneCompanion extends UpdateCompanion<SetTuneData> {
@@ -2066,17 +2102,20 @@ class SetTuneCompanion extends UpdateCompanion<SetTuneData> {
   final Value<int> setId;
   final Value<int> tuneId;
   final Value<int> position;
+  final Value<String?> key;
   const SetTuneCompanion({
     this.id = const Value.absent(),
     this.setId = const Value.absent(),
     this.tuneId = const Value.absent(),
     this.position = const Value.absent(),
+    this.key = const Value.absent(),
   });
   SetTuneCompanion.insert({
     this.id = const Value.absent(),
     required int setId,
     required int tuneId,
     required int position,
+    this.key = const Value.absent(),
   }) : setId = Value(setId),
        tuneId = Value(tuneId),
        position = Value(position);
@@ -2085,12 +2124,14 @@ class SetTuneCompanion extends UpdateCompanion<SetTuneData> {
     Expression<int>? setId,
     Expression<int>? tuneId,
     Expression<int>? position,
+    Expression<String>? key,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (setId != null) 'set_id': setId,
       if (tuneId != null) 'tune_id': tuneId,
       if (position != null) 'position': position,
+      if (key != null) 'key': key,
     });
   }
 
@@ -2099,12 +2140,14 @@ class SetTuneCompanion extends UpdateCompanion<SetTuneData> {
     Value<int>? setId,
     Value<int>? tuneId,
     Value<int>? position,
+    Value<String?>? key,
   }) {
     return SetTuneCompanion(
       id: id ?? this.id,
       setId: setId ?? this.setId,
       tuneId: tuneId ?? this.tuneId,
       position: position ?? this.position,
+      key: key ?? this.key,
     );
   }
 
@@ -2123,6 +2166,9 @@ class SetTuneCompanion extends UpdateCompanion<SetTuneData> {
     if (position.present) {
       map['position'] = Variable<int>(position.value);
     }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
     return map;
   }
 
@@ -2132,7 +2178,8 @@ class SetTuneCompanion extends UpdateCompanion<SetTuneData> {
           ..write('id: $id, ')
           ..write('setId: $setId, ')
           ..write('tuneId: $tuneId, ')
-          ..write('position: $position')
+          ..write('position: $position, ')
+          ..write('key: $key')
           ..write(')'))
         .toString();
   }
@@ -3311,6 +3358,7 @@ typedef $$SetTuneTableCreateCompanionBuilder =
       required int setId,
       required int tuneId,
       required int position,
+      Value<String?> key,
     });
 typedef $$SetTuneTableUpdateCompanionBuilder =
     SetTuneCompanion Function({
@@ -3318,6 +3366,7 @@ typedef $$SetTuneTableUpdateCompanionBuilder =
       Value<int> setId,
       Value<int> tuneId,
       Value<int> position,
+      Value<String?> key,
     });
 
 final class $$SetTuneTableReferences
@@ -3376,6 +3425,11 @@ class $$SetTuneTableFilterComposer
 
   ColumnFilters<int> get position => $composableBuilder(
     column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3445,6 +3499,11 @@ class $$SetTuneTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$TuneSetsTableOrderingComposer get setId {
     final $$TuneSetsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3506,6 +3565,9 @@ class $$SetTuneTableAnnotationComposer
 
   GeneratedColumn<int> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
 
   $$TuneSetsTableAnnotationComposer get setId {
     final $$TuneSetsTableAnnotationComposer composer = $composerBuilder(
@@ -3586,11 +3648,13 @@ class $$SetTuneTableTableManager
                 Value<int> setId = const Value.absent(),
                 Value<int> tuneId = const Value.absent(),
                 Value<int> position = const Value.absent(),
+                Value<String?> key = const Value.absent(),
               }) => SetTuneCompanion(
                 id: id,
                 setId: setId,
                 tuneId: tuneId,
                 position: position,
+                key: key,
               ),
           createCompanionCallback:
               ({
@@ -3598,11 +3662,13 @@ class $$SetTuneTableTableManager
                 required int setId,
                 required int tuneId,
                 required int position,
+                Value<String?> key = const Value.absent(),
               }) => SetTuneCompanion.insert(
                 id: id,
                 setId: setId,
                 tuneId: tuneId,
                 position: position,
+                key: key,
               ),
           withReferenceMapper: (p0) => p0
               .map(

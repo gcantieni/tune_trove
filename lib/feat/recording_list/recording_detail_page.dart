@@ -251,7 +251,9 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
         onLibraryTune: (tune) async {
           if (!mounted) return;
           final details =
-              await showDialog<({double? start, double? end, String? performedKey})>(
+              await showDialog<
+                ({double? start, double? end, String? performedKey})
+              >(
                 context: context,
                 builder: (_) =>
                     TimestampEditorDialog(initialPerformedKey: tune.key),

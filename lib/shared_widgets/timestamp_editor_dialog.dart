@@ -133,7 +133,13 @@ double? parseTime(String raw) {
       if (dotParts.length != 2) return null;
       final sec = int.tryParse(dotParts[0]);
       final cs = int.tryParse(dotParts[1].padRight(2, '0').substring(0, 2));
-      if (sec == null || cs == null || sec < 0 || sec >= 60 || cs < 0 || cs > 99) return null;
+      if (sec == null ||
+          cs == null ||
+          sec < 0 ||
+          sec >= 60 ||
+          cs < 0 ||
+          cs > 99)
+        return null;
       return m * 60 + sec + cs / 100.0;
     } else {
       final sec = int.tryParse(secPart);
