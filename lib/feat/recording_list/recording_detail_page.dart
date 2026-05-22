@@ -248,8 +248,22 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
       context: context,
       builder: (_) => TunePickerDialog(
         title: 'Add tune to recording',
-        onLibraryTune: (tune) {
-          dao.linkTuneToRecording(tune.id, recordingId);
+        onLibraryTune: (tune) async {
+          if (!mounted) return;
+          final details =
+              await showDialog<({int? start, int? end, String? performedKey})>(
+                context: context,
+                builder: (_) =>
+                    TimestampEditorDialog(initialPerformedKey: tune.key),
+              );
+          if (details == null) return;
+          await dao.linkTuneToRecording(
+            tune.id,
+            recordingId,
+            startTime: details.start,
+            endTime: details.end,
+            performedKey: details.performedKey,
+          );
         },
         onThesessionTune: (companion) {
           dao.createTuneAndLink(
@@ -360,9 +374,12 @@ class _LinkedTuneRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tune = entry.tune;
     final link = entry.link;
+    final displayKey = (link.performedKey?.isNotEmpty ?? false)
+        ? link.performedKey!
+        : tune.key;
     final subtitle = [
       if (tune.type != null) tune.type!.name,
-      if (tune.key != null && tune.key!.isNotEmpty) tune.key!,
+      if (displayKey != null && displayKey.isNotEmpty) displayKey,
     ].join(' · ');
 
     final kind = recordingLinkKindOf(recordingUrl);
@@ -432,17 +449,20 @@ class _LinkedTuneRow extends ConsumerWidget {
 
   Future<void> _editTimes(BuildContext context, WidgetRef ref) async {
     final link = entry.link;
-    final result = await showDialog<({int? start, int? end})>(
-      context: context,
-      builder: (_) => TimestampEditorDialog(
-        initialStart: link.startTime,
-        initialEnd: link.endTime,
-      ),
-    );
+    final result =
+        await showDialog<({int? start, int? end, String? performedKey})>(
+          context: context,
+          builder: (_) => TimestampEditorDialog(
+            initialStart: link.startTime,
+            initialEnd: link.endTime,
+            initialPerformedKey: link.performedKey,
+          ),
+        );
     if (result == null) return;
     final updated = link.copyWith(
       startTime: drift.Value(result.start),
       endTime: drift.Value(result.end),
+      performedKey: drift.Value(result.performedKey),
     );
     await ref.read(databaseProvider).tuneRecordingDao.updateLink(updated);
   }

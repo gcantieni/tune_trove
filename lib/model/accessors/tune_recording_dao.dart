@@ -22,10 +22,22 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
   /// thanks to the composite PK and insertOrIgnore mode. Bumps the
   /// tune's modifiedAt on a real insert so it surfaces in "recently
   /// updated" sorts.
-  Future<int> linkTuneToRecording(int tuneId, int recordingId) {
+  Future<int> linkTuneToRecording(
+    int tuneId,
+    int recordingId, {
+    int? startTime,
+    int? endTime,
+    String? performedKey,
+  }) {
     return transaction(() async {
       final rowId = await into(tuneRecording).insert(
-        TuneRecordingCompanion.insert(tuneId: tuneId, recordingId: recordingId),
+        TuneRecordingCompanion.insert(
+          tuneId: tuneId,
+          recordingId: recordingId,
+          startTime: Value(startTime),
+          endTime: Value(endTime),
+          performedKey: Value(performedKey),
+        ),
         mode: InsertMode.insertOrIgnore,
       );
       if (rowId > 0) await _bumpTuneModified(tuneId);

@@ -599,11 +599,132 @@ i1.GeneratedColumn<int> _column_24(String aliasedName) =>
       false,
       type: i1.DriftSqlType.int,
     );
+
+// Schema6: adds performed_key (nullable text) to tune_recording.
+final class Schema6 extends i0.VersionedSchema {
+  Schema6({required super.database}) : super(version: 6);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    recordings,
+    tunes,
+    tuneRecording,
+    tuneSets,
+    setTune,
+  ];
+  late final Shape0 recordings = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'recordings',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 tunes = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'tunes',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_6,
+        _column_21,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+        _column_12,
+        _column_4,
+        _column_5,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 tuneRecording = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'tune_recording',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(tune_id, recording_id)'],
+      columns: [
+        _column_13,
+        _column_14,
+        _column_19,
+        _column_20,
+        _column_3,
+        _column_25,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 tuneSets = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'tune_sets',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [_column_0, _column_1, _column_4, _column_5],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 setTune = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'set_tune',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [_column_0, _column_22, _column_23, _column_24],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+}
+
+class Shape7 extends i0.VersionedTable {
+  Shape7({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<int> get tuneId =>
+      columnsByName['tune_id']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get recordingId =>
+      columnsByName['recording_id']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get startTime =>
+      columnsByName['start_time']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get endTime =>
+      columnsByName['end_time']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get performers =>
+      columnsByName['performers']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get performedKey =>
+      columnsByName['performed_key']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_25(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'performed_key',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+    );
+
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
   required Future<void> Function(i1.Migrator m, Schema4 schema) from3To4,
   required Future<void> Function(i1.Migrator m, Schema5 schema) from4To5,
+  required Future<void> Function(i1.Migrator m, Schema6 schema) from5To6,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -627,6 +748,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from4To5(migrator, schema);
         return 5;
+      case 5:
+        final schema = Schema6(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from5To6(migrator, schema);
+        return 6;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -638,11 +764,13 @@ i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
   required Future<void> Function(i1.Migrator m, Schema4 schema) from3To4,
   required Future<void> Function(i1.Migrator m, Schema5 schema) from4To5,
+  required Future<void> Function(i1.Migrator m, Schema6 schema) from5To6,
 }) => i0.VersionedSchema.stepByStepHelper(
   step: migrationSteps(
     from1To2: from1To2,
     from2To3: from2To3,
     from3To4: from3To4,
     from4To5: from4To5,
+    from5To6: from5To6,
   ),
 );

@@ -172,6 +172,37 @@ void main() {
     );
   });
 
+  test('linkTuneToRecording stores performedKey', () async {
+    final tuneId = await db.into(db.tunes).insert(_tune('The Humours of Tulla'));
+    final recordingId =
+        await db.into(db.recordings).insert(_recording('session_08'));
+
+    await db.tuneRecordingDao.linkTuneToRecording(
+      tuneId,
+      recordingId,
+      performedKey: 'Edor',
+    );
+
+    final links = await db.select(db.tuneRecording).get();
+    expect(links.length, 1);
+    expect(links.first.performedKey, 'Edor');
+  });
+
+  test('updateLink persists performedKey change', () async {
+    final tuneId = await db.into(db.tunes).insert(_tune('The Humours of Tulla'));
+    final recordingId =
+        await db.into(db.recordings).insert(_recording('session_09'));
+    await db.tuneRecordingDao.linkTuneToRecording(tuneId, recordingId);
+
+    final link = (await db.select(db.tuneRecording).get()).first;
+    await db.tuneRecordingDao.updateLink(
+      link.copyWith(performedKey: const drift.Value('G')),
+    );
+
+    final updated = (await db.select(db.tuneRecording).get()).first;
+    expect(updated.performedKey, 'G');
+  });
+
   test('watchLinksForRecording emits RecordedTune after insert', () async {
     final tuneId = await db.into(db.tunes).insert(_tune('Rakish Paddy'));
     final recordingId =

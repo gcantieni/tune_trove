@@ -1155,6 +1155,17 @@ class $TuneRecordingTable extends TuneRecording
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _performedKeyMeta = const VerificationMeta(
+    'performedKey',
+  );
+  @override
+  late final GeneratedColumn<String> performedKey = GeneratedColumn<String>(
+    'performed_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     tuneId,
@@ -1162,6 +1173,7 @@ class $TuneRecordingTable extends TuneRecording
     startTime,
     endTime,
     performers,
+    performedKey,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1212,6 +1224,15 @@ class $TuneRecordingTable extends TuneRecording
         performers.isAcceptableOrUnknown(data['performers']!, _performersMeta),
       );
     }
+    if (data.containsKey('performed_key')) {
+      context.handle(
+        _performedKeyMeta,
+        performedKey.isAcceptableOrUnknown(
+          data['performed_key']!,
+          _performedKeyMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1241,6 +1262,10 @@ class $TuneRecordingTable extends TuneRecording
         DriftSqlType.string,
         data['${effectivePrefix}performers'],
       ),
+      performedKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}performed_key'],
+      ),
     );
   }
 
@@ -1263,12 +1288,17 @@ class TuneRecordingData extends DataClass
 
   /// Free text for names of performers if known
   final String? performers;
+
+  /// Key the tune was performed in on this recording (may differ from the
+  /// tune's canonical key, e.g. a session recorded in G vs. the usual D)
+  final String? performedKey;
   const TuneRecordingData({
     required this.tuneId,
     required this.recordingId,
     this.startTime,
     this.endTime,
     this.performers,
+    this.performedKey,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1283,6 +1313,9 @@ class TuneRecordingData extends DataClass
     }
     if (!nullToAbsent || performers != null) {
       map['performers'] = Variable<String>(performers);
+    }
+    if (!nullToAbsent || performedKey != null) {
+      map['performed_key'] = Variable<String>(performedKey);
     }
     return map;
   }
@@ -1300,6 +1333,9 @@ class TuneRecordingData extends DataClass
       performers: performers == null && nullToAbsent
           ? const Value.absent()
           : Value(performers),
+      performedKey: performedKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(performedKey),
     );
   }
 
@@ -1314,6 +1350,7 @@ class TuneRecordingData extends DataClass
       startTime: serializer.fromJson<int?>(json['startTime']),
       endTime: serializer.fromJson<int?>(json['endTime']),
       performers: serializer.fromJson<String?>(json['performers']),
+      performedKey: serializer.fromJson<String?>(json['performedKey']),
     );
   }
   @override
@@ -1325,6 +1362,7 @@ class TuneRecordingData extends DataClass
       'startTime': serializer.toJson<int?>(startTime),
       'endTime': serializer.toJson<int?>(endTime),
       'performers': serializer.toJson<String?>(performers),
+      'performedKey': serializer.toJson<String?>(performedKey),
     };
   }
 
@@ -1334,12 +1372,14 @@ class TuneRecordingData extends DataClass
     Value<int?> startTime = const Value.absent(),
     Value<int?> endTime = const Value.absent(),
     Value<String?> performers = const Value.absent(),
+    Value<String?> performedKey = const Value.absent(),
   }) => TuneRecordingData(
     tuneId: tuneId ?? this.tuneId,
     recordingId: recordingId ?? this.recordingId,
     startTime: startTime.present ? startTime.value : this.startTime,
     endTime: endTime.present ? endTime.value : this.endTime,
     performers: performers.present ? performers.value : this.performers,
+    performedKey: performedKey.present ? performedKey.value : this.performedKey,
   );
   TuneRecordingData copyWithCompanion(TuneRecordingCompanion data) {
     return TuneRecordingData(
@@ -1352,6 +1392,9 @@ class TuneRecordingData extends DataClass
       performers: data.performers.present
           ? data.performers.value
           : this.performers,
+      performedKey: data.performedKey.present
+          ? data.performedKey.value
+          : this.performedKey,
     );
   }
 
@@ -1362,14 +1405,21 @@ class TuneRecordingData extends DataClass
           ..write('recordingId: $recordingId, ')
           ..write('startTime: $startTime, ')
           ..write('endTime: $endTime, ')
-          ..write('performers: $performers')
+          ..write('performers: $performers, ')
+          ..write('performedKey: $performedKey')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(tuneId, recordingId, startTime, endTime, performers);
+  int get hashCode => Object.hash(
+    tuneId,
+    recordingId,
+    startTime,
+    endTime,
+    performers,
+    performedKey,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1378,7 +1428,8 @@ class TuneRecordingData extends DataClass
           other.recordingId == this.recordingId &&
           other.startTime == this.startTime &&
           other.endTime == this.endTime &&
-          other.performers == this.performers);
+          other.performers == this.performers &&
+          other.performedKey == this.performedKey);
 }
 
 class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
@@ -1387,6 +1438,7 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
   final Value<int?> startTime;
   final Value<int?> endTime;
   final Value<String?> performers;
+  final Value<String?> performedKey;
   final Value<int> rowid;
   const TuneRecordingCompanion({
     this.tuneId = const Value.absent(),
@@ -1394,6 +1446,7 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
     this.startTime = const Value.absent(),
     this.endTime = const Value.absent(),
     this.performers = const Value.absent(),
+    this.performedKey = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TuneRecordingCompanion.insert({
@@ -1402,6 +1455,7 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
     this.startTime = const Value.absent(),
     this.endTime = const Value.absent(),
     this.performers = const Value.absent(),
+    this.performedKey = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : tuneId = Value(tuneId),
        recordingId = Value(recordingId);
@@ -1411,6 +1465,7 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
     Expression<int>? startTime,
     Expression<int>? endTime,
     Expression<String>? performers,
+    Expression<String>? performedKey,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1419,6 +1474,7 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
       if (startTime != null) 'start_time': startTime,
       if (endTime != null) 'end_time': endTime,
       if (performers != null) 'performers': performers,
+      if (performedKey != null) 'performed_key': performedKey,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1429,6 +1485,7 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
     Value<int?>? startTime,
     Value<int?>? endTime,
     Value<String?>? performers,
+    Value<String?>? performedKey,
     Value<int>? rowid,
   }) {
     return TuneRecordingCompanion(
@@ -1437,6 +1494,7 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       performers: performers ?? this.performers,
+      performedKey: performedKey ?? this.performedKey,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1459,6 +1517,9 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
     if (performers.present) {
       map['performers'] = Variable<String>(performers.value);
     }
+    if (performedKey.present) {
+      map['performed_key'] = Variable<String>(performedKey.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1473,6 +1534,7 @@ class TuneRecordingCompanion extends UpdateCompanion<TuneRecordingData> {
           ..write('startTime: $startTime, ')
           ..write('endTime: $endTime, ')
           ..write('performers: $performers, ')
+          ..write('performedKey: $performedKey, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2747,6 +2809,7 @@ typedef $$TuneRecordingTableCreateCompanionBuilder =
       Value<int?> startTime,
       Value<int?> endTime,
       Value<String?> performers,
+      Value<String?> performedKey,
       Value<int> rowid,
     });
 typedef $$TuneRecordingTableUpdateCompanionBuilder =
@@ -2756,6 +2819,7 @@ typedef $$TuneRecordingTableUpdateCompanionBuilder =
       Value<int?> startTime,
       Value<int?> endTime,
       Value<String?> performers,
+      Value<String?> performedKey,
       Value<int> rowid,
     });
 
@@ -2790,6 +2854,11 @@ class $$TuneRecordingTableFilterComposer
 
   ColumnFilters<String> get performers => $composableBuilder(
     column: $table.performers,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get performedKey => $composableBuilder(
+    column: $table.performedKey,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2827,6 +2896,11 @@ class $$TuneRecordingTableOrderingComposer
     column: $table.performers,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get performedKey => $composableBuilder(
+    column: $table.performedKey,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TuneRecordingTableAnnotationComposer
@@ -2854,6 +2928,11 @@ class $$TuneRecordingTableAnnotationComposer
 
   GeneratedColumn<String> get performers => $composableBuilder(
     column: $table.performers,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get performedKey => $composableBuilder(
+    column: $table.performedKey,
     builder: (column) => column,
   );
 }
@@ -2898,6 +2977,7 @@ class $$TuneRecordingTableTableManager
                 Value<int?> startTime = const Value.absent(),
                 Value<int?> endTime = const Value.absent(),
                 Value<String?> performers = const Value.absent(),
+                Value<String?> performedKey = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TuneRecordingCompanion(
                 tuneId: tuneId,
@@ -2905,6 +2985,7 @@ class $$TuneRecordingTableTableManager
                 startTime: startTime,
                 endTime: endTime,
                 performers: performers,
+                performedKey: performedKey,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2914,6 +2995,7 @@ class $$TuneRecordingTableTableManager
                 Value<int?> startTime = const Value.absent(),
                 Value<int?> endTime = const Value.absent(),
                 Value<String?> performers = const Value.absent(),
+                Value<String?> performedKey = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TuneRecordingCompanion.insert(
                 tuneId: tuneId,
@@ -2921,6 +3003,7 @@ class $$TuneRecordingTableTableManager
                 startTime: startTime,
                 endTime: endTime,
                 performers: performers,
+                performedKey: performedKey,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

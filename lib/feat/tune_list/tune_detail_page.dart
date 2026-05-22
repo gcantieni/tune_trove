@@ -520,7 +520,12 @@ class _LinkedRecordingRow extends ConsumerWidget {
             TextButton(
               onPressed: () => _editTimes(context, ref),
               child: Text(
-                '${formatSeconds(link.startTime)} – ${formatSeconds(link.endTime)}',
+                [
+                  '${formatSeconds(link.startTime)} – ${formatSeconds(link.endTime)}',
+                  if (link.performedKey != null &&
+                      link.performedKey!.isNotEmpty)
+                    link.performedKey!,
+                ].join('  ·  '),
                 style: const TextStyle(fontFamily: 'monospace'),
               ),
             ),
@@ -540,17 +545,20 @@ class _LinkedRecordingRow extends ConsumerWidget {
 
   Future<void> _editTimes(BuildContext context, WidgetRef ref) async {
     final link = entry.link;
-    final result = await showDialog<({int? start, int? end})>(
-      context: context,
-      builder: (_) => TimestampEditorDialog(
-        initialStart: link.startTime,
-        initialEnd: link.endTime,
-      ),
-    );
+    final result =
+        await showDialog<({int? start, int? end, String? performedKey})>(
+          context: context,
+          builder: (_) => TimestampEditorDialog(
+            initialStart: link.startTime,
+            initialEnd: link.endTime,
+            initialPerformedKey: link.performedKey,
+          ),
+        );
     if (result == null) return;
     final updated = link.copyWith(
       startTime: drift.Value(result.start),
       endTime: drift.Value(result.end),
+      performedKey: drift.Value(result.performedKey),
     );
     await ref.read(databaseProvider).tuneRecordingDao.updateLink(updated);
   }
