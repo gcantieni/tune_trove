@@ -72,7 +72,7 @@ class PlaybackCard extends ConsumerWidget {
               const _ScrubbingSlider(),
               if (playerState.isLooping && duration > 0) ...[
                 const SizedBox(height: 8),
-                const _LoopRangeSlider(),
+                const _ScrubbingRangeSlider(),
               ],
               const SizedBox(height: 8),
               const _SpeedSlider(),
@@ -289,49 +289,244 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
   }
 }
 
-class _LoopRangeSlider extends ConsumerWidget {
-  const _LoopRangeSlider();
+enum _Thumb { start, end }
+
+class _ScrubbingRangeSlider extends ConsumerStatefulWidget {
+  const _ScrubbingRangeSlider();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ScrubbingRangeSlider> createState() =>
+      _ScrubbingRangeSliderState();
+}
+
+class _ScrubbingRangeSliderState
+    extends ConsumerState<_ScrubbingRangeSlider> {
+  Offset? _dragStart;
+  double? _dragStartValue;
+  _Thumb? _activeThumb;
+  _Thumb _lastThumb = _Thumb.end;
+  double? _scrubValue;
+  bool _isDragging = false;
+  double _multiplier = 1.0;
+
+  static const _thumbDiameter = 20.0;
+  static const _trackHeight = 4.0;
+  static const _horizontalMargin = 12.0;
+
+  double _multiplierForVertical(double dist) {
+    if (dist < 40) return 1.0;
+    if (dist < 80) return 0.25;
+    if (dist < 130) return 0.05;
+    return 0.01;
+  }
+
+  String? _labelForMultiplier(double m) {
+    if (m >= 1.0) return null;
+    if (m >= 0.25) return 'Quarter Speed';
+    if (m >= 0.05) return 'Fine';
+    return 'Ultra-fine';
+  }
+
+  _Thumb _nearestThumb(double touchX, double startX, double endX) {
+    final distToStart = (touchX - startX).abs();
+    final distToEnd = (touchX - endX).abs();
+    if (distToStart < distToEnd) return _Thumb.start;
+    if (distToEnd < distToStart) return _Thumb.end;
+    return _lastThumb;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(audioPlayerProvider);
     final duration = state.duration;
     if (duration <= 0) return const SizedBox.shrink();
 
+    final loopStart = state.loopStart.clamp(0.0, duration);
+    final loopEnd = state.loopEnd.clamp(0.0, duration);
+
+    final displayStart = (_isDragging && _activeThumb == _Thumb.start)
+        ? (_scrubValue ?? loopStart)
+        : loopStart;
+    final displayEnd = (_isDragging && _activeThumb == _Thumb.end)
+        ? (_scrubValue ?? loopEnd)
+        : loopEnd;
+
+    final startFraction = displayStart / duration;
+    final endFraction = displayEnd / duration;
+
     final tertiary = Theme.of(context).colorScheme.tertiary;
+    final scheme = Theme.of(context).colorScheme;
     final labelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
       fontFamily: 'monospace',
       fontSize: 11,
       color: tertiary,
     );
+    final speedLabelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
 
     return Column(
       children: [
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: tertiary,
-            thumbColor: tertiary,
-            inactiveTrackColor: tertiary.withValues(alpha: 0.24),
-            overlayColor: tertiary.withValues(alpha: 0.12),
-          ),
-          child: RangeSlider(
-            values: RangeValues(
-              state.loopStart.clamp(0.0, duration),
-              state.loopEnd.clamp(0.0, duration),
+        LayoutBuilder(builder: (context, constraints) {
+          final effectiveWidth =
+              constraints.maxWidth - _horizontalMargin * 2 - _thumbDiameter;
+          final startThumbX = effectiveWidth * startFraction;
+          final endThumbX = effectiveWidth * endFraction;
+
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onPanStart: (details) {
+              // Subtract horizontal margin to get position within track area.
+              final touchX = details.localPosition.dx - _horizontalMargin;
+              final thumb = _nearestThumb(
+                touchX,
+                startThumbX + _thumbDiameter / 2,
+                endThumbX + _thumbDiameter / 2,
+              );
+              setState(() {
+                _dragStart = details.localPosition;
+                _dragStartValue =
+                    thumb == _Thumb.start ? loopStart : loopEnd;
+                _activeThumb = thumb;
+                _lastThumb = thumb;
+                _isDragging = true;
+                _multiplier = 1.0;
+                _scrubValue = _dragStartValue;
+              });
+            },
+            onPanUpdate: (details) {
+              if (_dragStart == null ||
+                  _dragStartValue == null ||
+                  _activeThumb == null) return;
+              final dx = details.localPosition.dx - _dragStart!.dx;
+              final vertDist =
+                  (details.localPosition.dy - _dragStart!.dy).abs();
+              final multiplier = _multiplierForVertical(vertDist);
+              final delta = dx * multiplier * duration / effectiveWidth;
+              final raw = _dragStartValue! + delta;
+              // Prevent the two thumbs from crossing each other.
+              final clamped = _activeThumb == _Thumb.start
+                  ? raw.clamp(0.0, displayEnd)
+                  : raw.clamp(displayStart, duration);
+              setState(() {
+                _multiplier = multiplier;
+                _scrubValue = clamped;
+              });
+            },
+            onPanEnd: (_) {
+              if (_scrubValue != null && _activeThumb != null) {
+                final notifier = ref.read(audioPlayerProvider.notifier);
+                final s = ref.read(audioPlayerProvider);
+                if (_activeThumb == _Thumb.start) {
+                  notifier.setLoopBounds(
+                    _scrubValue!,
+                    s.loopEnd.clamp(0.0, duration),
+                  );
+                } else {
+                  notifier.setLoopBounds(
+                    s.loopStart.clamp(0.0, duration),
+                    _scrubValue!,
+                  );
+                }
+              }
+              setState(() {
+                _isDragging = false;
+                _scrubValue = null;
+                _dragStart = null;
+                _dragStartValue = null;
+                _activeThumb = null;
+                _multiplier = 1.0;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: _horizontalMargin,
+                vertical: 16,
+              ),
+              child: SizedBox(
+                height: _thumbDiameter,
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Inactive track (full width)
+                    Positioned(
+                      left: _thumbDiameter / 2,
+                      right: _thumbDiameter / 2,
+                      child: Container(
+                        height: _trackHeight,
+                        decoration: BoxDecoration(
+                          color: tertiary.withValues(alpha: 0.24),
+                          borderRadius:
+                              BorderRadius.circular(_trackHeight / 2),
+                        ),
+                      ),
+                    ),
+                    // Active range between the two thumbs
+                    Positioned(
+                      left: _thumbDiameter / 2 +
+                          effectiveWidth * startFraction,
+                      child: Container(
+                        width: (effectiveWidth *
+                                (endFraction - startFraction))
+                            .clamp(0.0, double.infinity),
+                        height: _trackHeight,
+                        decoration: BoxDecoration(
+                          color: tertiary,
+                          borderRadius:
+                              BorderRadius.circular(_trackHeight / 2),
+                        ),
+                      ),
+                    ),
+                    // Start thumb
+                    Positioned(
+                      left: startThumbX,
+                      child: Container(
+                        width: _thumbDiameter,
+                        height: _thumbDiameter,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: tertiary,
+                        ),
+                      ),
+                    ),
+                    // End thumb
+                    Positioned(
+                      left: endThumbX,
+                      child: Container(
+                        width: _thumbDiameter,
+                        height: _thumbDiameter,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: tertiary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            max: duration,
-            onChanged: (v) => ref
-                .read(audioPlayerProvider.notifier)
-                .setLoopBounds(v.start, v.end),
-          ),
+          );
+        }),
+        // Speed label — fixed height so layout doesn't jump
+        SizedBox(
+          height: 16,
+          child: _isDragging && _multiplier < 1.0
+              ? Center(
+                  child: Text(
+                    _labelForMultiplier(_multiplier) ?? '',
+                    style: speedLabelStyle,
+                  ),
+                )
+              : null,
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_fmt(state.loopStart), style: labelStyle),
-              Text(_fmt(state.loopEnd), style: labelStyle),
+              Text(_fmt(displayStart), style: labelStyle),
+              Text(_fmt(displayEnd), style: labelStyle),
             ],
           ),
         ),
