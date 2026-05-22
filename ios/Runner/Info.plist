@@ -30,6 +30,10 @@
 	<true/>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Tune Trove uses Apple Music to search for and play recordings of traditional folk tunes.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Tune Trove does not use the camera.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Tune Trove does not use your location.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Tune Trove does not access your photo library.</string>
 	<key>UIApplicationSceneManifest</key>
