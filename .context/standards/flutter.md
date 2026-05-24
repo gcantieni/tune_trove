@@ -42,3 +42,41 @@
 - All routes are defined in `lib/routing/app_router.dart` using GoRouter.
 - Use named routes (`context.goNamed(...)`) rather than path strings.
 - Pass IDs as path parameters, not whole objects.
+
+## CocoaPods Policy
+
+**This project has fully migrated away from CocoaPods. Do not add it back.**
+
+The iOS target uses Swift Package Manager exclusively — there is no `Podfile` in `ios/`. This was an intentional migration to eliminate CocoaPods as a build dependency, improve CI reliability, and reduce toolchain complexity.
+
+### Rules
+
+- **Never add a Flutter package that pulls in a CocoaPods dependency.** Before adding any pub.dev package, check whether its iOS implementation uses a `.podspec` file or `s.dependency` declarations. If it does, find an alternative.
+- **Never run `pod install` or create a `Podfile`.** If Xcode or Flutter tooling suggests running pod install, investigate why rather than complying — the fix is usually a package swap, not re-introducing CocoaPods.
+- **Prefer packages that use Swift Package Manager (SPM) or pure-Dart implementations** for their native layer.
+
+### How to vet a package before adding it
+
+1. Check the package's `ios/` directory on pub.dev or GitHub for a `.podspec` file.
+2. If a `.podspec` is present, look for an SPM alternative (`Package.swift`) — some packages support both.
+3. Search pub.dev for packages that solve the same problem without native iOS code at all (pure Dart is always preferred).
+4. If no CocoaPods-free alternative exists, raise it as a blocker rather than adding the dependency.
+
+### Known safe packages (SPM or pure-Dart on iOS)
+
+| Package | iOS native layer |
+| --- | --- |
+| `webview_flutter` | SPM (`webview_flutter_wkwebview`) |
+| `just_audio` | SPM |
+| `file_picker` | SPM |
+| `path_provider` | SPM |
+| `url_launcher` | SPM |
+| `flutter_svg` | Pure Dart |
+| `drift` / `drift_flutter` | Pure Dart (uses `sqlite3_flutter_libs`) |
+| `go_router` | Pure Dart |
+| `flutter_riverpod` | Pure Dart |
+| `http` / `html` | Pure Dart |
+
+### Historical context
+
+`flutter_inappwebview` was previously used for ABC notation rendering and was replaced with `webview_flutter` as part of this migration. `flutter_inappwebview` uses CocoaPods; `webview_flutter` does not. Any future WebView work must continue using `webview_flutter`.
