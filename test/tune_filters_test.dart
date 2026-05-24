@@ -104,6 +104,21 @@ void main() {
     expect(list.first.key, 'Em');
   });
 
+  test('filteredTunesProvider matches curly apostrophe against straight apostrophe', () async {
+    final tunes = [
+      _tune(id: 1, name: "Cooley's", type: TuneType.reel, createdAt: DateTime(2024)),
+      _tune(id: 2, name: 'Lark in the Morning', type: TuneType.jig, createdAt: DateTime(2024, 1, 2)),
+    ];
+    final container = _container(tunes);
+    addTearDown(container.dispose);
+    // U+2019 right single quotation mark (curly apostrophe) — common on iOS/macOS
+    container.read(tuneFiltersProvider.notifier).setNameQuery('cooley’s');
+
+    final list = await _awaitFilteredTunes(container);
+    expect(list, hasLength(1));
+    expect(list.first.name, "Cooley's");
+  });
+
   test('filteredTunesProvider filters by name case-insensitively', () async {
     final tunes = [
       _tune(id: 1, name: "Cooley's", type: TuneType.reel, createdAt: DateTime(2024)),

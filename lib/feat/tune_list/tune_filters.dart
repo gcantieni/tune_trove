@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/util/search_normalize.dart';
 
 enum TuneSort { newestFirst, oldestFirst, nameAZ, nameZA }
 
@@ -66,7 +67,7 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
   final filters = ref.watch(tuneFiltersProvider);
   final allAsync = ref.watch(allTunesProvider);
   return allAsync.whenData((all) {
-    final query = filters.nameQuery.trim().toLowerCase();
+    final query = normalizeForSearch(filters.nameQuery.trim());
     final filtered = all.where((t) {
       if (filters.type != null && t.type != filters.type) return false;
       if (filters.key != null &&
@@ -74,7 +75,7 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
           t.key != filters.key) {
         return false;
       }
-      if (query.isNotEmpty && !t.name.toLowerCase().contains(query)) {
+      if (query.isNotEmpty && !normalizeForSearch(t.name).contains(query)) {
         return false;
       }
       return true;

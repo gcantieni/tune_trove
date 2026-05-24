@@ -9,14 +9,33 @@ double _ch(Color c, double Function(Color) channel) =>
 ColorFilter _buildThemeFilter(ColorScheme cs) {
   final fg = cs.onSurface;
   final bg = cs.surface;
-  final fgR = _ch(fg, (c) => c.r); final bgR = _ch(bg, (c) => c.r);
-  final fgG = _ch(fg, (c) => c.g); final bgG = _ch(bg, (c) => c.g);
-  final fgB = _ch(fg, (c) => c.b); final bgB = _ch(bg, (c) => c.b);
+  final fgR = _ch(fg, (c) => c.r);
+  final bgR = _ch(bg, (c) => c.r);
+  final fgG = _ch(fg, (c) => c.g);
+  final bgG = _ch(bg, (c) => c.g);
+  final fgB = _ch(fg, (c) => c.b);
+  final bgB = _ch(bg, (c) => c.b);
   return ColorFilter.matrix(<double>[
-    (bgR - fgR) / 255.0,  0,                    0,                    0,  fgR,
-    0,                    (bgG - fgG) / 255.0,  0,                    0,  fgG,
-    0,                    0,                    (bgB - fgB) / 255.0,  0,  fgB,
-    0,                    0,                    0,                    1,    0,
+    (bgR - fgR) / 255.0,
+    0,
+    0,
+    0,
+    fgR,
+    0,
+    (bgG - fgG) / 255.0,
+    0,
+    0,
+    fgG,
+    0,
+    0,
+    (bgB - fgB) / 255.0,
+    0,
+    fgB,
+    0,
+    0,
+    0,
+    1,
+    0,
   ]);
 }
 

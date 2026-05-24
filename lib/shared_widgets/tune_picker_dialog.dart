@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
 import 'package:tune_trove/remote_tune_sources/thesession_tune_source.dart';
+import 'package:tune_trove/util/search_normalize.dart';
 
 const _debounceDelay = Duration(milliseconds: 100);
 
@@ -53,7 +54,9 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(_debounceDelay, () {
       if (!mounted) return;
-      setState(() => _debouncedQuery = _controller.text.trim().toLowerCase());
+      setState(
+        () => _debouncedQuery = normalizeForSearch(_controller.text.trim()),
+      );
     });
   }
 
@@ -142,7 +145,7 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
     List<TunesCompanion> thesessionTunes,
   ) {
     final matchingLocal = localTunes
-        .where((t) => t.name.toLowerCase().contains(query))
+        .where((t) => normalizeForSearch(t.name).contains(query))
         .toList();
 
     final localTsIds = localTunes
@@ -152,7 +155,7 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
     final matchingThesession = thesessionTunes
         .where(
           (t) =>
-              t.name.value.toLowerCase().contains(query) &&
+              normalizeForSearch(t.name.value).contains(query) &&
               !(t.tsId.present && localTsIds.contains(t.tsId.value)),
         )
         .take(20)
