@@ -1,6 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+double _ch(Color c, double Function(Color) channel) =>
+    (channel(c) * 255.0).roundToDouble();
+
+// Builds a ColorFilter that remaps black→onSurface and white→surface,
+// so ABCjs notation matches the app's Material theme colours exactly.
+ColorFilter _buildThemeFilter(ColorScheme cs) {
+  final fg = cs.onSurface;
+  final bg = cs.surface;
+  final fgR = _ch(fg, (c) => c.r); final bgR = _ch(bg, (c) => c.r);
+  final fgG = _ch(fg, (c) => c.g); final bgG = _ch(bg, (c) => c.g);
+  final fgB = _ch(fg, (c) => c.b); final bgB = _ch(bg, (c) => c.b);
+  return ColorFilter.matrix(<double>[
+    (bgR - fgR) / 255.0,  0,                    0,                    0,  fgR,
+    0,                    (bgG - fgG) / 255.0,  0,                    0,  fgG,
+    0,                    0,                    (bgB - fgB) / 255.0,  0,  fgB,
+    0,                    0,                    0,                    1,    0,
+  ]);
+}
+
+Widget _maybeinvert(BuildContext context, Widget child) {
+  if (Theme.of(context).brightness == Brightness.dark) {
+    return ColorFiltered(
+      colorFilter: _buildThemeFilter(Theme.of(context).colorScheme),
+      child: child,
+    );
+  }
+  return child;
+}
+
 /// Renders cached ABC sheet music if [svg] is available; otherwise
 /// falls back to the plaintext block. Kept tiny and self-contained so
 /// callers don't need to know about flutter_svg or the renderer.
@@ -13,6 +42,7 @@ class AbcView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasSvg = svg != null && svg!.isNotEmpty;
+    final cs = Theme.of(context).colorScheme;
     if (hasSvg) {
       return GestureDetector(
         onTap: () => Navigator.of(context, rootNavigator: true).push(
@@ -25,13 +55,16 @@ class AbcView extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cs.surface,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: Theme.of(context).colorScheme.outlineVariant,
             ),
           ),
-          child: SvgPicture.string(svg!, alignment: Alignment.topLeft),
+          child: _maybeinvert(
+            context,
+            SvgPicture.string(svg!, alignment: Alignment.topLeft),
+          ),
         ),
       );
     }
@@ -57,8 +90,9 @@ class _AbcFullScreenPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: cs.surface,
       body: Stack(
         children: [
           InteractiveViewer(
@@ -67,13 +101,16 @@ class _AbcFullScreenPage extends StatelessWidget {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(8),
-                child: SvgPicture.string(svg, alignment: Alignment.topLeft),
+                child: _maybeinvert(
+                  context,
+                  SvgPicture.string(svg, alignment: Alignment.topLeft),
+                ),
               ),
             ),
           ),
           SafeArea(
             child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.black),
+              icon: Icon(Icons.close, color: cs.onSurface),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
