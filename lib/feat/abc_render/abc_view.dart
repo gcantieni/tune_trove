@@ -14,17 +14,25 @@ class AbcView extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasSvg = svg != null && svg!.isNotEmpty;
     if (hasSvg) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
+      return GestureDetector(
+        onTap: () => Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => _AbcFullScreenPage(svg: svg!),
           ),
         ),
-        child: SvgPicture.string(svg!, alignment: Alignment.topLeft),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: SvgPicture.string(svg!, alignment: Alignment.topLeft),
+        ),
       );
     }
     return Container(
@@ -37,6 +45,39 @@ class AbcView extends StatelessWidget {
       child: SelectableText(
         (abc == null || abc!.isEmpty) ? '—' : abc!,
         style: const TextStyle(fontFamily: 'monospace'),
+      ),
+    );
+  }
+}
+
+class _AbcFullScreenPage extends StatelessWidget {
+  final String svg;
+
+  const _AbcFullScreenPage({required this.svg});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 6.0,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: SvgPicture.string(svg, alignment: Alignment.topLeft),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.black),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ],
       ),
     );
   }
