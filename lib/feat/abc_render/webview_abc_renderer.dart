@@ -1,72 +1,75 @@
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-
+import 'package:flutter/widgets.dart';
 import 'package:tune_trove/feat/abc_render/abc_renderer.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
-/// Headless flutter_inappwebview that hosts a tiny HTML shim bundled
-/// at `assets/abcjs/render.html`. The shim loads abcjs and exposes
-/// `window.renderAbcToSvg(abc)` which returns SVG markup. We call it
-/// via JS evaluation and pull the string back.
+/// WebView-backed renderer that hosts `assets/abcjs/render.html` and calls
+/// `window.renderAbcToSvg(abc)` via JS evaluation to convert ABC notation to
+/// an SVG string.
 ///
-/// Lifecycle: lazy — the webview is spun up on the first [render]
-/// call and reused for the rest of the app's lifetime. Concurrent
-/// calls are serialized so abcjs sees one render at a time.
+/// Lifecycle: the [WebViewController] is created immediately; the underlying
+/// platform WebView spins up when [anchorWidget] is mounted in the tree.
+/// Concurrent [render] calls are serialized because abcjs writes to a single
+/// shared DOM div.
 class WebViewAbcRenderer implements AbcRenderer {
-  HeadlessInAppWebView? _headless;
-  InAppWebViewController? _controller;
+  late final WebViewController _controller;
   Completer<void>? _ready;
   Future<String?>? _inFlight;
 
-  Future<void> _ensureReady() {
-    final existing = _ready;
-    if (existing != null) return existing.future;
-
-    final ready = Completer<void>();
-    _ready = ready;
-
-    final headless = HeadlessInAppWebView(
-      initialFile: 'assets/abcjs/render.html',
-      onWebViewCreated: (c) => _controller = c,
-      onLoadStop: (c, _) {
-        if (!ready.isCompleted) ready.complete();
-      },
-      onReceivedError: (c, req, err) {
-        if (!ready.isCompleted) ready.completeError(err);
-      },
-    );
-    _headless = headless;
-
-    headless.run().catchError((Object e) {
-      if (!ready.isCompleted) ready.completeError(e);
-    });
-
-    return ready.future;
+  WebViewAbcRenderer() {
+    _ready = Completer<void>();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            if (_ready != null && !_ready!.isCompleted) _ready!.complete();
+          },
+          onWebResourceError: (WebResourceError error) {
+            if (_ready != null && !_ready!.isCompleted) {
+              _ready!.completeError(error);
+            }
+          },
+        ),
+      )
+      ..loadFlutterAsset('assets/abcjs/render.html');
   }
+
+  /// A 1×1 [WebViewWidget] that must be kept in the app widget tree (via
+  /// [Offstage]) for the underlying platform WebView to remain alive.
+  @override
+  Widget anchorWidget() => SizedBox(
+    width: 1,
+    height: 1,
+    child: WebViewWidget(controller: _controller),
+  );
 
   @override
   Future<String?> render(String abc) async {
     if (abc.trim().isEmpty) return null;
-    // Serialize: abcjs writes into a single shared <div>, so concurrent
-    // calls would clobber each other.
+    // Serialize: abcjs writes into a single shared <div>.
     final previous = _inFlight;
     final completer = Completer<String?>();
     _inFlight = completer.future;
     try {
-      if (previous != null) {
-        await previous;
+      if (previous != null) await previous;
+      // Retry the asset load if a previous attempt failed.
+      if (_ready == null) {
+        _ready = Completer<void>();
+        unawaited(_controller.loadFlutterAsset('assets/abcjs/render.html'));
       }
-      await _ensureReady();
-      final encoded = jsonEncodeString(abc);
-      final result = await _controller?.evaluateJavascript(
-        source: 'window.renderAbcToSvg($encoded);',
+      await _ready!.future;
+      final encoded = _jsonEncodeString(abc);
+      final result = await _controller.runJavaScriptReturningResult(
+        'window.renderAbcToSvg($encoded);',
       );
-      final svg = result is String && result.isNotEmpty ? result : null;
+      final svg = _parseSvgResult(result);
       completer.complete(svg);
       return svg;
     } catch (_) {
-      // Reset readiness so a future render attempt can retry the
-      // webview load (e.g. after first-launch flake).
+      // Allow a retry on the next render call.
       _ready = null;
       completer.complete(null);
       return null;
@@ -76,23 +79,29 @@ class WebViewAbcRenderer implements AbcRenderer {
   }
 
   @override
-  Future<void> dispose() async {
-    await _headless?.dispose();
-    _headless = null;
-    _controller = null;
-    _ready = null;
+  Future<void> dispose() async {}
+}
+
+/// Handles platform differences in [WebViewController.runJavaScriptReturningResult]:
+/// Android JSON-encodes the return value; iOS/macOS returns the raw string.
+String? _parseSvgResult(Object result) {
+  final raw = result.toString();
+  try {
+    final decoded = jsonDecode(raw);
+    return decoded is String && decoded.isNotEmpty ? decoded : null;
+  } on FormatException {
+    return raw.isNotEmpty && raw != 'null' ? raw : null;
   }
 }
 
-/// Quote a Dart string as a JSON string literal for safe interpolation
-/// into JS source. Avoids pulling in dart:convert just for this.
-String jsonEncodeString(String s) {
+/// Encodes a Dart string as a JSON string literal for safe JS interpolation.
+String _jsonEncodeString(String s) {
   final buf = StringBuffer('"');
   for (final rune in s.runes) {
     switch (rune) {
-      case 0x22: // "
+      case 0x22:
         buf.write(r'\"');
-      case 0x5c: // \
+      case 0x5c:
         buf.write(r'\\');
       case 0x08:
         buf.write(r'\b');

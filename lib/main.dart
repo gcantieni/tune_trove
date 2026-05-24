@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:tune_trove/feat/abc_render/abc_renderer.dart';
 import 'package:tune_trove/routing/app_router.dart';
 
 void main() {
@@ -30,6 +31,9 @@ class MyApp extends StatelessWidget {
         ),
       ),
       routerConfig: router,
+      builder: (context, child) => Stack(
+        children: [child ?? const SizedBox.shrink(), const AbcRendererAnchor()],
+      ),
     );
   }
 }
