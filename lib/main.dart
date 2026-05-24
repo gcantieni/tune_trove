@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
     final Brightness brightness = MediaQuery.of(context).platformBrightness;
     final colorScheme = ColorScheme.fromSeed(
       contrastLevel: 0.75,
-      seedColor: Colors.deepPurple,
+      seedColor: const Color(0xFF0C2E1E),
       brightness: brightness,
     );
 
