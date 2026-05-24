@@ -16,6 +16,7 @@ import 'package:tune_trove/model/providers/sets_provider.dart';
 import 'package:tune_trove/model/providers/tune_recording_provider.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/shared_widgets/key_picker_sheet.dart';
 import 'package:tune_trove/shared_widgets/recording_picker_dialog.dart';
 import 'package:tune_trove/shared_widgets/timestamp_editor_dialog.dart';
 
@@ -32,7 +33,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
   bool _editing = false;
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _keyController = TextEditingController();
+  String? _key;
   final _fromController = TextEditingController();
   final _abcController = TextEditingController();
   TuneType? _type;
@@ -41,7 +42,6 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _keyController.dispose();
     _fromController.dispose();
     _abcController.dispose();
     super.dispose();
@@ -49,7 +49,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
 
   void _enterEdit(Tune tune) {
     _nameController.text = tune.name;
-    _keyController.text = tune.key ?? '';
+    _key = tune.key != null ? normalizePickerKey(tune.key!) : null;
     _fromController.text = tune.from ?? '';
     _abcController.text = tune.abc ?? '';
     _type = tune.type;
@@ -89,7 +89,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
   Future<void> _save(Tune tune) async {
     if (!_formKey.currentState!.validate()) return;
 
-    final keyText = _keyController.text.trim();
+    final keyText = _key ?? '';
     final fromText = _fromController.text.trim();
     final abcText = _abcController.text.trim();
     final newAbc = abcText.isEmpty ? null : abcText;
@@ -310,9 +310,27 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
                 (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
           const SizedBox(height: 12),
-          TextFormField(
-            controller: _keyController,
-            decoration: const InputDecoration(labelText: 'Key'),
+          InkWell(
+            onTap: () async {
+              final result = await showKeyPickerSheet(
+                context,
+                currentKey: _key,
+              );
+              if (result != null) {
+                setState(() => _key = result.isEmpty ? null : result);
+              }
+            },
+            child: InputDecorator(
+              decoration: const InputDecoration(labelText: 'Key'),
+              child: Text(
+                _key != null && _key!.isNotEmpty ? _key! : '—',
+                style: TextStyle(
+                  color: _key != null && _key!.isNotEmpty
+                      ? null
+                      : Theme.of(context).colorScheme.outline,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<TuneType?>(
