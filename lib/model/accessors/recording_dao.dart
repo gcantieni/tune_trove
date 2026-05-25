@@ -35,6 +35,13 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
     return row?.id;
   }
 
+  // Dedupe lookup: url is the natural cross-device identifier for a recording.
+  Future<Recording?> getByUrl(String url) =>
+      (select(recordings)
+            ..where((r) => r.url.equals(url))
+            ..limit(1))
+          .getSingleOrNull();
+
   // read reactive
   Stream<List<Recording>> watchAllRecordings() => select(recordings).watch();
   Stream<Recording?> watchRecording(int id) =>

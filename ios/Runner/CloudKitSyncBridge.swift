@@ -11,121 +11,304 @@ enum CloudKitSyncChannels {
     static let event  = "com.gcantieni.tuneTrove/cloudkit_sync_state"
 }
 
-@available(iOS 15, macOS 14, *)
-class CloudKitSyncBridge: NSObject {
+/// Bridges the Drift database to CloudKit via `CKSyncEngine`.
+///
+/// The engine owns zone creation, change-token persistence, batching, retry and
+/// backoff. Dart drives an explicit, deterministic sync cycle:
+///   1. `fetchChanges` — pulls remote records and returns them as the result.
+///   2. Dart reconciles them into Drift (dedupe + last-writer-wins).
+///   3. `stageRecords` — Dart serializes local rows to upload.
+///   4. `sendChanges` — flushes staged changes to CloudKit.
+///
+/// `automaticallySync` is disabled so every sync is request/response and there
+/// is no background interleaving to race against reconciliation.
+@available(iOS 17, macOS 14, *)
+@MainActor
+final class CloudKitSyncBridge: NSObject {
     private var methodChannel: FlutterMethodChannel?
     private var eventChannel: FlutterEventChannel?
     private var eventSink: FlutterEventSink?
 
     private let ckContainer = CKContainer(identifier: "iCloud.com.gcantieni.tuneTrove")
-    private var privateDB: CKDatabase { ckContainer.privateCloudDatabase }
+    private var database: CKDatabase { ckContainer.privateCloudDatabase }
     private let zoneID = CKRecordZone.ID(
         zoneName: "TuneTroveZone",
         ownerName: CKCurrentUserDefaultName
     )
 
+    private var syncEngine: CKSyncEngine?
+
+    /// Field maps staged from Dart, keyed by record name (cloudId), awaiting send.
+    private var pendingRecordMaps: [String: [String: Any]] = [:]
+
+    /// Server records observed during a fetch, reused when sending so an update
+    /// carries the current change tag instead of conflicting.
+    private var serverRecordCache: [CKRecord.ID: CKRecord] = [:]
+
+    /// Accumulators populated during an explicit `fetchChanges` call.
+    private var fetchedUpserts: [[String: Any]] = []
+    private var fetchedDeletions: [[String: Any]] = []
+
     func setup(binaryMessenger: FlutterBinaryMessenger) {
-        methodChannel = FlutterMethodChannel(
+        let method = FlutterMethodChannel(
             name: CloudKitSyncChannels.method,
             binaryMessenger: binaryMessenger
         )
-        eventChannel = FlutterEventChannel(
+        let event = FlutterEventChannel(
             name: CloudKitSyncChannels.event,
             binaryMessenger: binaryMessenger
         )
-        methodChannel?.setMethodCallHandler(handleMethod)
-        eventChannel?.setStreamHandler(self)
+        // Flutter dispatches channel calls on the platform (main) thread, so we
+        // can safely assume main-actor isolation when hopping into the bridge.
+        method.setMethodCallHandler { [weak self] call, result in
+            MainActor.assumeIsolated { self?.handleMethod(call, result: result) }
+        }
+        event.setStreamHandler(self)
+        methodChannel = method
+        eventChannel = event
     }
 
+    // MARK: - Method channel
+
     private func handleMethod(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        print("[CKSync] handleMethod: \(call.method)")
+        // Runs on the main actor (the enclosing class is @MainActor), so the
+        // FlutterResult callbacks below are invoked on the platform thread.
         Task {
             do {
                 switch call.method {
                 case "isAvailable":
                     let status = try await ckContainer.accountStatus()
-                    await MainActor.run { result(status == .available) }
+                    result(status == .available)
 
-                case "startSync":
-                    try await ensureZoneExists()
-                    try await fetchRemoteChanges()
-                    await MainActor.run { result(nil) }
+                case "initialize":
+                    initializeEngine()
+                    result(nil)
 
-                case "pushChanges":
+                case "fetchChanges":
+                    let changes = try await performFetch()
+                    result(changes)
+
+                case "stageRecords":
                     guard let records = call.arguments as? [[String: Any]] else {
-                        await MainActor.run {
-                            result(FlutterError(code: "BAD_ARGS", message: "records array required", details: nil))
-                        }
+                        result(badArgs())
                         return
                     }
-                    try await pushChanges(records: records)
-                    await MainActor.run { result(nil) }
+                    stageRecords(records)
+                    result(nil)
 
-                case "subscribeToChanges":
-                    try await setupDatabaseSubscription()
-                    await MainActor.run { result(nil) }
+                case "stageDeletions":
+                    guard let dels = call.arguments as? [[String: Any]] else {
+                        result(badArgs())
+                        return
+                    }
+                    stageDeletions(dels)
+                    result(nil)
+
+                case "sendChanges":
+                    try await performSend()
+                    result(nil)
 
                 default:
-                    await MainActor.run { result(FlutterMethodNotImplemented) }
+                    result(FlutterMethodNotImplemented)
                 }
             } catch {
-                let ckErr = error as? CKError
-                let code = ckErr?.code.rawValue ?? -1
-                let info = ckErr?.userInfo ?? [:]
-                print("[CKSync] ERROR code=\(code) desc=\(error.localizedDescription) info=\(info)")
-                await MainActor.run {
-                    result(FlutterError(code: "CLOUDKIT_ERROR", message: error.localizedDescription, details: nil))
+                let detail = describeError(error)
+                print("[CKSync] ERROR method=\(call.method) \(detail)")
+                if let ckErr = error as? CKError {
+                    print("[CKSync]   userInfo=\(ckErr.userInfo)")
                 }
+                result(FlutterError(code: "CLOUDKIT_ERROR", message: "\(call.method): \(detail)", details: detail))
             }
         }
     }
 
-    // MARK: - Zone Management
-
-    private func ensureZoneExists() async throws {
-        let key = "ck_zone_created_\(zoneID.zoneName)"
-        let alreadyKnown = UserDefaults.standard.bool(forKey: key)
-        print("[CKSync] ensureZoneExists: alreadyKnown=\(alreadyKnown)")
-        guard !alreadyKnown else { return }
-        let zone = CKRecordZone(zoneID: zoneID)
-        do {
-            _ = try await privateDB.modifyRecordZones(saving: [zone], deleting: [])
-            print("[CKSync] ensureZoneExists: zone created OK")
-        } catch let ckErr as CKError
-            where ckErr.code == .serverRecordChanged || ckErr.code == .unknownItem {
-            print("[CKSync] ensureZoneExists: swallowed \(ckErr.code.rawValue) — zone exists on server")
-        } catch {
-            print("[CKSync] ensureZoneExists: UNEXPECTED ERROR \(error)")
-            throw error
-        }
-        UserDefaults.standard.set(true, forKey: key)
+    private func badArgs() -> FlutterError {
+        FlutterError(code: "BAD_ARGS", message: "expected array argument", details: nil)
     }
 
-    // MARK: - Push local → CloudKit
+    /// Flattens a CKError (and its underlying/partial errors) into one line so
+    /// the real reason for a rejection is visible without digging in Xcode.
+    private func describeError(_ error: Error) -> String {
+        guard let ck = error as? CKError else {
+            let ns = error as NSError
+            return "\(ns.domain) code=\(ns.code) \(ns.localizedDescription)"
+        }
+        var parts: [String] = ["CKError code=\(ck.code.rawValue) (\(ck.code))"]
+        if let underlying = ck.userInfo[NSUnderlyingErrorKey] as? NSError {
+            parts.append("underlying=\(underlying.domain):\(underlying.code)")
+        }
+        if let retry = ck.retryAfterSeconds {
+            parts.append("retryAfter=\(retry)s")
+        }
+        if let partial = ck.partialErrorsByItemID, !partial.isEmpty {
+            parts.append("partialCount=\(partial.count)")
+            for (id, itemError) in partial {
+                let pe = itemError as? CKError
+                parts.append("[\(id): code=\(pe?.code.rawValue ?? -1)]")
+            }
+        }
+        return parts.joined(separator: " ")
+    }
 
-    private func pushChanges(records: [[String: Any]]) async throws {
-        print("[CKSync] pushChanges: building from \(records.count) maps")
-        var toSave: [CKRecord] = []
-        var toDelete: [CKRecord.ID] = []
+    // MARK: - Engine lifecycle
 
+    private func initializeEngine() {
+        guard syncEngine == nil else { return }
+        var config = CKSyncEngine.Configuration(
+            database: database,
+            stateSerialization: loadState(),
+            delegate: self
+        )
+        config.automaticallySync = false
+        let engine = CKSyncEngine(config)
+        // Ensure the custom zone exists before the first record send. Saving an
+        // existing zone is a no-op, so this is safe to issue on every launch.
+        engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
+        syncEngine = engine
+        print("[CKSync] engine initialized")
+    }
+
+    private func engineOrThrow() throws -> CKSyncEngine {
+        if syncEngine == nil { initializeEngine() }
+        guard let engine = syncEngine else {
+            throw NSError(
+                domain: "CKSync", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "sync engine unavailable"]
+            )
+        }
+        return engine
+    }
+
+    // MARK: - Fetch / send
+
+    private func performFetch() async throws -> [String: Any] {
+        let engine = try engineOrThrow()
+        fetchedUpserts = []
+        fetchedDeletions = []
+        emitStatus("syncing")
+        defer { emitStatus("idle") }
+        try await engine.fetchChanges()
+        return ["upserts": fetchedUpserts, "deletions": fetchedDeletions]
+    }
+
+    private func performSend() async throws {
+        let engine = try engineOrThrow()
+        emitStatus("syncing")
+        defer { emitStatus("idle") }
+        try await engine.sendChanges()
+    }
+
+    private func stageRecords(_ records: [[String: Any]]) {
+        guard let engine = try? engineOrThrow() else { return }
+        var changes: [CKSyncEngine.PendingRecordZoneChange] = []
         for map in records {
-            guard let recordType = map["recordType"] as? String,
-                  let cloudId = map["cloudId"] as? String else { continue }
-            let recordID = CKRecord.ID(recordName: cloudId, zoneID: zoneID)
-            if let deleted = map["deleted"] as? Bool, deleted {
-                toDelete.append(recordID)
-            } else {
-                // Use a fresh CKRecord (no change tag) — optimistic write.
-                // Conflicts are resolved reactively in saveWithConflictRetry.
-                let record = CKRecord(recordType: recordType, recordID: recordID)
-                populateRecord(record, from: map)
-                toSave.append(record)
+            guard let cloudId = map["cloudId"] as? String, map["recordType"] is String else { continue }
+            pendingRecordMaps[cloudId] = map
+            changes.append(.saveRecord(CKRecord.ID(recordName: cloudId, zoneID: zoneID)))
+        }
+        engine.state.add(pendingRecordZoneChanges: changes)
+    }
+
+    private func stageDeletions(_ dels: [[String: Any]]) {
+        guard let engine = try? engineOrThrow() else { return }
+        var changes: [CKSyncEngine.PendingRecordZoneChange] = []
+        for del in dels {
+            guard let cloudId = del["cloudId"] as? String else { continue }
+            pendingRecordMaps.removeValue(forKey: cloudId)
+            changes.append(.deleteRecord(CKRecord.ID(recordName: cloudId, zoneID: zoneID)))
+        }
+        engine.state.add(pendingRecordZoneChanges: changes)
+    }
+
+    // MARK: - Engine state persistence
+
+    private var stateFileURL: URL {
+        let base = (try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("ck_sync_engine_state.dat")
+    }
+
+    private func loadState() -> CKSyncEngine.State.Serialization? {
+        guard let data = try? Data(contentsOf: stateFileURL) else { return nil }
+        return try? JSONDecoder().decode(CKSyncEngine.State.Serialization.self, from: data)
+    }
+
+    private func saveState(_ serialization: CKSyncEngine.State.Serialization) {
+        guard let data = try? JSONEncoder().encode(serialization) else { return }
+        try? data.write(to: stateFileURL, options: .atomic)
+    }
+
+    // MARK: - Account changes
+
+    private func handleAccountChange(_ event: CKSyncEngine.Event.AccountChange) {
+        switch event.changeType {
+        case .signIn:
+            emitStatus("idle")
+        case .signOut, .switchAccounts:
+            // Drop in-memory caches; the persisted engine state is reset by the
+            // engine itself for the new account. Local user data is preserved.
+            pendingRecordMaps.removeAll()
+            serverRecordCache.removeAll()
+            emitStatus("idle")
+        @unknown default:
+            break
+        }
+    }
+
+    // MARK: - Sent-change results (conflicts, missing zone)
+
+    private func handleSentChanges(_ event: CKSyncEngine.Event.SentRecordZoneChanges, engine: CKSyncEngine) {
+        for saved in event.savedRecords {
+            serverRecordCache[saved.recordID] = saved
+            pendingRecordMaps.removeValue(forKey: saved.recordID.recordName)
+        }
+        for failed in event.failedRecordSaves {
+            let record = failed.record
+            let error = failed.error
+            switch error.code {
+            case .serverRecordChanged:
+                // Local wins: rebase onto the server record (carries the current
+                // change tag) and retry on the next pass.
+                if let server = error.serverRecord {
+                    serverRecordCache[record.recordID] = server
+                }
+                engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+            case .zoneNotFound, .userDeletedZone:
+                serverRecordCache.removeValue(forKey: record.recordID)
+                engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
+                engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+            case .unknownItem:
+                pendingRecordMaps.removeValue(forKey: record.recordID.recordName)
+            default:
+                print("[CKSync] save failed for \(record.recordID.recordName): code=\(error.code.rawValue) \(error.localizedDescription)")
             }
         }
+    }
 
-        print("[CKSync] pushChanges: \(toSave.count) to save, \(toDelete.count) to delete")
-        guard !toSave.isEmpty || !toDelete.isEmpty else { return }
-        try await saveWithConflictRetry(toSave: toSave, toDelete: toDelete)
+    // MARK: - Record <-> map conversion
+
+    /// Builds the inbound field map (snake_case keys) that
+    /// `SyncReconciliationService` expects.
+    private func fieldsFromRecord(_ record: CKRecord) -> [String: Any] {
+        var fields: [String: Any] = ["cloud_id": record.recordID.recordName]
+        for key in record.allKeys() {
+            let snakeKey = camelToSnake(key)
+            switch record[key] {
+            case let s as String:
+                fields[snakeKey] = s
+            case let n as NSNumber:
+                fields[snakeKey] = n
+            case let d as Date:
+                fields[snakeKey] = Int(d.timeIntervalSince1970 * 1000)
+            default:
+                break
+            }
+        }
+        return fields
     }
 
     private func populateRecord(_ record: CKRecord, from map: [String: Any]) {
@@ -138,238 +321,25 @@ class CloudKitSyncBridge: NSObject {
             case let n as NSNumber:
                 // Only keys ending in "At" (createdAt, modifiedAt) carry
                 // ms-since-epoch timestamps. Keys ending in "Time" (startTime,
-                // endTime) are audio-position seconds and must stay as numbers.
+                // endTime) are audio-position seconds and must stay numeric.
                 if ckKey.hasSuffix("At") {
                     record[ckKey] = Date(timeIntervalSince1970: n.doubleValue / 1000) as CKRecordValue
                 } else {
                     record[ckKey] = n as CKRecordValue
                 }
-            case is NSNull:
-                record[ckKey] = nil
             default:
                 break
             }
         }
-    }
-
-    private func saveWithConflictRetry(toSave: [CKRecord], toDelete: [CKRecord.ID]) async throws {
-        print("[CKSync] saveWithConflictRetry: attempting save of \(toSave.count) records")
-        do {
-            let (saveResults, _) = try await privateDB.modifyRecords(
-                saving: toSave,
-                deleting: toDelete,
-                savePolicy: .allKeys,
-                atomically: false
-            )
-            print("[CKSync] saveWithConflictRetry: modifyRecords returned, processing per-record results")
-
-            // For each per-record serverRecordChanged conflict, apply our local
-            // values onto the server record (which carries the current change tag)
-            // and retry. If the error omits serverRecord, fetch it explicitly.
-            var toRetry: [CKRecord] = []
-            for (id, result) in saveResults {
-                guard case .failure(let error) = result,
-                      let ckErr = error as? CKError,
-                      ckErr.code == .serverRecordChanged else { continue }
-
-                print("[CKSync] saveWithConflictRetry: per-record conflict on \(id.recordName)")
-                let ourRecord = ckErr.clientRecord
-                    ?? toSave.first(where: { $0.recordID == id })
-
-                let serverRecord: CKRecord
-                if let server = ckErr.serverRecord {
-                    serverRecord = server
-                } else if let rec = ourRecord {
-                    print("[CKSync] saveWithConflictRetry: serverRecord missing, fetching \(id.recordName)")
-                    serverRecord = (try? await privateDB.record(for: id)) ?? rec
-                } else {
-                    continue
-                }
-
-                // Local wins: copy all our field values onto the server record.
-                for key in (ourRecord?.allKeys() ?? []) {
-                    serverRecord[key] = ourRecord![key]
-                }
-                toRetry.append(serverRecord)
-            }
-
-            if !toRetry.isEmpty {
-                print("[CKSync] saveWithConflictRetry: retrying \(toRetry.count) conflicted records")
-                _ = try await privateDB.modifyRecords(
-                    saving: toRetry,
-                    deleting: [],
-                    savePolicy: .allKeys,
-                    atomically: false
-                )
-            }
-            print("[CKSync] saveWithConflictRetry: done")
-
-        } catch let ckErr as CKError where ckErr.code == .serverRecordChanged {
-            // modifyRecords threw globally rather than returning per-record errors.
-            // Re-fetch every record to get current change tags, apply our values, retry.
-            print("[CKSync] saveWithConflictRetry: global serverRecordChanged — re-fetching all \(toSave.count) records")
-            var refreshed: [CKRecord] = []
-            for record in toSave {
-                if let server = try? await privateDB.record(for: record.recordID) {
-                    for key in record.allKeys() { server[key] = record[key] }
-                    refreshed.append(server)
-                } else {
-                    refreshed.append(record)
-                }
-            }
-            print("[CKSync] saveWithConflictRetry: retrying all after global conflict")
-            _ = try await privateDB.modifyRecords(
-                saving: refreshed,
-                deleting: toDelete,
-                savePolicy: .allKeys,
-                atomically: false
-            )
-            print("[CKSync] saveWithConflictRetry: done (global conflict path)")
-        }
-    }
-
-    private func mergeConflict(client: CKRecord, server: CKRecord, ancestor: CKRecord?) -> CKRecord {
-        let clientModified = (client["modifiedAt"] as? Date) ?? Date.distantPast
-        let serverModified = (server["modifiedAt"] as? Date) ?? Date.distantPast
-        for key in client.allKeys() {
-            let clientChanged = !ckEqual(client[key], ancestor?[key])
-            let serverChanged = !ckEqual(server[key], ancestor?[key])
-            if clientChanged && !serverChanged {
-                server[key] = client[key]
-            } else if clientChanged && serverChanged && clientModified > serverModified {
-                server[key] = client[key]
-            }
-        }
-        return server
-    }
-
-    // MARK: - Pull CloudKit → Dart
-
-    private var tokenKey: String { "ck_token_\(zoneID.zoneName)" }
-
-    private func fetchRemoteChanges() async throws {
-        emitStatus("syncing")
-        defer { emitStatus("idle") }
-        print("[CKSync] fetchRemoteChanges: starting")
-        do {
-            try await runZoneChangeFetch(resetToken: false)
-            print("[CKSync] fetchRemoteChanges: completed OK")
-        } catch let ckErr as CKError
-            where ckErr.code == .changeTokenExpired || ckErr.code == .serverRecordChanged {
-            print("[CKSync] fetchRemoteChanges: got \(ckErr.code.rawValue), resetting token and retrying")
-            UserDefaults.standard.removeObject(forKey: tokenKey)
-            try await runZoneChangeFetch(resetToken: true)
-            print("[CKSync] fetchRemoteChanges: retry completed OK")
-        } catch {
-            if isEmptyZoneError(error) {
-                // CloudKit returns HTTP 500 / CKInternalErrorDomain 2000 for a
-                // custom zone that has never had records written to it. This is
-                // a known server quirk, not a real failure — treat as no changes.
-                print("[CKSync] fetchRemoteChanges: empty zone (HTTP 500 / 2000) — no records yet, ignoring")
-                return
-            }
-            print("[CKSync] fetchRemoteChanges: FAILED \(error)")
-            throw error
-        }
-    }
-
-    private func isEmptyZoneError(_ error: Error) -> Bool {
-        guard let ckErr = error as? CKError else { return false }
-        let underlying = ckErr.userInfo[NSUnderlyingErrorKey] as? NSError
-        return underlying?.domain == "CKInternalErrorDomain" && underlying?.code == 2000
-    }
-
-    private func runZoneChangeFetch(resetToken: Bool) async throws {
-        let token: CKServerChangeToken? = resetToken ? nil : UserDefaults.standard
-            .data(forKey: tokenKey)
-            .flatMap { try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: $0) }
-
-        let config = CKFetchRecordZoneChangesOperation.ZoneConfiguration()
-        config.previousServerChangeToken = token
-
-        let op = CKFetchRecordZoneChangesOperation(
-            recordZoneIDs: [zoneID],
-            configurationsByRecordZoneID: [zoneID: config]
-        )
-
-        op.recordWasChangedBlock = { [weak self] _, result in
-            if case .success(let record) = result { self?.emitRecord(record) }
-        }
-        op.recordWithIDWasDeletedBlock = { [weak self] id, type in
-            self?.emitDeletion(cloudId: id.recordName, recordType: type)
-        }
-        op.recordZoneChangeTokensUpdatedBlock = { [weak self] _, newToken, _ in
-            guard let self, let newToken else { return }
-            if let data = try? NSKeyedArchiver.archivedData(withRootObject: newToken, requiringSecureCoding: true) {
-                UserDefaults.standard.set(data, forKey: self.tokenKey)
-            }
-        }
-
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
-            op.fetchRecordZoneChangesResultBlock = { result in
-                switch result {
-                case .success:
-                    print("[CKSync] runZoneChangeFetch: operation success")
-                case .failure(let e):
-                    let ckErr = e as? CKError
-                    print("[CKSync] runZoneChangeFetch: operation failure \(e)")
-                    print("[CKSync]   code=\(ckErr?.code.rawValue ?? -1) userInfo=\(ckErr?.userInfo ?? [:])")
-                }
-                cont.resume(with: result)
-            }
-            self.privateDB.add(op)
-        }
-    }
-
-    // MARK: - Background Subscription
-
-    private func setupDatabaseSubscription() async throws {
-        let key = "ck_subscription_registered"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-
-        let sub = CKDatabaseSubscription(subscriptionID: "tune-trove-db-changes")
-        let info = CKSubscription.NotificationInfo()
-        info.shouldSendContentAvailable = true
-        sub.notificationInfo = info
-
-        try await privateDB.save(sub)
-        UserDefaults.standard.set(true, forKey: key)
     }
 
     // MARK: - EventChannel helpers
 
-    private func emitRecord(_ record: CKRecord) {
-        var fields: [String: Any] = ["cloudId": record.recordID.recordName]
-        for key in record.allKeys() {
-            let snakeKey = camelToSnake(key)
-            switch record[key] {
-            case let s as String:
-                fields[snakeKey] = s
-            case let n as NSNumber:
-                fields[snakeKey] = n
-            case let d as Date:
-                fields[snakeKey] = Int(d.timeIntervalSince1970 * 1000)
-            case nil:
-                fields[snakeKey] = NSNull()
-            default:
-                break
-            }
-        }
-        let payload: [String: Any] = ["type": "upsert", "recordType": record.recordType, "fields": fields]
-        DispatchQueue.main.async { [weak self] in self?.eventSink?(payload) }
-    }
-
-    private func emitDeletion(cloudId: String, recordType: String) {
-        let payload: [String: Any] = ["type": "delete", "recordType": recordType, "cloudId": cloudId]
-        DispatchQueue.main.async { [weak self] in self?.eventSink?(payload) }
-    }
-
     private func emitStatus(_ status: String) {
-        let payload: [String: Any] = ["type": "status", "status": status]
-        DispatchQueue.main.async { [weak self] in self?.eventSink?(payload) }
+        eventSink?(["type": "status", "status": status])
     }
 
-    // MARK: - String conversion helpers
+    // MARK: - String conversion
 
     private func snakeToCamel(_ s: String) -> String {
         let parts = s.split(separator: "_")
@@ -388,28 +358,99 @@ class CloudKitSyncBridge: NSObject {
         }
         return result
     }
+}
 
-    private func ckEqual(_ a: CKRecordValue?, _ b: CKRecordValue?) -> Bool {
-        switch (a, b) {
-        case (nil, nil): return true
-        case (nil, _), (_, nil): return false
-        case (let s1 as String, let s2 as String): return s1 == s2
-        case (let n1 as NSNumber, let n2 as NSNumber): return n1 == n2
-        case (let d1 as Date, let d2 as Date): return d1 == d2
-        default: return false
+// MARK: - CKSyncEngineDelegate
+
+@available(iOS 17, macOS 14, *)
+extension CloudKitSyncBridge: CKSyncEngineDelegate {
+    func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
+        switch event {
+        case .stateUpdate(let e):
+            saveState(e.stateSerialization)
+
+        case .accountChange(let e):
+            handleAccountChange(e)
+
+        case .fetchedRecordZoneChanges(let e):
+            for modification in e.modifications {
+                let record = modification.record
+                serverRecordCache[record.recordID] = record
+                fetchedUpserts.append([
+                    "recordType": record.recordType,
+                    "fields": fieldsFromRecord(record),
+                ])
+            }
+            for deletion in e.deletions {
+                serverRecordCache.removeValue(forKey: deletion.recordID)
+                fetchedDeletions.append([
+                    "recordType": deletion.recordType,
+                    "cloudId": deletion.recordID.recordName,
+                ])
+            }
+
+        case .sentRecordZoneChanges(let e):
+            handleSentChanges(e, engine: syncEngine)
+
+        case .fetchedDatabaseChanges, .sentDatabaseChanges,
+             .willFetchChanges, .willFetchRecordZoneChanges,
+             .didFetchRecordZoneChanges, .didFetchChanges,
+             .willSendChanges, .didSendChanges:
+            break
+
+        @unknown default:
+            break
+        }
+    }
+
+    func nextRecordZoneChangeBatch(
+        _ context: CKSyncEngine.SendChangesContext,
+        syncEngine: CKSyncEngine
+    ) async -> CKSyncEngine.RecordZoneChangeBatch? {
+        let scope = context.options.scope
+        let pending = syncEngine.state.pendingRecordZoneChanges.filter { scope.contains($0) }
+        guard !pending.isEmpty else { return nil }
+
+        // Build records up front on the main actor; the provider closure runs
+        // off-actor, so it may only read this prepared local map.
+        var prepared: [CKRecord.ID: CKRecord] = [:]
+        var orphaned: [CKSyncEngine.PendingRecordZoneChange] = []
+        for change in pending {
+            guard case .saveRecord(let recordID) = change else { continue }
+            guard let map = pendingRecordMaps[recordID.recordName],
+                  let recordType = map["recordType"] as? String else {
+                // We no longer have data for this id (e.g. deleted locally).
+                orphaned.append(.saveRecord(recordID))
+                continue
+            }
+            // Reuse the cached server record (with its change tag) when we have
+            // one, so updates apply cleanly; otherwise create a fresh record.
+            let record = serverRecordCache[recordID] ?? CKRecord(recordType: recordType, recordID: recordID)
+            populateRecord(record, from: map)
+            prepared[recordID] = record
+        }
+        if !orphaned.isEmpty {
+            syncEngine.state.remove(pendingRecordZoneChanges: orphaned)
+        }
+
+        return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pending) { recordID in
+            prepared[recordID]
         }
     }
 }
 
-@available(iOS 15, macOS 14, *)
+// MARK: - FlutterStreamHandler
+
+@available(iOS 17, macOS 14, *)
 extension CloudKitSyncBridge: FlutterStreamHandler {
-    func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        eventSink = events
+    // Flutter invokes these on the platform (main) thread.
+    nonisolated func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        MainActor.assumeIsolated { self.eventSink = events }
         return nil
     }
 
-    func onCancel(withArguments arguments: Any?) -> FlutterError? {
-        eventSink = nil
+    nonisolated func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        MainActor.assumeIsolated { self.eventSink = nil }
         return nil
     }
 }

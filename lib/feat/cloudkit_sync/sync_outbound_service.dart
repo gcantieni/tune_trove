@@ -1,7 +1,9 @@
 import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_service.dart';
+import 'package:tune_trove/feat/cloudkit_sync/sync_reconciliation_service.dart';
 import 'package:tune_trove/model/database.dart';
 
-/// Serializes the local Drift database and pushes records to CloudKit.
+/// Coordinates a full sync cycle and serializes the local Drift database into
+/// CloudKit records.
 ///
 /// The record format mirrors what [SyncReconciliationService] expects on
 /// the inbound side: snake_case field keys, timestamps as ms-since-epoch
@@ -9,16 +11,30 @@ import 'package:tune_trove/model/database.dart';
 class SyncOutboundService {
   final AppDatabase _db;
   final CloudKitSyncService _sync;
+  final SyncReconciliationService _reconciliation;
 
-  SyncOutboundService(this._db, this._sync);
+  SyncOutboundService(this._db, this._sync, this._reconciliation);
 
-  /// Pushes every record in the local database to CloudKit.
+  /// Runs one deterministic sync cycle: fetch remote -> reconcile locally ->
+  /// stage local records -> send. Fetching and reconciling *before* staging is
+  /// what lets a device with existing tunes adopt remote ids (dedupe) instead
+  /// of uploading duplicates.
+  Future<void> syncNow() async {
+    await _sync.initialize();
+    final fetched = await _sync.fetchChanges();
+    await _reconciliation.applyFetched(fetched);
+    final records = await _serializeAll();
+    if (records.isNotEmpty) await _sync.stageRecords(records);
+    await _sync.sendChanges();
+  }
+
+  /// Serializes every record in the local database into CloudKit record maps.
   ///
   /// Join-table records (TuneRecording, SetTune) include the cloud_ids of
   /// their parent rows so the receiving device can resolve foreign keys.
   /// Rows missing a cloud_id are skipped (should not happen after the v9
   /// migration, but is handled defensively).
-  Future<void> pushAll() async {
+  Future<List<Map<String, dynamic>>> _serializeAll() async {
     final records = <Map<String, dynamic>>[];
 
     // Read all five tables up front to build id→cloudId maps for O(1) lookups
@@ -75,8 +91,7 @@ class SyncOutboundService {
       );
     }
 
-    if (records.isEmpty) return;
-    await _sync.pushChanges(records);
+    return records;
   }
 
   // ---------------------------------------------------------------------------

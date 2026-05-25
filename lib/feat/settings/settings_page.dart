@@ -63,10 +63,8 @@ class _SyncStatusTile extends ConsumerWidget {
               }
               return;
             }
-            // Pull first (ensures zone exists, merges any remote changes),
-            // then push local records to CloudKit.
-            await sync.startSync();
-            await outbound.pushAll();
+            // One deterministic cycle: fetch -> reconcile -> stage -> send.
+            await outbound.syncNow();
           } catch (e) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(

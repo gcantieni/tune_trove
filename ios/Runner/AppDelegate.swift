@@ -15,7 +15,7 @@ import UIKit
 
     func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-        if #available(iOS 15, *) {
+        if #available(iOS 17, *) {
             guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MusicKitBridge") else { return }
             let bridge = MusicKitBridge()
             bridge.setup(binaryMessenger: registrar.messenger())

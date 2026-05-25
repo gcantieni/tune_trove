@@ -13,22 +13,17 @@ final cloudKitSyncServiceProvider = Provider<CloudKitSyncService>((ref) {
 
 final syncReconciliationProvider = Provider<SyncReconciliationService>((ref) {
   final db = ref.watch(databaseProvider);
-  final sync = ref.watch(cloudKitSyncServiceProvider);
-  final service = SyncReconciliationService(db, sync);
-  service.start();
-  ref.onDispose(service.dispose);
-  return service;
+  return SyncReconciliationService(db);
 });
 
 final syncOutboundProvider = Provider<SyncOutboundService>((ref) {
   final db = ref.watch(databaseProvider);
   final sync = ref.watch(cloudKitSyncServiceProvider);
-  return SyncOutboundService(db, sync);
+  final reconciliation = ref.watch(syncReconciliationProvider);
+  return SyncOutboundService(db, sync, reconciliation);
 });
 
 final syncStatusProvider = StreamProvider<SyncStatusEvent>((ref) {
   final sync = ref.watch(cloudKitSyncServiceProvider);
-  return sync.syncEvents
-      .where((e) => e is SyncStatusEvent)
-      .cast<SyncStatusEvent>();
+  return sync.statusEvents;
 });

@@ -8,39 +8,23 @@ const _eventChannel = EventChannel('com.gcantieni.tuneTrove/cloudkit_sync_state'
 
 class PlatformCloudKitSyncService implements CloudKitSyncService {
   StreamSubscription<dynamic>? _sub;
-  final _eventsController = StreamController<SyncEvent>.broadcast();
+  final _statusController = StreamController<SyncStatusEvent>.broadcast();
 
   PlatformCloudKitSyncService() {
     _sub = _eventChannel.receiveBroadcastStream().listen(
       (dynamic raw) {
         if (raw is! Map) return;
         final map = raw.cast<String, dynamic>();
-        final type = map['type'] as String?;
-        switch (type) {
-          case 'status':
-            _eventsController.add(
-              SyncStatusEvent(
-                map['status'] as String? ?? 'idle',
-                message: map['message'] as String?,
-              ),
-            );
-          case 'upsert':
-            _eventsController.add(
-              SyncUpsertEvent(
-                map['recordType'] as String,
-                (map['fields'] as Map).cast<String, dynamic>(),
-              ),
-            );
-          case 'delete':
-            _eventsController.add(
-              SyncDeleteEvent(
-                map['recordType'] as String,
-                map['cloudId'] as String,
-              ),
-            );
+        if (map['type'] == 'status') {
+          _statusController.add(
+            SyncStatusEvent(
+              map['status'] as String? ?? 'idle',
+              message: map['message'] as String?,
+            ),
+          );
         }
       },
-      onError: _eventsController.addError,
+      onError: _statusController.addError,
     );
   }
 
@@ -51,23 +35,53 @@ class PlatformCloudKitSyncService implements CloudKitSyncService {
   }
 
   @override
-  Future<void> startSync() =>
-      _methodChannel.invokeMethod<void>('startSync');
+  Future<void> initialize() => _methodChannel.invokeMethod<void>('initialize');
 
   @override
-  Future<void> pushChanges(List<Map<String, dynamic>> records) =>
-      _methodChannel.invokeMethod<void>('pushChanges', records);
+  Future<FetchedChanges> fetchChanges() async {
+    final raw = await _methodChannel.invokeMethod<dynamic>('fetchChanges');
+    if (raw is! Map) return const FetchedChanges([], []);
+    final map = raw.cast<String, dynamic>();
+
+    final upserts = <SyncUpsertEvent>[];
+    for (final u in (map['upserts'] as List? ?? const [])) {
+      final um = (u as Map).cast<String, dynamic>();
+      upserts.add(
+        SyncUpsertEvent(
+          um['recordType'] as String,
+          (um['fields'] as Map).cast<String, dynamic>(),
+        ),
+      );
+    }
+
+    final deletions = <SyncDeleteEvent>[];
+    for (final d in (map['deletions'] as List? ?? const [])) {
+      final dm = (d as Map).cast<String, dynamic>();
+      deletions.add(
+        SyncDeleteEvent(dm['recordType'] as String, dm['cloudId'] as String),
+      );
+    }
+
+    return FetchedChanges(upserts, deletions);
+  }
 
   @override
-  Future<void> subscribeToChanges() =>
-      _methodChannel.invokeMethod<void>('subscribeToChanges');
+  Future<void> stageRecords(List<Map<String, dynamic>> records) =>
+      _methodChannel.invokeMethod<void>('stageRecords', records);
 
   @override
-  Stream<SyncEvent> get syncEvents => _eventsController.stream;
+  Future<void> stageDeletions(List<Map<String, dynamic>> deletions) =>
+      _methodChannel.invokeMethod<void>('stageDeletions', deletions);
+
+  @override
+  Future<void> sendChanges() => _methodChannel.invokeMethod<void>('sendChanges');
+
+  @override
+  Stream<SyncStatusEvent> get statusEvents => _statusController.stream;
 
   @override
   void dispose() {
     _sub?.cancel();
-    _eventsController.close();
+    _statusController.close();
   }
 }

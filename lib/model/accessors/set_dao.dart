@@ -24,6 +24,14 @@ class SetDao extends DatabaseAccessor<AppDatabase> with _$SetDaoMixin {
       (select(tuneSets)..where((t) => t.cloudId.equals(cloudId)))
           .getSingleOrNull();
 
+  // Dedupe lookup: a set created independently of CloudKit adopts the incoming
+  // remote record instead of duplicating it.
+  Future<TuneSet?> getByName(String name) =>
+      (select(tuneSets)
+            ..where((t) => t.name.equals(name))
+            ..limit(1))
+          .getSingleOrNull();
+
   Stream<List<TuneSet>> watchAllSets() => select(tuneSets).watch();
 
   Stream<TuneSet?> watchSet(int id) =>

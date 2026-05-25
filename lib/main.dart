@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:tune_trove/feat/abc_render/abc_renderer.dart';
-import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_providers.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 import 'package:tune_trove/routing/app_router.dart';
 
@@ -23,9 +22,6 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Eagerly initialize sync reconciliation so remote changes are applied
-    // even before the settings page is visited.
-    ref.watch(syncReconciliationProvider);
     final Brightness brightness = MediaQuery.of(context).platformBrightness;
     final colorScheme = ColorScheme.fromSeed(
       contrastLevel: 0.75,

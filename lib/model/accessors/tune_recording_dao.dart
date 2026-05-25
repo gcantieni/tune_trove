@@ -29,12 +29,19 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
       (select(tuneRecording)..where((t) => t.cloudId.equals(cloudId)))
           .getSingleOrNull();
 
+  Future<TuneRecordingData?> getByTuneAndRecording(int tuneId, int recordingId) =>
+      (select(tuneRecording)..where(
+            (t) => t.tuneId.equals(tuneId) & t.recordingId.equals(recordingId),
+          ))
+          .getSingleOrNull();
+
   Future<int> linkTuneToRecording(
     int tuneId,
     int recordingId, {
     double? startTime,
     double? endTime,
     String? performedKey,
+    String? cloudId,
   }) {
     return transaction(() async {
       final rowId = await into(tuneRecording).insert(
@@ -44,7 +51,7 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
           startTime: Value(startTime),
           endTime: Value(endTime),
           performedKey: Value(performedKey),
-          cloudId: Value(generateUuid()),
+          cloudId: Value(cloudId ?? generateUuid()),
         ),
         mode: InsertMode.insertOrIgnore,
       );

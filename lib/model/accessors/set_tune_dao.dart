@@ -53,7 +53,19 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
       (select(setTune)..where((t) => t.cloudId.equals(cloudId)))
           .getSingleOrNull();
 
-  Future<void> addTuneToSet(int setId, int tuneId) async {
+  Future<SetTuneData?> getBySetAndTune(int setId, int tuneId) =>
+      (select(setTune)
+            ..where((t) => t.setId.equals(setId) & t.tuneId.equals(tuneId))
+            ..limit(1))
+          .getSingleOrNull();
+
+  Future<void> addTuneToSet(
+    int setId,
+    int tuneId, {
+    String? cloudId,
+    int? position,
+    String? key,
+  }) async {
     final existing = await (select(
       setTune,
     )..where((t) => t.setId.equals(setId))).get();
@@ -61,11 +73,18 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
       SetTuneCompanion.insert(
         setId: setId,
         tuneId: tuneId,
-        position: existing.length,
-        cloudId: Value(generateUuid()),
+        position: position ?? existing.length,
+        key: Value(key),
+        cloudId: Value(cloudId ?? generateUuid()),
       ),
     );
   }
+
+  /// Adopts a remote cloudId onto an existing local link (dedupe merge).
+  Future<void> adoptCloudId(int id, String cloudId) =>
+      (update(setTune)..where((t) => t.id.equals(id))).write(
+        SetTuneCompanion(cloudId: Value(cloudId)),
+      );
 
   Future<void> removeTuneFromSet(int setTuneId) =>
       (delete(setTune)..where((t) => t.id.equals(setTuneId))).go();

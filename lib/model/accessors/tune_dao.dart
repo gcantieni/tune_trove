@@ -24,6 +24,19 @@ class TuneDao extends DatabaseAccessor<AppDatabase> with _$TuneDaoMixin {
   Future<Tune?> getByCloudId(String cloudId) =>
       (select(tunes)..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
 
+  // Dedupe lookups: match a row created independently of CloudKit so an
+  // incoming remote record adopts the existing row instead of duplicating it.
+  Future<Tune?> getByTsId(int tsId) =>
+      (select(tunes)
+            ..where((t) => t.tsId.equals(tsId))
+            ..limit(1))
+          .getSingleOrNull();
+  Future<Tune?> getByName(String name) =>
+      (select(tunes)
+            ..where((t) => t.name.equals(name))
+            ..limit(1))
+          .getSingleOrNull();
+
   // read reactive
   Stream<List<Tune>> watchAllTunes() => select(tunes).watch();
   Stream<Tune?> watchTune(int id) =>
