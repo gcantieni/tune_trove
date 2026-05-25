@@ -17,6 +17,8 @@ class TuneRecording extends Table {
   /// tune's canonical key, e.g. a session recorded in G vs. the usual D)
   TextColumn get performedKey => text().nullable()();
 
+  TextColumn get cloudId => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {tuneId, recordingId};
 }

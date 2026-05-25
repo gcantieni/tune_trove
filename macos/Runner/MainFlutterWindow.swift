@@ -4,6 +4,7 @@ import MusicKit
 
 class MainFlutterWindow: NSWindow {
     private var musicKitBridge: AnyObject?
+    private var cloudKitSyncBridge: AnyObject?
 
     override func awakeFromNib() {
         let flutterViewController = FlutterViewController()
@@ -17,6 +18,10 @@ class MainFlutterWindow: NSWindow {
             let bridge = MusicKitBridge()
             bridge.setup(binaryMessenger: flutterViewController.engine.binaryMessenger)
             musicKitBridge = bridge
+
+            let syncBridge = CloudKitSyncBridge()
+            syncBridge.setup(binaryMessenger: flutterViewController.engine.binaryMessenger)
+            cloudKitSyncBridge = syncBridge
         }
 
         super.awakeFromNib()

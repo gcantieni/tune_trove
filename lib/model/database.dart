@@ -1,4 +1,6 @@
 // package imports
+import 'dart:math';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
@@ -29,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +84,59 @@ class AppDatabase extends _$AppDatabase {
       from7To8: (m, schema) async {
         await m.addColumn(schema.setTune, schema.setTune.key);
       },
+      from8To9: (m, schema) async {
+        // SQLite does not support ALTER TABLE ADD COLUMN IF NOT EXISTS, so we
+        // check PRAGMA table_info first. This makes the step safe to re-run if
+        // a previous attempt was interrupted before the schema version was
+        // committed (e.g. app killed mid-migration).
+        for (final table in [
+          'tunes',
+          'recordings',
+          'tune_recording',
+          'tune_sets',
+          'set_tune',
+        ]) {
+          final cols = await customSelect(
+            'PRAGMA table_info("$table")',
+          ).get();
+          final hasCloudId = cols.any(
+            (r) => r.read<String>('name') == 'cloud_id',
+          );
+          if (!hasCloudId) {
+            await customStatement(
+              'ALTER TABLE "$table" ADD COLUMN cloud_id TEXT NULL',
+            );
+          }
+          await customStatement(
+            'CREATE UNIQUE INDEX IF NOT EXISTS '
+            '"idx_${table}_cloud_id" ON "$table" (cloud_id)',
+          );
+        }
+
+        // Assign stable UUIDs to any rows that don't have one yet.
+        // Alias rowid to avoid any column-naming ambiguity with Drift's
+        // customSelect row map, and use readNullable to defend against the
+        // unlikely-but-observed null cast (Drift 2.27 read<T> does
+        // `readNullableWithType(...) as T`, which throws for null + non-nullable T).
+        for (final table in [
+          'tunes',
+          'recordings',
+          'tune_recording',
+          'tune_sets',
+          'set_tune',
+        ]) {
+          final rows = await customSelect(
+            'SELECT rowid AS rid FROM "$table" WHERE cloud_id IS NULL',
+          ).get();
+          for (final row in rows) {
+            final rowid = row.readNullable<int>('rid');
+            if (rowid == null) continue;
+            await customStatement(
+              'UPDATE "$table" SET cloud_id = \'${_uuidV4()}\' WHERE rowid = $rowid',
+            );
+          }
+        }
+      },
     ),
   );
 
@@ -96,4 +151,15 @@ class AppDatabase extends _$AppDatabase {
       // If you need web support, see https://drift.simonbinder.eu/platforms/web/
     );
   }
+}
+
+String _uuidV4() {
+  final rng = Random.secure();
+  final b = List<int>.generate(16, (_) => rng.nextInt(256));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  String hex(List<int> s) =>
+      s.map((e) => e.toRadixString(16).padLeft(2, '0')).join();
+  return '${hex(b.sublist(0, 4))}-${hex(b.sublist(4, 6))}-'
+      '${hex(b.sublist(6, 8))}-${hex(b.sublist(8, 10))}-${hex(b.sublist(10))}';
 }

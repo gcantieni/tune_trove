@@ -12,4 +12,5 @@ class Recordings extends Table {
   TextColumn get performers => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get modifiedAt => dateTime().nullable()();
+  TextColumn get cloudId => text().nullable()();
 }

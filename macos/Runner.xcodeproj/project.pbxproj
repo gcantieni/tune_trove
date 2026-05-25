@@ -29,7 +29,8 @@
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		TUNE00010000000000010001 /* MusicKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = TUNE00010000000000010002 /* MusicKitBridge.swift */; };
-		TUNE00050000000000010002 /* BuildFile in Resources */ = {isa = PBXBuildFile; };
+		TUNE00010000000000020001 /* CloudKitSyncBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = TUNE00010000000000020002 /* CloudKitSyncBridge.swift */; };
+		TUNE00050000000000010002 /* (null) in Resources */ = {isa = PBXBuildFile; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +85,7 @@
 		80FDABDE2FBFD1520055A34D /* TuneTrove.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = TuneTrove.icon; path = ../icon/TuneTrove.icon; sourceTree = SOURCE_ROOT; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		TUNE00010000000000010002 /* MusicKitBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MusicKitBridge.swift; path = ../../ios/Runner/MusicKitBridge.swift; sourceTree = "<group>"; };
+		TUNE00010000000000020002 /* CloudKitSyncBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CloudKitSyncBridge.swift; path = ../../ios/Runner/CloudKitSyncBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,13 +107,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		045CE9CC36D5287A4786E614 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		331C80D6294CF71000263BE5 /* RunnerTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -139,7 +134,6 @@
 				33CEB47122A05771004F2AC0 /* Flutter */,
 				331C80D6294CF71000263BE5 /* RunnerTests */,
 				33CC10EE2044A3C60003C045 /* Products */,
-				045CE9CC36D5287A4786E614 /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -181,6 +175,7 @@
 				33CC10F02044A3C60003C045 /* AppDelegate.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				TUNE00010000000000010002 /* MusicKitBridge.swift */,
+				TUNE00010000000000020002 /* CloudKitSyncBridge.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -273,7 +268,7 @@
 			);
 			mainGroup = 33CC10E42044A3C60003C045;
 			packageReferences = (
-				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */,
+				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */,
 			);
 			productRefGroup = 33CC10EE2044A3C60003C045 /* Products */;
 			projectDirPath = "";
@@ -300,7 +295,7 @@
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
-				TUNE00050000000000010002 /* BuildFile in Resources */,
+				TUNE00050000000000010002 /* (null) in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -364,6 +359,7 @@
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 				TUNE00010000000000010001 /* MusicKitBridge.swift in Sources */,
+				TUNE00010000000000020001 /* CloudKitSyncBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -770,7 +766,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "FlutterGeneratedPluginSwiftPackage" */ = {
+		781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage;
 		};

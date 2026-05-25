@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/tables/recordings.dart';
+import 'package:tune_trove/util/uuid.dart';
 
 part 'recording_dao.g.dart';
 
@@ -11,13 +12,20 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
   RecordingDao(super.db);
 
   // create
-  Future insertRecording(RecordingsCompanion recording) =>
-      into(recordings).insert(recording);
+  Future<int> insertRecording(RecordingsCompanion recording) {
+    final companion = recording.cloudId.present
+        ? recording
+        : recording.copyWith(cloudId: Value(generateUuid()));
+    return into(recordings).insert(companion);
+  }
 
   // read static
   Future<List<Recording>> getAll() => select(recordings).get();
   Future<Recording?> getRecording(int id) =>
       (select(recordings)..where((r) => r.id.equals(id))).getSingleOrNull();
+  Future<Recording?> getByCloudId(String cloudId) =>
+      (select(recordings)..where((r) => r.cloudId.equals(cloudId)))
+          .getSingleOrNull();
   Future<int?> findIdByUrl(String url) async {
     final row =
         await (select(recordings)

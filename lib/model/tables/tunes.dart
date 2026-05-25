@@ -39,4 +39,5 @@ class Tunes extends Table {
   TextColumn get genre => text().nullable()(); // e.g. Irish, oldtime, Scottish
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get modifiedAt => dateTime().nullable()();
+  TextColumn get cloudId => text().nullable()();
 }

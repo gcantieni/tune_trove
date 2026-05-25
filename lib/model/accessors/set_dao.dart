@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/tables/sets.dart';
+import 'package:tune_trove/util/uuid.dart';
 
 part 'set_dao.g.dart';
 
@@ -9,7 +10,15 @@ part 'set_dao.g.dart';
 class SetDao extends DatabaseAccessor<AppDatabase> with _$SetDaoMixin {
   SetDao(super.db);
 
-  Future<int> insertSet(TuneSetsCompanion set) => into(tuneSets).insert(set);
+  Future<int> insertSet(TuneSetsCompanion set) {
+    final companion =
+        set.cloudId.present ? set : set.copyWith(cloudId: Value(generateUuid()));
+    return into(tuneSets).insert(companion);
+  }
+
+  Future<TuneSet?> getByCloudId(String cloudId) =>
+      (select(tuneSets)..where((t) => t.cloudId.equals(cloudId)))
+          .getSingleOrNull();
 
   Stream<List<TuneSet>> watchAllSets() => select(tuneSets).watch();
 

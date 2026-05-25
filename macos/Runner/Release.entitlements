@@ -10,5 +10,16 @@
 	<true/>
 	<key>com.apple.security.assets.music.read-only</key>
 	<true/>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.gcantieni.tuneTrove</string>
+	</array>
+	<!-- Required because CloudKit uses push notifications to inform the app of server-side changes -->
+	<key>com.apple.developer.aps-environment</key>
+	<string>production</string>
 </dict>
 </plist>

@@ -4,6 +4,7 @@ import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/tables/set_tune.dart';
 import 'package:tune_trove/model/tables/sets.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/util/uuid.dart';
 
 part 'set_tune_dao.g.dart';
 
@@ -46,6 +47,10 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
     );
   }
 
+  Future<SetTuneData?> getByCloudId(String cloudId) =>
+      (select(setTune)..where((t) => t.cloudId.equals(cloudId)))
+          .getSingleOrNull();
+
   Future<void> addTuneToSet(int setId, int tuneId) async {
     final existing = await (select(
       setTune,
@@ -55,6 +60,7 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
         setId: setId,
         tuneId: tuneId,
         position: existing.length,
+        cloudId: Value(generateUuid()),
       ),
     );
   }

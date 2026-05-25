@@ -18,6 +18,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		TUNE00030000000000010002 /* MusicKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = TUNE00030000000000010001 /* MusicKitBridge.swift */; };
+		TUNE00030000000000020002 /* CloudKitSyncBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = TUNE00030000000000020001 /* CloudKitSyncBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +64,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CF3B2C1F2DC9AD7400C4906A /* Profile.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Profile.xcconfig; path = Flutter/Profile.xcconfig; sourceTree = "<group>"; };
 		TUNE00030000000000010001 /* MusicKitBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicKitBridge.swift; sourceTree = "<group>"; };
+		TUNE00030000000000020001 /* CloudKitSyncBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitSyncBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,6 +146,7 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				TUNE00030000000000010001 /* MusicKitBridge.swift */,
+				TUNE00030000000000020001 /* CloudKitSyncBridge.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -307,6 +310,7 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				TUNE00030000000000010002 /* MusicKitBridge.swift in Sources */,
+				TUNE00030000000000020002 /* CloudKitSyncBridge.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

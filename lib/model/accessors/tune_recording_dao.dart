@@ -4,6 +4,7 @@ import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/tables/recordings.dart';
 import 'package:tune_trove/model/tables/tune_recording.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/util/uuid.dart';
 
 part 'tune_recording_dao.g.dart';
 
@@ -22,6 +23,10 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
   /// thanks to the composite PK and insertOrIgnore mode. Bumps the
   /// tune's modifiedAt on a real insert so it surfaces in "recently
   /// updated" sorts.
+  Future<TuneRecordingData?> getByCloudId(String cloudId) =>
+      (select(tuneRecording)..where((t) => t.cloudId.equals(cloudId)))
+          .getSingleOrNull();
+
   Future<int> linkTuneToRecording(
     int tuneId,
     int recordingId, {
@@ -37,6 +42,7 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
           startTime: Value(startTime),
           endTime: Value(endTime),
           performedKey: Value(performedKey),
+          cloudId: Value(generateUuid()),
         ),
         mode: InsertMode.insertOrIgnore,
       );
@@ -48,9 +54,15 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
   /// Insert a new tune and link it to the recording in a single transaction.
   Future<int> createTuneAndLink(TunesCompanion tune, int recordingId) {
     return transaction(() async {
-      final tuneId = await into(tunes).insert(tune);
+      final tuneId = await into(tunes).insert(
+        tune.cloudId.present ? tune : tune.copyWith(cloudId: Value(generateUuid())),
+      );
       await into(tuneRecording).insert(
-        TuneRecordingCompanion.insert(tuneId: tuneId, recordingId: recordingId),
+        TuneRecordingCompanion.insert(
+          tuneId: tuneId,
+          recordingId: recordingId,
+          cloudId: Value(generateUuid()),
+        ),
       );
       return tuneId;
     });
@@ -63,9 +75,17 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
     int tuneId,
   ) {
     return transaction(() async {
-      final recordingId = await into(recordings).insert(recording);
+      final recordingId = await into(recordings).insert(
+        recording.cloudId.present
+            ? recording
+            : recording.copyWith(cloudId: Value(generateUuid())),
+      );
       await into(tuneRecording).insert(
-        TuneRecordingCompanion.insert(tuneId: tuneId, recordingId: recordingId),
+        TuneRecordingCompanion.insert(
+          tuneId: tuneId,
+          recordingId: recordingId,
+          cloudId: Value(generateUuid()),
+        ),
       );
       await _bumpTuneModified(tuneId);
       return recordingId;

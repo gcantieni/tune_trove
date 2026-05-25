@@ -9,4 +9,5 @@ class SetTune extends Table {
   IntColumn get tuneId => integer().references(Tunes, #id)();
   IntColumn get position => integer()();
   TextColumn get key => text().nullable()();
+  TextColumn get cloudId => text().nullable()();
 }

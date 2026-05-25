@@ -4,6 +4,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
     private var musicKitBridge: AnyObject?
+    private var cloudKitSyncBridge: AnyObject?
 
     override func application(
         _ application: UIApplication,
@@ -19,6 +20,10 @@ import UIKit
             let bridge = MusicKitBridge()
             bridge.setup(binaryMessenger: registrar.messenger())
             musicKitBridge = bridge
+
+            let syncBridge = CloudKitSyncBridge()
+            syncBridge.setup(binaryMessenger: registrar.messenger())
+            cloudKitSyncBridge = syncBridge
         }
     }
 }
