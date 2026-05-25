@@ -69,6 +69,10 @@ class CloudKitSyncBridge: NSObject {
                     await MainActor.run { result(FlutterMethodNotImplemented) }
                 }
             } catch {
+                let ckErr = error as? CKError
+                let code = ckErr?.code.rawValue ?? -1
+                let info = ckErr?.userInfo ?? [:]
+                print("[CKSync] ERROR code=\(code) desc=\(error.localizedDescription) info=\(info)")
                 await MainActor.run {
                     result(FlutterError(code: "CLOUDKIT_ERROR", message: error.localizedDescription, details: nil))
                 }
@@ -100,30 +104,26 @@ class CloudKitSyncBridge: NSObject {
     // MARK: - Push local → CloudKit
 
     private func pushChanges(records: [[String: Any]]) async throws {
+        print("[CKSync] pushChanges: building from \(records.count) maps")
         var toSave: [CKRecord] = []
         var toDelete: [CKRecord.ID] = []
 
         for map in records {
             guard let recordType = map["recordType"] as? String,
                   let cloudId = map["cloudId"] as? String else { continue }
-
             let recordID = CKRecord.ID(recordName: cloudId, zoneID: zoneID)
-
             if let deleted = map["deleted"] as? Bool, deleted {
                 toDelete.append(recordID)
-                continue
+            } else {
+                // Use a fresh CKRecord (no change tag) — optimistic write.
+                // Conflicts are resolved reactively in saveWithConflictRetry.
+                let record = CKRecord(recordType: recordType, recordID: recordID)
+                populateRecord(record, from: map)
+                toSave.append(record)
             }
-
-            let record: CKRecord
-            do {
-                record = try await privateDB.record(for: recordID)
-            } catch {
-                record = CKRecord(recordType: recordType, recordID: recordID)
-            }
-            populateRecord(record, from: map)
-            toSave.append(record)
         }
 
+        print("[CKSync] pushChanges: \(toSave.count) to save, \(toDelete.count) to delete")
         guard !toSave.isEmpty || !toDelete.isEmpty else { return }
         try await saveWithConflictRetry(toSave: toSave, toDelete: toDelete)
     }
@@ -136,8 +136,10 @@ class CloudKitSyncBridge: NSObject {
             case let s as String:
                 record[ckKey] = s as CKRecordValue
             case let n as NSNumber:
-                // Timestamps arrive as ms-since-epoch integers; convert to Date.
-                if ckKey.hasSuffix("At") || ckKey.hasSuffix("Time") {
+                // Only keys ending in "At" (createdAt, modifiedAt) carry
+                // ms-since-epoch timestamps. Keys ending in "Time" (startTime,
+                // endTime) are audio-position seconds and must stay as numbers.
+                if ckKey.hasSuffix("At") {
                     record[ckKey] = Date(timeIntervalSince1970: n.doubleValue / 1000) as CKRecordValue
                 } else {
                     record[ckKey] = n as CKRecordValue
@@ -151,32 +153,78 @@ class CloudKitSyncBridge: NSObject {
     }
 
     private func saveWithConflictRetry(toSave: [CKRecord], toDelete: [CKRecord.ID]) async throws {
-        let (saveResults, _) = try await privateDB.modifyRecords(
-            saving: toSave,
-            deleting: toDelete,
-            savePolicy: .allKeys,
-            atomically: false
-        )
-
-        // Collect conflicts and retry with merged records.
-        var merged: [CKRecord] = []
-        for (_, result) in saveResults {
-            if case .failure(let error) = result,
-               let ckErr = error as? CKError,
-               ckErr.code == .serverRecordChanged,
-               let server = ckErr.serverRecord,
-               let client = ckErr.clientRecord {
-                merged.append(mergeConflict(client: client, server: server, ancestor: ckErr.ancestorRecord))
-            }
-        }
-
-        if !merged.isEmpty {
-            _ = try await privateDB.modifyRecords(
-                saving: merged,
-                deleting: [],
+        print("[CKSync] saveWithConflictRetry: attempting save of \(toSave.count) records")
+        do {
+            let (saveResults, _) = try await privateDB.modifyRecords(
+                saving: toSave,
+                deleting: toDelete,
                 savePolicy: .allKeys,
                 atomically: false
             )
+            print("[CKSync] saveWithConflictRetry: modifyRecords returned, processing per-record results")
+
+            // For each per-record serverRecordChanged conflict, apply our local
+            // values onto the server record (which carries the current change tag)
+            // and retry. If the error omits serverRecord, fetch it explicitly.
+            var toRetry: [CKRecord] = []
+            for (id, result) in saveResults {
+                guard case .failure(let error) = result,
+                      let ckErr = error as? CKError,
+                      ckErr.code == .serverRecordChanged else { continue }
+
+                print("[CKSync] saveWithConflictRetry: per-record conflict on \(id.recordName)")
+                let ourRecord = ckErr.clientRecord
+                    ?? toSave.first(where: { $0.recordID == id })
+
+                let serverRecord: CKRecord
+                if let server = ckErr.serverRecord {
+                    serverRecord = server
+                } else if let rec = ourRecord {
+                    print("[CKSync] saveWithConflictRetry: serverRecord missing, fetching \(id.recordName)")
+                    serverRecord = (try? await privateDB.record(for: id)) ?? rec
+                } else {
+                    continue
+                }
+
+                // Local wins: copy all our field values onto the server record.
+                for key in (ourRecord?.allKeys() ?? []) {
+                    serverRecord[key] = ourRecord![key]
+                }
+                toRetry.append(serverRecord)
+            }
+
+            if !toRetry.isEmpty {
+                print("[CKSync] saveWithConflictRetry: retrying \(toRetry.count) conflicted records")
+                _ = try await privateDB.modifyRecords(
+                    saving: toRetry,
+                    deleting: [],
+                    savePolicy: .allKeys,
+                    atomically: false
+                )
+            }
+            print("[CKSync] saveWithConflictRetry: done")
+
+        } catch let ckErr as CKError where ckErr.code == .serverRecordChanged {
+            // modifyRecords threw globally rather than returning per-record errors.
+            // Re-fetch every record to get current change tags, apply our values, retry.
+            print("[CKSync] saveWithConflictRetry: global serverRecordChanged — re-fetching all \(toSave.count) records")
+            var refreshed: [CKRecord] = []
+            for record in toSave {
+                if let server = try? await privateDB.record(for: record.recordID) {
+                    for key in record.allKeys() { server[key] = record[key] }
+                    refreshed.append(server)
+                } else {
+                    refreshed.append(record)
+                }
+            }
+            print("[CKSync] saveWithConflictRetry: retrying all after global conflict")
+            _ = try await privateDB.modifyRecords(
+                saving: refreshed,
+                deleting: toDelete,
+                savePolicy: .allKeys,
+                atomically: false
+            )
+            print("[CKSync] saveWithConflictRetry: done (global conflict path)")
         }
     }
 

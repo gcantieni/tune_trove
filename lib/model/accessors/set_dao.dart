@@ -10,6 +10,10 @@ part 'set_dao.g.dart';
 class SetDao extends DatabaseAccessor<AppDatabase> with _$SetDaoMixin {
   SetDao(super.db);
 
+  Future<List<TuneSet>> getAll() => select(tuneSets).get();
+  Future<TuneSet?> getSet(int id) =>
+      (select(tuneSets)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   Future<int> insertSet(TuneSetsCompanion set) {
     final companion =
         set.cloudId.present ? set : set.copyWith(cloudId: Value(generateUuid()));

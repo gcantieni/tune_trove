@@ -48,6 +48,7 @@ class _SyncStatusTile extends ConsumerWidget {
         tooltip: 'Sync now',
         onPressed: () async {
           final sync = ref.read(cloudKitSyncServiceProvider);
+          final outbound = ref.read(syncOutboundProvider);
           try {
             final available = await sync.isAvailable();
             if (!available) {
@@ -62,7 +63,10 @@ class _SyncStatusTile extends ConsumerWidget {
               }
               return;
             }
+            // Pull first (ensures zone exists, merges any remote changes),
+            // then push local records to CloudKit.
             await sync.startSync();
+            await outbound.pushAll();
           } catch (e) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(

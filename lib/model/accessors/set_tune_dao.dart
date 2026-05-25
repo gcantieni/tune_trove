@@ -47,6 +47,8 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
     );
   }
 
+  Future<List<SetTuneData>> getAll() => select(setTune).get();
+
   Future<SetTuneData?> getByCloudId(String cloudId) =>
       (select(setTune)..where((t) => t.cloudId.equals(cloudId)))
           .getSingleOrNull();

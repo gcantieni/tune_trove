@@ -23,6 +23,8 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
   /// thanks to the composite PK and insertOrIgnore mode. Bumps the
   /// tune's modifiedAt on a real insert so it surfaces in "recently
   /// updated" sorts.
+  Future<List<TuneRecordingData>> getAll() => select(tuneRecording).get();
+
   Future<TuneRecordingData?> getByCloudId(String cloudId) =>
       (select(tuneRecording)..where((t) => t.cloudId.equals(cloudId)))
           .getSingleOrNull();
