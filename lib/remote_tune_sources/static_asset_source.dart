@@ -15,12 +15,14 @@ List<RemoteTune> parseStaticJson(
   String sourceName,
 ) {
   return data.map((e) {
+    final id = e['id'];
     return RemoteTune(
       name: e['name'] as String,
       type: _safeType(e['type'] as String?),
       key: e['key'] as String?,
       abc: e['abc'] as String?,
       sourceName: sourceName,
+      sourceId: id != null ? '$id' : null,
     );
   }).toList();
 }
@@ -68,6 +70,7 @@ class StaticAssetTuneSource implements TuneSource {
 
   @override
   Future<TunesCompanion> resolve(RemoteTune tune) async {
+    final tsId = int.tryParse(tune.sourceId ?? '');
     return TunesCompanion.insert(
       name: tune.name,
       createdAt: DateTime.now(),
@@ -75,6 +78,7 @@ class StaticAssetTuneSource implements TuneSource {
       key: drift.Value(tune.key),
       type: drift.Value(tune.type),
       from: drift.Value(name),
+      tsId: drift.Value(tsId),
     );
   }
 }

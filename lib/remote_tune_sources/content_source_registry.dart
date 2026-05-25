@@ -1,7 +1,5 @@
-import 'package:http/http.dart' as http;
 import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
 import 'package:tune_trove/remote_tune_sources/static_asset_source.dart';
-import 'package:tune_trove/remote_tune_sources/thesession_live_source.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source.dart';
 
 /// Master registry of every content source the app knows about.
@@ -35,6 +33,7 @@ const List<ContentSourceMeta> allContentSources = [
     licenseUrl: 'https://creativecommons.org/licenses/by-nc-sa/3.0/',
     attribution: 'The Session (thesession.org) — CC BY-NC-SA 3.0',
     confirmationRequired: true,
+    bundled: true,
   ),
   ContentSourceMeta(
     id: 'norbeck',
@@ -82,10 +81,13 @@ bool isSourceNameVisible(String? sourceName, Set<String> activeSourceNames) {
 }
 
 /// Instantiates the [TuneSource] implementation for the given [meta].
-TuneSource buildTuneSource(ContentSourceMeta meta, {http.Client? client}) {
+TuneSource buildTuneSource(ContentSourceMeta meta) {
   switch (meta.id) {
     case 'thesession':
-      return TheSessionTuneSource(client: client);
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/thesession_tunes.json',
+      );
     case 'oneills_1001':
       return StaticAssetTuneSource(
         name: meta.name,

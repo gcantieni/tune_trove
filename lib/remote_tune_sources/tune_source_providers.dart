@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
@@ -16,12 +15,6 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError(
     'sharedPreferencesProvider must be overridden in main()',
   );
-});
-
-final httpClientProvider = Provider<http.Client>((ref) {
-  final client = http.Client();
-  ref.onDispose(client.close);
-  return client;
 });
 
 final sourceConfirmationServiceProvider = Provider<SourceConfirmationService>((
@@ -84,12 +77,11 @@ final activeSourceNamesProvider = Provider<Set<String>>((ref) {
 /// (or which are always active because they require no confirmation).
 /// Rebuilds automatically when the user confirms or revokes a source.
 final tuneSourcesProvider = Provider<List<TuneSource>>((ref) {
-  final client = ref.watch(httpClientProvider);
   final confirmedIds = ref.watch(confirmedSourcesProvider);
 
   return allContentSources
       .where((meta) => meta.isAlwaysActive || confirmedIds.contains(meta.id))
-      .map((meta) => buildTuneSource(meta, client: client))
+      .map(buildTuneSource)
       .toList();
 });
 
