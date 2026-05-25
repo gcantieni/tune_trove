@@ -64,7 +64,7 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
         onLibraryTune: (tune) {
           dao.setTuneDao.addTuneToSet(widget.setId, tune.id);
         },
-        onThesessionTune: (companion) async {
+        onRemoteTune: (companion) async {
           final tuneId = await dao.tuneDao.insertTune(
             companion.copyWith(createdAt: Value(DateTime.now())),
           );

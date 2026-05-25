@@ -5,25 +5,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
-import 'package:tune_trove/remote_tune_sources/thesession_tune_source.dart';
+import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
+import 'package:tune_trove/remote_tune_sources/tune_source.dart';
+import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 import 'package:tune_trove/util/search_normalize.dart';
 
-const _debounceDelay = Duration(milliseconds: 100);
+const _debounceDelay = Duration(milliseconds: 350);
 
 /// A search-driven tune picker. Shows tunes already in the library
-/// (visually distinct, friendly green) alongside thesession.org matches,
-/// plus a "create new" affordance when there's typed text. Pops itself
-/// before invoking the chosen callback.
+/// (visually distinct, friendly green) alongside matches from all configured
+/// tune sources, plus a "create new" affordance when there's typed text. Pops
+/// itself before invoking the chosen callback.
 class TunePickerDialog extends ConsumerStatefulWidget {
   final String title;
   final void Function(Tune tune) onLibraryTune;
-  final void Function(TunesCompanion tune) onThesessionTune;
+  final void Function(TunesCompanion tune) onRemoteTune;
   final void Function(String name) onCreateNew;
 
   const TunePickerDialog({
     required this.title,
     required this.onLibraryTune,
-    required this.onThesessionTune,
+    required this.onRemoteTune,
     required this.onCreateNew,
     super.key,
   });
@@ -36,6 +38,7 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   final _controller = TextEditingController();
   String _debouncedQuery = '';
   Timer? _debounceTimer;
+  RemoteTune? _resolvingTune;
 
   @override
   void initState() {
@@ -65,9 +68,30 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
     widget.onLibraryTune(tune);
   }
 
-  void _pickThesession(TunesCompanion tune) {
-    Navigator.of(context).pop();
-    widget.onThesessionTune(tune);
+  Future<void> _pickRemote(RemoteTune remoteTune) async {
+    final sources = ref.read(tuneSourcesProvider);
+    TuneSource? source;
+    for (final s in sources) {
+      if (s.name == remoteTune.sourceName) {
+        source = s;
+        break;
+      }
+    }
+    if (source == null) return;
+
+    setState(() => _resolvingTune = remoteTune);
+    try {
+      final companion = await source.resolve(remoteTune);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onRemoteTune(companion);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _resolvingTune = null);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not fetch tune: $e')));
+    }
   }
 
   void _pickCreateNew(String name) {
@@ -79,7 +103,7 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   Widget build(BuildContext context) {
     final query = _debouncedQuery;
     final localTunesAsync = ref.watch(allTunesProvider);
-    final thesessionTunesAsync = ref.watch(thesessionTuneProvider);
+    final remoteResultsAsync = ref.watch(tuneSearchProvider(query));
 
     return Dialog(
       child: SizedBox(
@@ -120,16 +144,40 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),
                         error: (e, s) => Text('Error: $e'),
-                        data: (localTunes) => thesessionTunesAsync.when(
-                          loading: () =>
-                              const Center(child: CircularProgressIndicator()),
-                          error: (e, s) => Text('Error: $e'),
-                          data: (thesessionTunes) => _buildSuggestions(
-                            query,
-                            localTunes,
-                            thesessionTunes,
-                          ),
-                        ),
+                        data: (localTunes) {
+                          final matchingLocal = localTunes
+                              .where(
+                                (t) =>
+                                    normalizeForSearch(t.name).contains(query),
+                              )
+                              .toList();
+                          final localTsIds = localTunes
+                              .where((t) => t.tsId != null)
+                              .map((t) => t.tsId!)
+                              .toSet();
+
+                          return remoteResultsAsync.when(
+                            loading: () => _buildList(
+                              query,
+                              matchingLocal,
+                              localTsIds,
+                              {},
+                              loading: true,
+                            ),
+                            error: (e, s) => _buildList(
+                              query,
+                              matchingLocal,
+                              localTsIds,
+                              {},
+                            ),
+                            data: (remoteResults) => _buildList(
+                              query,
+                              matchingLocal,
+                              localTsIds,
+                              remoteResults,
+                            ),
+                          );
+                        },
                       ),
               ),
             ],
@@ -139,28 +187,13 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
     );
   }
 
-  Widget _buildSuggestions(
+  Widget _buildList(
     String query,
-    List<Tune> localTunes,
-    List<TunesCompanion> thesessionTunes,
-  ) {
-    final matchingLocal = localTunes
-        .where((t) => normalizeForSearch(t.name).contains(query))
-        .toList();
-
-    final localTsIds = localTunes
-        .where((t) => t.tsId != null)
-        .map((t) => t.tsId!)
-        .toSet();
-    final matchingThesession = thesessionTunes
-        .where(
-          (t) =>
-              normalizeForSearch(t.name.value).contains(query) &&
-              !(t.tsId.present && localTsIds.contains(t.tsId.value)),
-        )
-        .take(20)
-        .toList();
-
+    List<Tune> matchingLocal,
+    Set<int> localTsIds,
+    Map<String, List<RemoteTune>> remoteResults, {
+    bool loading = false,
+  }) {
     return ListView(
       shrinkWrap: true,
       children: [
@@ -169,12 +202,26 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
           for (final t in matchingLocal)
             _LibraryTuneTile(tune: t, onTap: () => _pickLibrary(t)),
         ],
-        if (matchingThesession.isNotEmpty) ...[
-          if (matchingLocal.isNotEmpty) const SizedBox(height: 8),
-          const _SectionHeader('From thesession.org'),
-          for (final t in matchingThesession)
-            _ThesessionTuneTile(tune: t, onTap: () => _pickThesession(t)),
+        for (final entry in remoteResults.entries) ...[
+          if (matchingLocal.isNotEmpty || entry.key != remoteResults.keys.first)
+            const SizedBox(height: 8),
+          _SectionHeader('From ${entry.key}'),
+          for (final tune in _dedupedResults(
+            entry.value,
+            entry.key,
+            localTsIds,
+          ))
+            _RemoteTuneTile(
+              tune: tune,
+              resolving: _resolvingTune == tune,
+              onTap: () => _pickRemote(tune),
+            ),
         ],
+        if (loading && remoteResults.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Center(child: CircularProgressIndicator()),
+          ),
         const SizedBox(height: 8),
         _CreateNewTile(
           name: _controller.text.trim(),
@@ -182,6 +229,24 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
         ),
       ],
     );
+  }
+
+  List<RemoteTune> _dedupedResults(
+    List<RemoteTune> results,
+    String sourceName,
+    Set<int> localTsIds,
+  ) {
+    if (sourceName == 'thesession.org') {
+      return results
+          .where(
+            (t) =>
+                t.sourceId == null ||
+                !localTsIds.contains(int.tryParse(t.sourceId!)),
+          )
+          .take(20)
+          .toList();
+    }
+    return results.take(20).toList();
   }
 }
 
@@ -234,15 +299,20 @@ class _LibraryTuneTile extends StatelessWidget {
   }
 }
 
-class _ThesessionTuneTile extends StatelessWidget {
-  final TunesCompanion tune;
+class _RemoteTuneTile extends StatelessWidget {
+  final RemoteTune tune;
+  final bool resolving;
   final VoidCallback onTap;
-  const _ThesessionTuneTile({required this.tune, required this.onTap});
+  const _RemoteTuneTile({
+    required this.tune,
+    required this.resolving,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final type = tune.type.value?.name;
-    final key = tune.key.value;
+    final type = tune.type?.name;
+    final key = tune.key;
     final subtitle = [
       if (type != null) type,
       if (key != null && key.isNotEmpty) key,
@@ -252,13 +322,19 @@ class _ThesessionTuneTile extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 2),
       child: ListTile(
         leading: const Icon(Icons.public, color: Colors.blueGrey),
-        title: Text(tune.name.value),
+        title: Text(tune.name),
         subtitle: subtitle.isEmpty ? null : Text(subtitle),
-        trailing: const Text(
-          'thesession.org',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        onTap: onTap,
+        trailing: resolving
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(
+                tune.sourceName,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+        onTap: resolving ? null : onTap,
       ),
     );
   }

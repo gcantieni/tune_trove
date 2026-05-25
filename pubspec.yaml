@@ -71,6 +71,11 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - assets/data/thesession_tunes.json
+    - assets/data/oneills_tunes.json
+    - assets/data/norbeck_tunes.json
+    - assets/data/paulhardy_tunes.json
+    - assets/data/williamclarke_tunes.json
+    - assets/data/pete_mac_tunes.json
     - assets/abcjs/
     - assets/song.mp3
 

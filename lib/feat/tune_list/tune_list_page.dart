@@ -43,7 +43,7 @@ class TuneListPage extends ConsumerWidget {
           // Already in the library — jump to its detail page.
           context.push('/tune_list/${tune.id}');
         },
-        onThesessionTune: (companion) {
+        onRemoteTune: (companion) {
           dao.insertTune(
             companion.copyWith(createdAt: drift.Value(DateTime.now())),
           );

@@ -267,7 +267,7 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
             performedKey: details.performedKey,
           );
         },
-        onThesessionTune: (companion) {
+        onRemoteTune: (companion) {
           dao.createTuneAndLink(
             companion.copyWith(createdAt: drift.Value(DateTime.now())),
             recordingId,

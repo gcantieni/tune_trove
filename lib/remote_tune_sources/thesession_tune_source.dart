@@ -1,24 +1,6 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart' as drift;
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
-
-final thesessionTuneProvider = FutureProvider<List<TunesCompanion>>((
-  ref,
-) async {
-  final tuneJsonData =
-      (json.decode(
-                await rootBundle.loadString(
-                  'assets/data/thesession_tunes.json',
-                ),
-              )
-              as List)
-          .cast<Map<String, dynamic>>();
-  return parseTunes(tuneJsonData);
-});
 
 List<TunesCompanion> parseTunes(List<Map<String, dynamic>> data) {
   return data.map((entry) {
