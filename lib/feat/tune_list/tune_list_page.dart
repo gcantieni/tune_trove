@@ -8,13 +8,21 @@ import 'package:tune_trove/feat/tune_list/tune_filters.dart';
 import 'package:tune_trove/feat/tune_list/tune_list_item.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
+import 'package:tune_trove/routing/nav_scaffold.dart';
 import 'package:tune_trove/shared_widgets/tune_picker_dialog.dart';
 
 class TuneListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tune list')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          tooltip: 'Open menu',
+          onPressed: () => navScaffoldKey.currentState?.openDrawer(),
+        ),
+        title: const Text('Tunes'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

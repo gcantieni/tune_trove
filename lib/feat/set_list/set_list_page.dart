@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/model/providers/sets_provider.dart';
+import 'package:tune_trove/routing/nav_scaffold.dart';
 
 class SetListPage extends ConsumerWidget {
   @override
@@ -13,7 +14,14 @@ class SetListPage extends ConsumerWidget {
     final setsAsync = ref.watch(allSetsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sets')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          tooltip: 'Open menu',
+          onPressed: () => navScaffoldKey.currentState?.openDrawer(),
+        ),
+        title: const Text('Sets'),
+      ),
       body: setsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),

@@ -4,31 +4,67 @@ import 'package:go_router/go_router.dart';
 import 'package:tune_trove/feat/audio_player/audio_player_notifier.dart';
 import 'package:tune_trove/model/database_provider.dart';
 
+final navScaffoldKey = GlobalKey<ScaffoldState>();
+
+const _navRoutes = ['/recorder', '/set_list', '/tune_list', '/recording_list'];
+
+int _drawerIndex(String location) {
+  for (int i = 0; i < _navRoutes.length; i++) {
+    final r = _navRoutes[i];
+    if (location == r || location.startsWith('$r/')) return i;
+  }
+  return 0;
+}
+
 class NavScaffold extends ConsumerWidget {
   final Widget child;
 
   const NavScaffold({required this.child, super.key});
 
-  static const List<String> _bottomNavigationRoutes = [
-    '/set_list',
-    '/tune_list',
-    '/recording_list',
-    '/recorder',
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.toString();
-    final currentIndex = _bottomNavigationRoutes.indexWhere(
-      (r) => location.startsWith(r),
-    );
 
     final playerState = ref.watch(audioPlayerProvider);
     final notifier = ref.read(audioPlayerProvider.notifier);
     final showFab = playerState.isPlaying || playerState.isPaused;
 
     return Scaffold(
+      key: navScaffoldKey,
       body: child,
+      drawer: NavigationDrawer(
+        selectedIndex: _drawerIndex(location),
+        onDestinationSelected: (index) {
+          context.go(_navRoutes[index]);
+          navScaffoldKey.currentState?.closeDrawer();
+        },
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 16, 16, 10),
+            child: Text(
+              'Tune Catcher',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          const NavigationDrawerDestination(
+            icon: Icon(Icons.mic),
+            label: Text('Record'),
+          ),
+          const Divider(indent: 28, endIndent: 28, height: 1),
+          const NavigationDrawerDestination(
+            icon: Icon(Icons.queue_music),
+            label: Text('Sets'),
+          ),
+          const NavigationDrawerDestination(
+            icon: Icon(Icons.music_note),
+            label: Text('Tunes'),
+          ),
+          const NavigationDrawerDestination(
+            icon: Icon(Icons.audio_file_outlined),
+            label: Text('Recordings'),
+          ),
+        ],
+      ),
       floatingActionButton: showFab
           ? GestureDetector(
               onLongPress: () async {
@@ -53,25 +89,6 @@ class NavScaffold extends ConsumerWidget {
               ),
             )
           : null,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex < 0
-            ? 3 // recorder should be the "quick draw" for the app
-            : currentIndex,
-        onTap: (index) {
-          if (_bottomNavigationRoutes[index] != location) {
-            context.go(_bottomNavigationRoutes[index]); // skip home
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.queue_music), label: "Sets"),
-          BottomNavigationBarItem(icon: Icon(Icons.music_note), label: 'Tunes'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.audio_file_outlined),
-            label: 'Recordings',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.mic), label: 'Record'),
-        ],
-      ),
     );
   }
 }

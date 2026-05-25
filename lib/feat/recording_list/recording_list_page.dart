@@ -5,12 +5,20 @@ import 'package:tune_trove/feat/recording_list/recording_form_widget.dart';
 import 'package:tune_trove/feat/recording_list/recording_list_item.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/recordings_provider.dart';
+import 'package:tune_trove/routing/nav_scaffold.dart';
 
 class RecordingListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Recordings')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          tooltip: 'Open menu',
+          onPressed: () => navScaffoldKey.currentState?.openDrawer(),
+        ),
+        title: const Text('Recordings'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(children: [RecordingListWidget()]),
