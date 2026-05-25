@@ -12,6 +12,11 @@ class ContentSourceMeta {
   /// Whether the content ships bundled in the app binary (vs. fetched live).
   final bool bundled;
 
+  /// Hidden sources are excluded from the settings UI until permission is
+  /// confirmed (e.g. awaiting written permission from the content author).
+  /// The source remains in the registry so existing library tunes still render.
+  final bool hidden;
+
   const ContentSourceMeta({
     required this.id,
     required this.name,
@@ -20,6 +25,7 @@ class ContentSourceMeta {
     required this.attribution,
     required this.confirmationRequired,
     this.bundled = false,
+    this.hidden = false,
   });
 
   bool get isAlwaysActive => !confirmationRequired;

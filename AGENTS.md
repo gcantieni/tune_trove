@@ -72,5 +72,22 @@ make deps
 
 ## Context Files
 
-- [.context/playbooks/](/.context/playbooks/) — Step-by-step guides for common development actions
-- [.context/standards/](/.context/standards/) — Best practices and coding standards
+### Playbooks — step-by-step guides for common development actions
+
+- [.context/playbooks/adding-a-feature.md](/.context/playbooks/adding-a-feature.md)
+- [.context/playbooks/build.md](/.context/playbooks/build.md)
+- [.context/playbooks/entitlements.md](/.context/playbooks/entitlements.md)
+- [.context/playbooks/testing.md](/.context/playbooks/testing.md)
+
+### Standards — architectural rules and coding conventions
+
+- [.context/standards/content-sources.md](/.context/standards/content-sources.md) — content source registry, licensing constraints, display gate invariants
+- [.context/standards/drift.md](/.context/standards/drift.md)
+- [.context/standards/flutter.md](/.context/standards/flutter.md)
+- [.context/standards/go-router.md](/.context/standards/go-router.md)
+- [.context/standards/riverpod.md](/.context/standards/riverpod.md)
+
+### Roadmap — planned features not yet implemented
+
+- [.context/roadmap/abc-dark-mode-setting.md](/.context/roadmap/abc-dark-mode-setting.md)
+- [.context/roadmap/linux-abc-rendering.md](/.context/roadmap/linux-abc-rendering.md)

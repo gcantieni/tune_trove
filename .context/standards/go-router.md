@@ -28,3 +28,37 @@
 
 - Add redirects in the `GoRouter` constructor if auth or onboarding gates are needed.
 - Keep redirect logic pure — no side effects.
+
+## Dialogs Inside GoRouter Pages
+
+Always pop dialogs using the **dialog's own context**, not the outer page context.
+
+```dart
+// WRONG — pops GoRouter's root navigator, which has no dialog on its stack
+showDialog(
+  context: context,
+  builder: (_) => AlertDialog(
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),  // crashes
+        ...
+      ),
+    ],
+  ),
+);
+
+// CORRECT — pops the dialog's inner navigator
+showDialog(
+  context: context,
+  builder: (dialogContext) => AlertDialog(
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(dialogContext).pop(),
+        ...
+      ),
+    ],
+  ),
+);
+```
+
+`showDialog` pushes onto a nested `Navigator` inside Flutter's dialog layer. `Navigator.of(outerContext)` walks up to GoRouter's root navigator, which has no dialog on its stack — popping it triggers GoRouter's assertion `'currentConfiguration.isNotEmpty'`.

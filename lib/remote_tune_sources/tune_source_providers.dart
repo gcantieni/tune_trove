@@ -65,7 +65,7 @@ final activeSourceNamesProvider = Provider<Set<String>>((ref) {
   final confirmedIds = ref.watch(confirmedSourcesProvider);
   return {
     for (final m in allContentSources)
-      if (m.isAlwaysActive || confirmedIds.contains(m.id)) m.name,
+      if (!m.hidden && (m.isAlwaysActive || confirmedIds.contains(m.id))) m.name,
   };
 });
 
@@ -80,7 +80,7 @@ final tuneSourcesProvider = Provider<List<TuneSource>>((ref) {
   final confirmedIds = ref.watch(confirmedSourcesProvider);
 
   return allContentSources
-      .where((meta) => meta.isAlwaysActive || confirmedIds.contains(meta.id))
+      .where((meta) => !meta.hidden && (meta.isAlwaysActive || confirmedIds.contains(meta.id)))
       .map(buildTuneSource)
       .toList();
 });

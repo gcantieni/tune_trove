@@ -15,10 +15,10 @@ class ContentLibraryPage extends ConsumerWidget {
     final confirmedIds = ref.watch(confirmedSourcesProvider);
 
     final alwaysActive = allContentSources
-        .where((m) => m.isAlwaysActive)
+        .where((m) => m.isAlwaysActive && !m.hidden)
         .toList();
     final requiresConfirmation = allContentSources
-        .where((m) => !m.isAlwaysActive)
+        .where((m) => !m.isAlwaysActive && !m.hidden)
         .toList();
 
     return Scaffold(

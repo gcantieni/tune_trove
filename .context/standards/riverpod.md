@@ -29,6 +29,20 @@
 - Use `container.listen()` to capture emissions.
 - Always dispose the container in `tearDown`.
 - Allow a small `Future.delayed` for stream debounce when testing reactive providers.
+- Providers that depend on `sharedPreferencesProvider` (e.g., anything under the content-source chain) need it overridden in tests. Rather than mocking SharedPreferences, override the derived provider that's actually under test. For example, tests for `filteredTunesProvider` override `activeSourceNamesProvider` directly with a fixed `Set<String>`:
+
+```dart
+ProviderContainer(
+  overrides: [
+    activeSourceNamesProvider.overrideWithValue(const {}),
+    allTunesProvider.overrideWith((ref) => Stream.value(tunes)),
+  ],
+);
+```
+
+## Injected Infrastructure
+
+`sharedPreferencesProvider` is a sentinel provider — it throws if not overridden. `main()` resolves `SharedPreferences.getInstance()` before `runApp()` and injects the instance via `ProviderScope.overrides`. Any provider that needs SharedPreferences must sit downstream of this provider in the dependency graph, not call `SharedPreferences.getInstance()` directly.
 
 ## Notifiers
 

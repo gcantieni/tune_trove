@@ -44,6 +44,7 @@ const List<ContentSourceMeta> allContentSources = [
         "Henrik Norbeck's ABC Tune Collection — free for personal, non-commercial use only.",
     confirmationRequired: true,
     bundled: true,
+    hidden: true,
   ),
   ContentSourceMeta(
     id: 'paulhardy',
