@@ -12,11 +12,16 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
   RecordingDao(super.db);
 
   // create
-  Future<int> insertRecording(RecordingsCompanion recording) {
-    final companion = recording.cloudId.present
-        ? recording
-        : recording.copyWith(cloudId: Value(generateUuid()));
-    return into(recordings).insert(companion);
+  Future<int> insertRecording(RecordingsCompanion recording) async {
+    final cloudId =
+        recording.cloudId.present && recording.cloudId.value != null
+        ? recording.cloudId.value!
+        : generateUuid();
+    final id = await into(
+      recordings,
+    ).insert(recording.copyWith(cloudId: Value(cloudId)));
+    attachedDatabase.notifyRowChanged('Recording', cloudId, deleted: false);
+    return id;
   }
 
   // read static
@@ -48,17 +53,28 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
       (select(recordings)..where((r) => r.id.equals(id))).watchSingleOrNull();
 
   // update
-  Future<int> updateRecording(Recording updatedRecording) {
-    return (update(
-      recordings,
-    )..where((t) => t.id.equals(updatedRecording.id))).write(
-      updatedRecording.toCompanion(
-        true,
-      ), // coalesces Recording into RecordingCompanion
+  Future<int> updateRecording(Recording updatedRecording) async {
+    final count =
+        await (update(recordings)
+              ..where((t) => t.id.equals(updatedRecording.id)))
+            .write(
+              updatedRecording.toCompanion(
+                true,
+              ), // coalesces Recording into RecordingCompanion
+            );
+    attachedDatabase.notifyRowChanged(
+      'Recording',
+      updatedRecording.cloudId,
+      deleted: false,
     );
+    return count;
   }
 
   // delete
-  Future deleteRecording(int id) =>
-      (delete(recordings)..where((r) => r.id.equals(id))).go();
+  Future<int> deleteRecording(int id) async {
+    final row = await getRecording(id);
+    final count = await (delete(recordings)..where((r) => r.id.equals(id))).go();
+    attachedDatabase.notifyRowChanged('Recording', row?.cloudId, deleted: true);
+    return count;
+  }
 }

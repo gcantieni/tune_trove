@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:tune_trove/feat/abc_render/abc_renderer.dart';
+import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_providers.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_notifier.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 import 'package:tune_trove/routing/app_router.dart';
@@ -42,6 +43,8 @@ class _MyAppState extends ConsumerState<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Enable automatic sync-on-change for the app's lifetime.
+    ref.watch(syncStagerProvider);
     ref.listen(syncProvider, (prev, next) {
       _onSyncStateChanged(prev?.value?.phase, next.value);
     });

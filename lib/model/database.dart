@@ -1,4 +1,5 @@
 // package imports
+import 'dart:async';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
@@ -29,6 +30,35 @@ class AppDatabase extends _$AppDatabase {
   // and a constructor telling drift where the database should be stored.
   // These are described in the getting started guide: https://drift.simonbinder.eu/setup/
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+
+  /// Invoked after a row in a synced table is created/updated/deleted, unless
+  /// row events are suppressed. The sync layer registers this to stage the
+  /// change for upload; the model layer itself stays sync-agnostic (no
+  /// dependency on the cloudkit_sync feature).
+  void Function(String recordType, String cloudId, {required bool deleted})?
+  onRowChanged;
+
+  /// Runs [body] without emitting row-change events. Used while applying remote
+  /// changes so pulled rows aren't immediately re-staged for push.
+  ///
+  /// Suppression is scoped with a [Zone] rather than a flag so that a user edit
+  /// that happens to interleave (at an `await`) with reconciliation's writes is
+  /// still reported — only writes within [body]'s async chain are suppressed.
+  Future<T> withSuppressedRowEvents<T>(Future<T> Function() body) {
+    return runZoned(body, zoneValues: {#suppressSyncRowEvents: true});
+  }
+
+  /// Reports a mutation to a synced row. No-op while suppressed, when no
+  /// listener is registered, or when the row has no cloud_id.
+  void notifyRowChanged(
+    String recordType,
+    String? cloudId, {
+    required bool deleted,
+  }) {
+    if (cloudId == null) return;
+    if (Zone.current[#suppressSyncRowEvents] == true) return;
+    onRowChanged?.call(recordType, cloudId, deleted: deleted);
+  }
 
   @override
   int get schemaVersion => 9;

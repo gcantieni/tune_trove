@@ -55,7 +55,9 @@ class _SyncStatusTile extends ConsumerWidget {
       trailing: IconButton(
         icon: const Icon(Icons.sync),
         tooltip: 'Sync now',
-        onPressed: syncing ? null : () => ref.read(syncProvider.notifier).syncNow(),
+        onPressed: syncing
+            ? null
+            : () => ref.read(syncProvider.notifier).syncNow(fullPush: true),
       ),
     );
   }

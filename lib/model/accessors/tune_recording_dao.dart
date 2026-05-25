@@ -43,6 +43,7 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
     String? performedKey,
     String? cloudId,
   }) {
+    final linkCloudId = cloudId ?? generateUuid();
     return transaction(() async {
       final rowId = await into(tuneRecording).insert(
         TuneRecordingCompanion.insert(
@@ -51,27 +52,44 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
           startTime: Value(startTime),
           endTime: Value(endTime),
           performedKey: Value(performedKey),
-          cloudId: Value(cloudId ?? generateUuid()),
+          cloudId: Value(linkCloudId),
         ),
         mode: InsertMode.insertOrIgnore,
       );
-      if (rowId > 0) await _bumpTuneModified(tuneId);
+      if (rowId > 0) {
+        await _bumpTuneModified(tuneId);
+        attachedDatabase.notifyRowChanged(
+          'TuneRecording',
+          linkCloudId,
+          deleted: false,
+        );
+      }
       return rowId;
     });
   }
 
   /// Insert a new tune and link it to the recording in a single transaction.
   Future<int> createTuneAndLink(TunesCompanion tune, int recordingId) {
+    final tuneCloudId = tune.cloudId.present && tune.cloudId.value != null
+        ? tune.cloudId.value!
+        : generateUuid();
+    final linkCloudId = generateUuid();
     return transaction(() async {
-      final tuneId = await into(tunes).insert(
-        tune.cloudId.present ? tune : tune.copyWith(cloudId: Value(generateUuid())),
-      );
+      final tuneId = await into(
+        tunes,
+      ).insert(tune.copyWith(cloudId: Value(tuneCloudId)));
       await into(tuneRecording).insert(
         TuneRecordingCompanion.insert(
           tuneId: tuneId,
           recordingId: recordingId,
-          cloudId: Value(generateUuid()),
+          cloudId: Value(linkCloudId),
         ),
+      );
+      attachedDatabase.notifyRowChanged('Tune', tuneCloudId, deleted: false);
+      attachedDatabase.notifyRowChanged(
+        'TuneRecording',
+        linkCloudId,
+        deleted: false,
       );
       return tuneId;
     });
@@ -83,20 +101,33 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
     RecordingsCompanion recording,
     int tuneId,
   ) {
+    final recCloudId =
+        recording.cloudId.present && recording.cloudId.value != null
+        ? recording.cloudId.value!
+        : generateUuid();
+    final linkCloudId = generateUuid();
     return transaction(() async {
-      final recordingId = await into(recordings).insert(
-        recording.cloudId.present
-            ? recording
-            : recording.copyWith(cloudId: Value(generateUuid())),
-      );
+      final recordingId = await into(
+        recordings,
+      ).insert(recording.copyWith(cloudId: Value(recCloudId)));
       await into(tuneRecording).insert(
         TuneRecordingCompanion.insert(
           tuneId: tuneId,
           recordingId: recordingId,
-          cloudId: Value(generateUuid()),
+          cloudId: Value(linkCloudId),
         ),
       );
       await _bumpTuneModified(tuneId);
+      attachedDatabase.notifyRowChanged(
+        'Recording',
+        recCloudId,
+        deleted: false,
+      );
+      attachedDatabase.notifyRowChanged(
+        'TuneRecording',
+        linkCloudId,
+        deleted: false,
+      );
       return recordingId;
     });
   }
@@ -110,28 +141,48 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
                     t.recordingId.equals(updated.recordingId),
               ))
               .write(updated.toCompanion(true));
-      if (rows > 0) await _bumpTuneModified(updated.tuneId);
+      if (rows > 0) {
+        await _bumpTuneModified(updated.tuneId);
+        attachedDatabase.notifyRowChanged(
+          'TuneRecording',
+          updated.cloudId,
+          deleted: false,
+        );
+      }
       return rows;
     });
   }
 
   Future<int> unlinkTuneFromRecording(int tuneId, int recordingId) {
     return transaction(() async {
+      final existing = await getByTuneAndRecording(tuneId, recordingId);
       final rows =
           await (delete(tuneRecording)..where(
                 (t) =>
                     t.tuneId.equals(tuneId) & t.recordingId.equals(recordingId),
               ))
               .go();
-      if (rows > 0) await _bumpTuneModified(tuneId);
+      if (rows > 0) {
+        await _bumpTuneModified(tuneId);
+        attachedDatabase.notifyRowChanged(
+          'TuneRecording',
+          existing?.cloudId,
+          deleted: true,
+        );
+      }
       return rows;
     });
   }
 
-  Future<int> _bumpTuneModified(int tuneId) {
-    return (update(tunes)..where((t) => t.id.equals(tuneId))).write(
+  Future<int> _bumpTuneModified(int tuneId) async {
+    final count = await (update(tunes)..where((t) => t.id.equals(tuneId))).write(
       TunesCompanion(modifiedAt: Value(DateTime.now())),
     );
+    final tune = await (select(
+      tunes,
+    )..where((t) => t.id.equals(tuneId))).getSingleOrNull();
+    attachedDatabase.notifyRowChanged('Tune', tune?.cloudId, deleted: false);
+    return count;
   }
 
   Stream<List<RecordedTune>> watchLinksForRecording(int recordingId) {

@@ -11,10 +11,13 @@ class TuneDao extends DatabaseAccessor<AppDatabase> with _$TuneDaoMixin {
   TuneDao(super.db);
 
   // create
-  Future<int> insertTune(TunesCompanion tune) {
-    final companion =
-        tune.cloudId.present ? tune : tune.copyWith(cloudId: Value(generateUuid()));
-    return into(tunes).insert(companion);
+  Future<int> insertTune(TunesCompanion tune) async {
+    final cloudId = tune.cloudId.present && tune.cloudId.value != null
+        ? tune.cloudId.value!
+        : generateUuid();
+    final id = await into(tunes).insert(tune.copyWith(cloudId: Value(cloudId)));
+    attachedDatabase.notifyRowChanged('Tune', cloudId, deleted: false);
+    return id;
   }
 
   // read static
@@ -43,11 +46,21 @@ class TuneDao extends DatabaseAccessor<AppDatabase> with _$TuneDaoMixin {
       (select(tunes)..where((t) => t.id.equals(id))).watchSingleOrNull();
 
   // update
-  Future<int> updateTune(TunesCompanion updatedTune) => (update(
-    tunes,
-  )..where((t) => t.id.equals(updatedTune.id.value))).write(updatedTune);
+  Future<int> updateTune(TunesCompanion updatedTune) async {
+    final count =
+        await (update(tunes)
+              ..where((t) => t.id.equals(updatedTune.id.value)))
+            .write(updatedTune);
+    final row = await getTune(updatedTune.id.value);
+    attachedDatabase.notifyRowChanged('Tune', row?.cloudId, deleted: false);
+    return count;
+  }
 
   // delete
-  Future deleteTune(int id) =>
-      (delete(tunes)..where((t) => t.id.equals(id))).go();
+  Future<int> deleteTune(int id) async {
+    final row = await getTune(id);
+    final count = await (delete(tunes)..where((t) => t.id.equals(id))).go();
+    attachedDatabase.notifyRowChanged('Tune', row?.cloudId, deleted: true);
+    return count;
+  }
 }

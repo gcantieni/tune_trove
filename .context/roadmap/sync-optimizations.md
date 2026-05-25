@@ -13,60 +13,45 @@ initialize → fetchChanges → reconcile (SyncReconciliationService) → stage 
 `SyncNotifier`/`SyncState` (`lib/feat/cloudkit_sync/sync_notifier.dart`) surfaces a
 single status to the settings tile (`idle | syncing | success | error | unavailable`).
 
-Two known gaps are deferred below. The first is a performance optimization; the
-second closes the last correctness gap in *surfacing* status to the user.
+Both optimizations originally tracked here are now implemented (details below),
+each with a short list of remaining follow-ups.
 
 ---
 
-## 1. Incremental ("dirty row") staging
+## 1. Incremental ("dirty row") staging — IMPLEMENTED
 
-### Problem
+Mutations now sync automatically and incrementally instead of via a full
+re-push.
 
-`SyncOutboundService._serializeAll()` serializes **every** local row on **every**
-sync and hands the whole set to `stageRecords`. It is correct (upserts are
-idempotent by `cloud_id`), but it is O(N): each already-synced record is
-re-uploaded, and any record CloudKit considers unchanged still costs a
-`serverRecordChanged` round-trip before the bridge's conflict path rebases it.
-For a large tune library this makes every manual sync needlessly slow and chatty.
+- **Capture:** `AppDatabase.onRowChanged` (`lib/model/database.dart`) is a
+  sync-agnostic hook every DAO `insert/update/delete` calls via
+  `notifyRowChanged(recordType, cloudId, deleted:)`. The sync layer registers the
+  hook (DB never imports the sync feature → no dependency cycle). Deletes look up
+  the `cloud_id` before deleting; compound methods (`createTuneAndLink`,
+  `createRecordingAndLink`, `reorderTune`, `_bumpTuneModified`) emit for every
+  affected row.
+- **Suppression:** reconciliation wraps its writes in
+  `AppDatabase.withSuppressedRowEvents`, which uses a **`Zone`** (not a flag) so a
+  user edit that interleaves at an `await` is still captured — only
+  reconciliation's own async chain is suppressed.
+- **Stage + push:** `SyncStager` (`sync_stager.dart`) serializes the changed row
+  (`SyncOutboundService.serializeByCloudId`) → `stageRecords` / `stageDeletions`,
+  then debounces a quiet `sendChanges` (3s). Started for the app's lifetime via
+  `syncStagerProvider` watched in `main.dart`.
+- **Durability:** `CKSyncEngine` persists *which* records are pending; the bridge
+  now also persists the field data (`pendingRecordMaps` → `ck_pending_maps.json`),
+  so an incrementally-staged change survives an app restart.
+- **Backfill + safety net:** `syncNow()` stages all rows only on the first ever
+  sync (`sync_initial_push_done` pref) or when `fullPush: true`. The manual "Sync
+  Now" button passes `fullPush: true`, so it doubles as a force-full-resync /
+  recovery path for any row a hook might have missed.
 
-### Goal
+### Remaining follow-ups
 
-Only upload rows that actually changed (created / edited / deleted) since the
-last successful push, while keeping the full-push path as a fallback/first-sync
-bootstrap.
-
-### Proposed approach
-
-Lean into what `CKSyncEngine` already does: it **persists pending record-zone
-changes in its own state**. Instead of re-staging everything each sync, stage a
-row the moment it is mutated, and let the engine carry the pending set (even
-across app launches) until the next `sendChanges`.
-
-### Implementation sketch
-
-1. Add a thin "stage this row" hook invoked from DAO mutations
-   (`insert*/update*/delete*` in `tune_dao.dart`, `recording_dao.dart`,
-   `set_dao.dart`, `tune_recording_dao.dart`, `set_tune_dao.dart`). It serializes
-   the single affected row (reuse the per-type serializers, refactored to take one
-   row) and calls `CloudKitSyncService.stageRecords([record])` /
-   `stageDeletions([...])`.
-2. `syncNow()` becomes `fetch → reconcile → sendChanges` — no full serialize pass.
-3. Keep `_serializeAll()` for two cases: (a) a one-time backfill the first time a
-   device ever syncs (rows that predate the hook), gated by a persisted
-   "didInitialPush" flag; (b) an explicit "force full re-sync" affordance.
-4. Deletes must be staged too (the current full-push approach silently omits
-   them) — `stageDeletions` already exists on the bridge but nothing calls it yet.
-
-### Tradeoffs / open questions
-
-- Wiring hooks into every DAO mutation is the bulk of the work and easy to miss a
-  call site; a missed write means a silently un-synced row. Consider funneling all
-  writes through a single choke point, or a periodic reconciliation sweep as a
-  safety net.
-- Riverpod wiring: DAOs don't currently depend on the sync layer. Avoid a
-  dependency cycle (sync depends on DB). Likely route the staging through an
-  app-level listener rather than the DAO directly.
-- Decide how `cloud_id` assignment-on-insert interacts with staging order.
+- No periodic reconciliation sweep yet; the manual full-push is the only recovery
+  if a mutation path is ever added without an `onRowChanged` call.
+- The debounced auto-push is silent (no `SyncNotifier` status); partial failures
+  on an auto-push only surface on the next manual sync.
 
 ---
 

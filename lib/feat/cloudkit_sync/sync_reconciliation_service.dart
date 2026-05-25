@@ -17,19 +17,24 @@ class SyncReconciliationService {
 
   /// Applies a pulled change set. Base entities are reconciled before join
   /// tables so foreign keys resolve; deletions are applied join-first.
-  Future<void> applyFetched(FetchedChanges changes) async {
-    for (final u in changes.upserts) {
-      if (_isBaseType(u.recordType)) await _upsert(u.recordType, u.fields);
-    }
-    for (final u in changes.upserts) {
-      if (!_isBaseType(u.recordType)) await _upsert(u.recordType, u.fields);
-    }
-    for (final d in changes.deletions) {
-      if (!_isBaseType(d.recordType)) await _delete(d.recordType, d.cloudId);
-    }
-    for (final d in changes.deletions) {
-      if (_isBaseType(d.recordType)) await _delete(d.recordType, d.cloudId);
-    }
+  ///
+  /// Wrapped so these writes don't emit row-change events — otherwise every
+  /// pulled record would be immediately re-staged for push.
+  Future<void> applyFetched(FetchedChanges changes) {
+    return _db.withSuppressedRowEvents(() async {
+      for (final u in changes.upserts) {
+        if (_isBaseType(u.recordType)) await _upsert(u.recordType, u.fields);
+      }
+      for (final u in changes.upserts) {
+        if (!_isBaseType(u.recordType)) await _upsert(u.recordType, u.fields);
+      }
+      for (final d in changes.deletions) {
+        if (!_isBaseType(d.recordType)) await _delete(d.recordType, d.cloudId);
+      }
+      for (final d in changes.deletions) {
+        if (_isBaseType(d.recordType)) await _delete(d.recordType, d.cloudId);
+      }
+    });
   }
 
   bool _isBaseType(String t) =>

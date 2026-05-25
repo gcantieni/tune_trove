@@ -70,7 +70,9 @@ class SyncNotifier extends AsyncNotifier<SyncState> {
     return SyncState(phase: await _phaseFromAvailability());
   }
 
-  Future<void> syncNow() async {
+  /// [fullPush] re-stages every local row (the manual "Sync Now" safety net);
+  /// otherwise only incrementally-staged changes are flushed.
+  Future<void> syncNow({bool fullPush = false}) async {
     final current = state.value ?? const SyncState();
     if (current.isSyncing) return; // guard against double-trigger
 
@@ -88,7 +90,7 @@ class SyncNotifier extends AsyncNotifier<SyncState> {
 
     state = AsyncData(current.copyWith(phase: SyncPhase.syncing, clearDetail: true));
     try {
-      final result = await ref.read(syncOutboundProvider).syncNow();
+      final result = await ref.read(syncOutboundProvider).syncNow(fullPush: fullPush);
       final now = DateTime.now();
       if (result.hasFailures) {
         final n = result.failedCount;

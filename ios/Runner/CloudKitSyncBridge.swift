@@ -160,6 +160,7 @@ final class CloudKitSyncBridge: NSObject {
 
     private func initializeEngine() {
         guard syncEngine == nil else { return }
+        loadPendingMaps()
         var config = CKSyncEngine.Configuration(
             database: database,
             stateSerialization: loadState(),
@@ -219,6 +220,7 @@ final class CloudKitSyncBridge: NSObject {
             pendingRecordMaps[cloudId] = map
             changes.append(.saveRecord(CKRecord.ID(recordName: cloudId, zoneID: zoneID)))
         }
+        savePendingMaps()
         engine.state.add(pendingRecordZoneChanges: changes)
     }
 
@@ -230,6 +232,7 @@ final class CloudKitSyncBridge: NSObject {
             pendingRecordMaps.removeValue(forKey: cloudId)
             changes.append(.deleteRecord(CKRecord.ID(recordName: cloudId, zoneID: zoneID)))
         }
+        savePendingMaps()
         engine.state.add(pendingRecordZoneChanges: changes)
     }
 
@@ -253,6 +256,37 @@ final class CloudKitSyncBridge: NSObject {
     private func saveState(_ serialization: CKSyncEngine.State.Serialization) {
         guard let data = try? JSONEncoder().encode(serialization) else { return }
         try? data.write(to: stateFileURL, options: .atomic)
+    }
+
+    // The engine persists *which* records are pending; we separately persist the
+    // field data needed to rebuild them, so an incrementally-staged change still
+    // sends after an app restart.
+    private var mapsFileURL: URL {
+        let base = (try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("ck_pending_maps.json")
+    }
+
+    private func loadPendingMaps() {
+        guard let data = try? Data(contentsOf: mapsFileURL),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]]
+        else { return }
+        pendingRecordMaps = obj
+    }
+
+    private func savePendingMaps() {
+        if pendingRecordMaps.isEmpty {
+            try? FileManager.default.removeItem(at: mapsFileURL)
+            return
+        }
+        guard JSONSerialization.isValidJSONObject(pendingRecordMaps),
+              let data = try? JSONSerialization.data(withJSONObject: pendingRecordMaps)
+        else { return }
+        try? data.write(to: mapsFileURL, options: .atomic)
     }
 
     // MARK: - Account changes
@@ -280,6 +314,7 @@ final class CloudKitSyncBridge: NSObject {
             pendingRecordMaps.removeValue(forKey: saved.recordID.recordName)
             sentSavedCount += 1
         }
+        if !event.savedRecords.isEmpty { savePendingMaps() }
         for failed in event.failedRecordSaves {
             let record = failed.record
             let error = failed.error

@@ -66,6 +66,7 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
     int? position,
     String? key,
   }) async {
+    final linkCloudId = cloudId ?? generateUuid();
     final existing = await (select(
       setTune,
     )..where((t) => t.setId.equals(setId))).get();
@@ -75,9 +76,10 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
         tuneId: tuneId,
         position: position ?? existing.length,
         key: Value(key),
-        cloudId: Value(cloudId ?? generateUuid()),
+        cloudId: Value(linkCloudId),
       ),
     );
+    attachedDatabase.notifyRowChanged('SetTune', linkCloudId, deleted: false);
   }
 
   /// Adopts a remote cloudId onto an existing local link (dedupe merge).
@@ -86,13 +88,23 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
         SetTuneCompanion(cloudId: Value(cloudId)),
       );
 
-  Future<void> removeTuneFromSet(int setTuneId) =>
-      (delete(setTune)..where((t) => t.id.equals(setTuneId))).go();
+  Future<void> removeTuneFromSet(int setTuneId) async {
+    final row = await (select(
+      setTune,
+    )..where((t) => t.id.equals(setTuneId))).getSingleOrNull();
+    await (delete(setTune)..where((t) => t.id.equals(setTuneId))).go();
+    attachedDatabase.notifyRowChanged('SetTune', row?.cloudId, deleted: true);
+  }
 
-  Future<void> updateKey(int setTuneId, String? key) =>
-      (update(setTune)..where((t) => t.id.equals(setTuneId))).write(
-        SetTuneCompanion(key: Value(key)),
-      );
+  Future<void> updateKey(int setTuneId, String? key) async {
+    await (update(setTune)..where((t) => t.id.equals(setTuneId))).write(
+      SetTuneCompanion(key: Value(key)),
+    );
+    final row = await (select(
+      setTune,
+    )..where((t) => t.id.equals(setTuneId))).getSingleOrNull();
+    attachedDatabase.notifyRowChanged('SetTune', row?.cloudId, deleted: false);
+  }
 
   Future<void> reorderTune(int setId, int oldIndex, int newIndex) async {
     await transaction(() async {
@@ -109,6 +121,11 @@ class SetTuneDao extends DatabaseAccessor<AppDatabase> with _$SetTuneDaoMixin {
       for (var i = 0; i < list.length; i++) {
         await (update(setTune)..where((t) => t.id.equals(list[i].id))).write(
           SetTuneCompanion(position: Value(i)),
+        );
+        attachedDatabase.notifyRowChanged(
+          'SetTune',
+          list[i].cloudId,
+          deleted: false,
         );
       }
     });
