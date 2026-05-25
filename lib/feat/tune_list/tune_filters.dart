@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
+import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 import 'package:tune_trove/util/search_normalize.dart';
 
 enum TuneSort { newestFirst, oldestFirst, nameAZ, nameZA }
@@ -65,10 +67,12 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
   ref,
 ) {
   final filters = ref.watch(tuneFiltersProvider);
+  final activeSourceNames = ref.watch(activeSourceNamesProvider);
   final allAsync = ref.watch(allTunesProvider);
   return allAsync.whenData((all) {
     final query = normalizeForSearch(filters.nameQuery.trim());
     final filtered = all.where((t) {
+      if (!isSourceNameVisible(t.from, activeSourceNames)) return false;
       if (filters.type != null && t.type != filters.type) return false;
       if (filters.key != null &&
           filters.key!.isNotEmpty &&
@@ -104,12 +108,16 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
 /// for stable dropdown ordering. Reads from `allTunesProvider` so it
 /// reacts to inserts/deletes.
 final availableKeysProvider = Provider.autoDispose<List<String>>((ref) {
+  final activeSourceNames = ref.watch(activeSourceNamesProvider);
   final allAsync = ref.watch(allTunesProvider);
   return allAsync.maybeWhen(
     data: (tunes) {
       final keys = <String>{
         for (final t in tunes)
-          if (t.key != null && t.key!.trim().isNotEmpty) t.key!.trim(),
+          if (isSourceNameVisible(t.from, activeSourceNames) &&
+              t.key != null &&
+              t.key!.trim().isNotEmpty)
+            t.key!.trim(),
       };
       final list = keys.toList()..sort();
       return list;

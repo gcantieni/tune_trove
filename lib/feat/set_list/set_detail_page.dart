@@ -83,7 +83,7 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
   @override
   Widget build(BuildContext context) {
     final setAsync = ref.watch(singleSetProvider(widget.setId));
-    final tunesAsync = ref.watch(setTunesProvider(widget.setId));
+    final tunesAsync = ref.watch(visibleSetTunesProvider(widget.setId));
 
     return setAsync.when(
       loading: () =>

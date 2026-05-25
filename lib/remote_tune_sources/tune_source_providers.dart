@@ -60,6 +60,23 @@ final confirmedSourcesProvider =
     );
 
 // ---------------------------------------------------------------------------
+// Active source names — used to gate tune display in the library and sets
+// ---------------------------------------------------------------------------
+
+/// The set of source names whose content is currently permitted to display.
+/// Rebuilds reactively whenever the user confirms or revokes a source.
+///
+/// Pass [Tune.from] to [isSourceNameVisible] together with this set to decide
+/// whether a given tune should be shown.
+final activeSourceNamesProvider = Provider<Set<String>>((ref) {
+  final confirmedIds = ref.watch(confirmedSourcesProvider);
+  return {
+    for (final m in allContentSources)
+      if (m.isAlwaysActive || confirmedIds.contains(m.id)) m.name,
+  };
+});
+
+// ---------------------------------------------------------------------------
 // Content-gated tune sources
 // ---------------------------------------------------------------------------
 

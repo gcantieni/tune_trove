@@ -66,6 +66,21 @@ const List<ContentSourceMeta> allContentSources = [
   ),
 ];
 
+/// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
+/// to display given the currently [activeSourceNames].
+///
+/// Rules:
+///   - null / empty → always visible (user-created tune with no source)
+///   - matches a registry source that is active → visible
+///   - matches a registry source that is inactive → hidden
+///   - matches nothing in the registry (user-typed free text) → always visible
+bool isSourceNameVisible(String? sourceName, Set<String> activeSourceNames) {
+  if (sourceName == null || sourceName.isEmpty) return true;
+  final inRegistry = allContentSources.any((m) => m.name == sourceName);
+  if (!inRegistry) return true;
+  return activeSourceNames.contains(sourceName);
+}
+
 /// Instantiates the [TuneSource] implementation for the given [meta].
 TuneSource buildTuneSource(ContentSourceMeta meta, {http.Client? client}) {
   switch (meta.id) {

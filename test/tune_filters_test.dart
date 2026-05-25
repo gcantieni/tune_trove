@@ -6,6 +6,7 @@ import 'package:tune_trove/feat/tune_list/tune_filters.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 
 Tune _tune({
   required int id,
@@ -28,6 +29,8 @@ Tune _tune({
 ProviderContainer _container(List<Tune> tunes) {
   return ProviderContainer(
     overrides: [
+      // No confirmed sources in tests; tunes with null `from` are always visible.
+      activeSourceNamesProvider.overrideWithValue(const {}),
       allTunesProvider.overrideWith((ref) => Stream.value(tunes)),
     ],
   );

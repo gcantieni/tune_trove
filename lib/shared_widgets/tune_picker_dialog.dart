@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
+import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
@@ -102,6 +103,7 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   @override
   Widget build(BuildContext context) {
     final query = _debouncedQuery;
+    final activeSourceNames = ref.watch(activeSourceNamesProvider);
     final localTunesAsync = ref.watch(allTunesProvider);
     final remoteResultsAsync = ref.watch(tuneSearchProvider(query));
 
@@ -148,6 +150,10 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
                           final matchingLocal = localTunes
                               .where(
                                 (t) =>
+                                    isSourceNameVisible(
+                                      t.from,
+                                      activeSourceNames,
+                                    ) &&
                                     normalizeForSearch(t.name).contains(query),
                               )
                               .toList();
