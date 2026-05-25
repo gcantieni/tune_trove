@@ -6,6 +6,7 @@ import 'package:tune_trove/feat/recording_list/recording_detail_page.dart';
 import 'package:tune_trove/feat/recording_list/recording_list_page.dart';
 import 'package:tune_trove/feat/set_list/set_detail_page.dart';
 import 'package:tune_trove/feat/set_list/set_list_page.dart';
+import 'package:tune_trove/feat/settings/settings_page.dart';
 import 'package:tune_trove/feat/tune_list/tune_detail_page.dart';
 import 'package:tune_trove/feat/tune_list/tune_list_page.dart';
 import 'package:tune_trove/routing/nav_scaffold.dart';
@@ -99,6 +100,12 @@ final GoRouter router = GoRouter(
           name: 'recorder',
           pageBuilder: (context, state) =>
               _directionalPage(path: '/recorder', child: RecorderPage()),
+        ),
+        GoRoute(
+          path: '/settings',
+          name: 'settings',
+          pageBuilder: (context, state) =>
+              _directionalPage(path: '/settings', child: SettingsPage()),
         ),
       ],
     ),
