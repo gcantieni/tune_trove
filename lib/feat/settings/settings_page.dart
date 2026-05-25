@@ -30,7 +30,11 @@ class _SyncStatusTile extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final state = ref.watch(syncProvider).value ?? const SyncState();
     final syncing = state.isSyncing;
-    final isError = state.phase == SyncPhase.error;
+    final statusColor = switch (state.phase) {
+      SyncPhase.error => scheme.error,
+      SyncPhase.partial => Colors.orange.shade800,
+      _ => null,
+    };
 
     final leading = syncing
         ? const SizedBox(
@@ -38,15 +42,15 @@ class _SyncStatusTile extends ConsumerWidget {
             height: 24,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-        : Icon(_iconFor(state.phase), color: isError ? scheme.error : null);
+        : Icon(_iconFor(state.phase), color: statusColor);
 
     return ListTile(
-      isThreeLine: isError,
+      isThreeLine: statusColor != null,
       leading: leading,
       title: const Text('iCloud Sync'),
       subtitle: Text(
         _subtitleFor(state, syncing),
-        style: isError ? TextStyle(color: scheme.error) : null,
+        style: statusColor != null ? TextStyle(color: statusColor) : null,
       ),
       trailing: IconButton(
         icon: const Icon(Icons.sync),
@@ -59,6 +63,7 @@ class _SyncStatusTile extends ConsumerWidget {
   IconData _iconFor(SyncPhase phase) => switch (phase) {
     SyncPhase.syncing => Icons.cloud_sync,
     SyncPhase.success => Icons.cloud_done,
+    SyncPhase.partial => Icons.sync_problem,
     SyncPhase.error => Icons.cloud_off,
     SyncPhase.unavailable => Icons.cloud_off,
     SyncPhase.idle => Icons.cloud_outlined,
@@ -71,6 +76,10 @@ class _SyncStatusTile extends ConsumerWidget {
         return 'Sign in to iCloud to enable sync';
       case SyncPhase.error:
         return state.detail ?? 'Sync failed';
+      case SyncPhase.partial:
+        final last = state.lastSyncedAt;
+        final summary = state.detail ?? 'Some items could not upload';
+        return last == null ? summary : '$summary · synced ${_relative(last)}';
       case SyncPhase.idle:
       case SyncPhase.success:
       case SyncPhase.syncing:

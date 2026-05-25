@@ -74,7 +74,18 @@ class PlatformCloudKitSyncService implements CloudKitSyncService {
       _methodChannel.invokeMethod<void>('stageDeletions', deletions);
 
   @override
-  Future<void> sendChanges() => _methodChannel.invokeMethod<void>('sendChanges');
+  Future<SendResult> sendChanges() async {
+    final raw = await _methodChannel.invokeMethod<dynamic>('sendChanges');
+    if (raw is! Map) return const SendResult();
+    final m = raw.cast<String, dynamic>();
+    return SendResult(
+      saved: (m['saved'] as int?) ?? 0,
+      failedCount: (m['failedCount'] as int?) ?? 0,
+      failures: ((m['failures'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+    );
+  }
 
   @override
   Stream<SyncStatusEvent> get statusEvents => _statusController.stream;

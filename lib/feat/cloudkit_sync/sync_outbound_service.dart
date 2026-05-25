@@ -19,13 +19,13 @@ class SyncOutboundService {
   /// stage local records -> send. Fetching and reconciling *before* staging is
   /// what lets a device with existing tunes adopt remote ids (dedupe) instead
   /// of uploading duplicates.
-  Future<void> syncNow() async {
+  Future<SendResult> syncNow() async {
     await _sync.initialize();
     final fetched = await _sync.fetchChanges();
     await _reconciliation.applyFetched(fetched);
     final records = await _serializeAll();
     if (records.isNotEmpty) await _sync.stageRecords(records);
-    await _sync.sendChanges();
+    return _sync.sendChanges();
   }
 
   /// Serializes every record in the local database into CloudKit record maps.

@@ -26,6 +26,25 @@ class FetchedChanges {
   bool get isEmpty => upserts.isEmpty && deletions.isEmpty;
 }
 
+/// The outcome of pushing staged changes. Records that fail with a recoverable
+/// error are retried by the engine and never reported here — [failedCount]
+/// counts only records that terminally failed to upload.
+class SendResult {
+  final int saved;
+  final int failedCount;
+
+  /// Up to a few sample failure descriptions, for diagnostics.
+  final List<String> failures;
+
+  const SendResult({
+    this.saved = 0,
+    this.failedCount = 0,
+    this.failures = const [],
+  });
+
+  bool get hasFailures => failedCount > 0;
+}
+
 /// Drives an explicit, deterministic CloudKit sync cycle backed by
 /// `CKSyncEngine` on the native side. A full sync is:
 /// `fetchChanges` -> reconcile -> `stageRecords` -> `sendChanges`.
@@ -46,8 +65,9 @@ abstract class CloudKitSyncService {
   /// Queues record deletions (by cloudId) for the next [sendChanges].
   Future<void> stageDeletions(List<Map<String, dynamic>> deletions);
 
-  /// Flushes all staged changes to CloudKit.
-  Future<void> sendChanges();
+  /// Flushes all staged changes to CloudKit, returning a summary of how many
+  /// records saved and how many terminally failed.
+  Future<SendResult> sendChanges();
 
   /// Status updates emitted by the engine ('idle' | 'syncing' | 'error').
   Stream<SyncStatusEvent> get statusEvents;

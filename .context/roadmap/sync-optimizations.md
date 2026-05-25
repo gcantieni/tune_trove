@@ -70,41 +70,25 @@ across app launches) until the next `sendChanges`.
 
 ---
 
-## 2. Surface partial / per-record sync failures
+## 2. Surface partial / per-record sync failures — IMPLEMENTED
 
-### Problem
+`sendChanges` now returns a `{saved, failedCount, failures}` summary.
+`CloudKitSyncBridge.performSend` resets per-send accumulators and
+`handleSentChanges` counts saved records and **terminal** failures only —
+recoverable cases (`serverRecordChanged` conflicts, `zoneNotFound`) are re-staged
+and not counted; `unknownItem` is treated as a benign delete-race. The summary
+flows `CloudKitSyncService.sendChanges` → `SendResult` →
+`SyncOutboundService.syncNow` → `SyncNotifier`, which sets `SyncPhase.partial`
+(amber `sync_problem` row, "N items couldn't upload · synced …") when
+`failedCount > 0`, distinct from a hard `error`.
 
-`CKSyncEngine` reports per-record save failures via the
-`.sentRecordZoneChanges` event, handled in `CloudKitSyncBridge.handleSentChanges`
-— which currently only `print`s the `failedRecordSaves`. `sendChanges()` does
-**not** throw for per-record failures, so `syncNow()` returns normally and
-`SyncNotifier` reports `success` even if some records never saved. The UI lies
-about a partial sync.
+### Remaining follow-ups
 
-### Goal
-
-Make `syncNow` honest: when some records fail to upload, surface that to the user
-(e.g. "Synced — 3 items couldn't upload") rather than a flat success.
-
-### Implementation sketch
-
-1. In `CloudKitSyncBridge`, accumulate the outcome of a send (saved count, failed
-   count, and a sample of failure reasons via the existing `describeError`) the
-   same way `fetchChanges` accumulates results.
-2. Return that summary from the `sendChanges` method-channel call (today it
-   returns `nil`), mirroring how `fetchChanges` returns a map. Plumb it through
-   `CloudKitSyncService.sendChanges` (`platform_cloudkit_sync_service.dart`).
-3. `SyncOutboundService.syncNow()` captures the summary and returns it.
-4. Extend `SyncState` with a `partial`/warning notion (e.g. a `failedCount` field
-   or a `SyncPhase.partial`). In the settings tile, render it amber with the count,
-   distinct from a hard `error`.
-
-### Tradeoffs / open questions
-
-- The repurposable `statusEvents` EventChannel (currently emitted by the bridge
-  but no longer consumed since the notifier refactor) could carry richer
-  progress/partial-failure events instead of overloading the method-channel
-  return value. Pick one mechanism.
-- Decide retry policy for the failed subset: the bridge already re-stages
-  `serverRecordChanged` conflicts; other failure codes (`unknownItem`, quota,
-  schema) need a product decision on whether/when to retry vs. report.
+- The per-failure reasons are carried in `SendResult.failures` (sample of 5) but
+  not yet shown anywhere — a details/expand affordance on the tile could surface
+  them.
+- Retry policy for terminal failure codes (quota, schema, etc.) is still
+  report-only; only conflict/zone cases are auto-retried.
+- The `statusEvents` EventChannel is emitted by the bridge but no longer consumed
+  since the notifier refactor — either repurpose it for richer progress events or
+  remove it.

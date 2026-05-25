@@ -49,6 +49,12 @@ final class CloudKitSyncBridge: NSObject {
     private var fetchedUpserts: [[String: Any]] = []
     private var fetchedDeletions: [[String: Any]] = []
 
+    /// Accumulators populated during an explicit `sendChanges` call. Records
+    /// that fail with a recoverable error (conflict, missing zone) are re-staged
+    /// rather than counted here — only terminal failures land in `sentFailures`.
+    private var sentSavedCount = 0
+    private var sentFailures: [String] = []
+
     func setup(binaryMessenger: FlutterBinaryMessenger) {
         let method = FlutterMethodChannel(
             name: CloudKitSyncChannels.method,
@@ -105,8 +111,8 @@ final class CloudKitSyncBridge: NSObject {
                     result(nil)
 
                 case "sendChanges":
-                    try await performSend()
-                    result(nil)
+                    let summary = try await performSend()
+                    result(summary)
 
                 default:
                     result(FlutterMethodNotImplemented)
@@ -191,11 +197,18 @@ final class CloudKitSyncBridge: NSObject {
         return ["upserts": fetchedUpserts, "deletions": fetchedDeletions]
     }
 
-    private func performSend() async throws {
+    private func performSend() async throws -> [String: Any] {
         let engine = try engineOrThrow()
+        sentSavedCount = 0
+        sentFailures = []
         emitStatus("syncing")
         defer { emitStatus("idle") }
         try await engine.sendChanges()
+        return [
+            "saved": sentSavedCount,
+            "failedCount": sentFailures.count,
+            "failures": Array(sentFailures.prefix(5)),
+        ]
     }
 
     private func stageRecords(_ records: [[String: Any]]) {
@@ -265,6 +278,7 @@ final class CloudKitSyncBridge: NSObject {
         for saved in event.savedRecords {
             serverRecordCache[saved.recordID] = saved
             pendingRecordMaps.removeValue(forKey: saved.recordID.recordName)
+            sentSavedCount += 1
         }
         for failed in event.failedRecordSaves {
             let record = failed.record
@@ -272,19 +286,25 @@ final class CloudKitSyncBridge: NSObject {
             switch error.code {
             case .serverRecordChanged:
                 // Local wins: rebase onto the server record (carries the current
-                // change tag) and retry on the next pass.
+                // change tag) and retry on the next pass. Recoverable — not a
+                // user-facing failure.
                 if let server = error.serverRecord {
                     serverRecordCache[record.recordID] = server
                 }
                 engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
             case .zoneNotFound, .userDeletedZone:
+                // Recoverable: recreate the zone and retry.
                 serverRecordCache.removeValue(forKey: record.recordID)
                 engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
                 engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
             case .unknownItem:
+                // The record no longer exists server-side (delete race); benign.
                 pendingRecordMaps.removeValue(forKey: record.recordID.recordName)
             default:
-                print("[CKSync] save failed for \(record.recordID.recordName): code=\(error.code.rawValue) \(error.localizedDescription)")
+                // Terminal failure — surface it to the user.
+                let reason = describeError(error)
+                sentFailures.append("\(record.recordType) \(record.recordID.recordName): \(reason)")
+                print("[CKSync] save failed for \(record.recordID.recordName): \(reason)")
             }
         }
     }
@@ -433,8 +453,11 @@ extension CloudKitSyncBridge: CKSyncEngineDelegate {
             syncEngine.state.remove(pendingRecordZoneChanges: orphaned)
         }
 
+        // Capture an immutable snapshot: the record provider may run on another
+        // executor, and capturing a `var` is an error in the Swift 6 language mode.
+        let records = prepared
         return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pending) { recordID in
-            prepared[recordID]
+            records[recordID]
         }
     }
 }
