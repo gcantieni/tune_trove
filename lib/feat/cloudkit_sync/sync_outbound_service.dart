@@ -100,15 +100,15 @@ class SyncOutboundService {
 
   static Map<String, dynamic> _serializeTune(Tune t) => {
     'recordType': 'Tune',
-    'cloudId': t.cloudId!,
+    'cloudId': t.cloudId,
     'name': t.name,
-    if (t.abc != null) 'abc': t.abc!,
-    if (t.tsId != null) 'ts_id': t.tsId!,
-    if (t.from != null) 'from': t.from!,
+    if (t.abc != null) 'abc': t.abc,
+    if (t.tsId != null) 'ts_id': t.tsId,
+    if (t.from != null) 'from': t.from,
     if (t.status != null) 'status': t.status!.name,
-    if (t.key != null) 'key': t.key!,
+    if (t.key != null) 'key': t.key,
     if (t.type != null) 'type': t.type!.name,
-    if (t.genre != null) 'genre': t.genre!,
+    if (t.genre != null) 'genre': t.genre,
     'created_at': t.createdAt.millisecondsSinceEpoch,
     if (t.modifiedAt != null)
       'modified_at': t.modifiedAt!.millisecondsSinceEpoch,
@@ -116,10 +116,10 @@ class SyncOutboundService {
 
   static Map<String, dynamic> _serializeRecording(Recording r) => {
     'recordType': 'Recording',
-    'cloudId': r.cloudId!,
+    'cloudId': r.cloudId,
     'name': r.name,
     'url': r.url,
-    if (r.performers != null) 'performers': r.performers!,
+    if (r.performers != null) 'performers': r.performers,
     'created_at': r.createdAt.millisecondsSinceEpoch,
     if (r.modifiedAt != null)
       'modified_at': r.modifiedAt!.millisecondsSinceEpoch,
@@ -131,19 +131,19 @@ class SyncOutboundService {
     required String recordingCloudId,
   }) => {
     'recordType': 'TuneRecording',
-    'cloudId': tr.cloudId!,
+    'cloudId': tr.cloudId,
     'tune_cloud_id': tuneCloudId,
     'recording_cloud_id': recordingCloudId,
     // start_time / end_time are audio-position seconds (double), not dates.
-    if (tr.startTime != null) 'start_time': tr.startTime!,
-    if (tr.endTime != null) 'end_time': tr.endTime!,
-    if (tr.performers != null) 'performers': tr.performers!,
-    if (tr.performedKey != null) 'performed_key': tr.performedKey!,
+    if (tr.startTime != null) 'start_time': tr.startTime,
+    if (tr.endTime != null) 'end_time': tr.endTime,
+    if (tr.performers != null) 'performers': tr.performers,
+    if (tr.performedKey != null) 'performed_key': tr.performedKey,
   };
 
   static Map<String, dynamic> _serializeTuneSet(TuneSet s) => {
     'recordType': 'TuneSet',
-    'cloudId': s.cloudId!,
+    'cloudId': s.cloudId,
     'name': s.name,
     'created_at': s.createdAt.millisecondsSinceEpoch,
     if (s.modifiedAt != null)
@@ -156,10 +156,10 @@ class SyncOutboundService {
     required String tuneCloudId,
   }) => {
     'recordType': 'SetTune',
-    'cloudId': st.cloudId!,
+    'cloudId': st.cloudId,
     'set_cloud_id': setCloudId,
     'tune_cloud_id': tuneCloudId,
     'position': st.position,
-    if (st.key != null) 'key': st.key!,
+    if (st.key != null) 'key': st.key,
   };
 }

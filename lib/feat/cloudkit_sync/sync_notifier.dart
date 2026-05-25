@@ -1,0 +1,109 @@
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_providers.dart';
+
+enum SyncPhase {
+  /// Signed in and ready; not currently syncing.
+  idle,
+
+  /// A sync is in flight.
+  syncing,
+
+  /// The most recent sync completed without error.
+  success,
+
+  /// The most recent sync failed; [SyncState.detail] explains why.
+  error,
+
+  /// iCloud is not signed in / unavailable on this device.
+  unavailable,
+}
+
+class SyncState {
+  final SyncPhase phase;
+
+  /// Human-readable error or info detail (shown on [SyncPhase.error]).
+  final String? detail;
+
+  /// When the last successful sync completed, if ever.
+  final DateTime? lastSyncedAt;
+
+  const SyncState({
+    this.phase = SyncPhase.idle,
+    this.detail,
+    this.lastSyncedAt,
+  });
+
+  bool get isSyncing => phase == SyncPhase.syncing;
+
+  SyncState copyWith({
+    SyncPhase? phase,
+    String? detail,
+    bool clearDetail = false,
+    DateTime? lastSyncedAt,
+  }) => SyncState(
+    phase: phase ?? this.phase,
+    detail: clearDetail ? null : (detail ?? this.detail),
+    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+  );
+}
+
+/// Single source of truth for iCloud sync status, surfaced in the UI.
+///
+/// Brackets a manual sync with `syncing -> success | error` so the state is
+/// always observable, rather than relying on a transient event stream that
+/// never carried errors.
+class SyncNotifier extends AsyncNotifier<SyncState> {
+  @override
+  Future<SyncState> build() async {
+    return SyncState(phase: await _phaseFromAvailability());
+  }
+
+  Future<void> syncNow() async {
+    final current = state.value ?? const SyncState();
+    if (current.isSyncing) return; // guard against double-trigger
+
+    final sync = ref.read(cloudKitSyncServiceProvider);
+    bool available;
+    try {
+      available = await sync.isAvailable();
+    } catch (_) {
+      available = false;
+    }
+    if (!available) {
+      state = AsyncData(current.copyWith(phase: SyncPhase.unavailable, clearDetail: true));
+      return;
+    }
+
+    state = AsyncData(current.copyWith(phase: SyncPhase.syncing, clearDetail: true));
+    try {
+      await ref.read(syncOutboundProvider).syncNow();
+      state = AsyncData(
+        current.copyWith(phase: SyncPhase.success, clearDetail: true, lastSyncedAt: DateTime.now()),
+      );
+    } catch (e) {
+      state = AsyncData(current.copyWith(phase: SyncPhase.error, detail: _humanize(e)));
+    }
+  }
+
+  Future<SyncPhase> _phaseFromAvailability() async {
+    try {
+      final available = await ref.read(cloudKitSyncServiceProvider).isAvailable();
+      return available ? SyncPhase.idle : SyncPhase.unavailable;
+    } catch (_) {
+      // Platform channel unavailable (non-Apple platform, etc.).
+      return SyncPhase.unavailable;
+    }
+  }
+
+  String _humanize(Object error) {
+    if (error is PlatformException) {
+      return error.message ?? error.code;
+    }
+    return error.toString();
+  }
+}
+
+final syncProvider = AsyncNotifierProvider<SyncNotifier, SyncState>(
+  SyncNotifier.new,
+);

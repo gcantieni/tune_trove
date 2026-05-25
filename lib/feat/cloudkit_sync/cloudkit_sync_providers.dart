@@ -22,8 +22,3 @@ final syncOutboundProvider = Provider<SyncOutboundService>((ref) {
   final reconciliation = ref.watch(syncReconciliationProvider);
   return SyncOutboundService(db, sync, reconciliation);
 });
-
-final syncStatusProvider = StreamProvider<SyncStatusEvent>((ref) {
-  final sync = ref.watch(cloudKitSyncServiceProvider);
-  return sync.statusEvents;
-});
