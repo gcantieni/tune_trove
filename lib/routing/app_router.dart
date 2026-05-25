@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:tune_trove/feat/content_library/content_library_page.dart';
 import 'package:tune_trove/feat/recorder/recorder_page.dart';
 import 'package:tune_trove/feat/recording_list/recording_detail_page.dart';
 import 'package:tune_trove/feat/recording_list/recording_list_page.dart';
@@ -11,7 +12,14 @@ import 'package:tune_trove/feat/tune_list/tune_detail_page.dart';
 import 'package:tune_trove/feat/tune_list/tune_list_page.dart';
 import 'package:tune_trove/routing/nav_scaffold.dart';
 
-const _navOrder = ['/set_list', '/tune_list', '/recording_list', '/recorder'];
+const _navOrder = [
+  '/set_list',
+  '/tune_list',
+  '/recording_list',
+  '/recorder',
+  '/settings',
+  '/content_library',
+];
 int _previousNavIndex = 3; // recorder is the initial location
 
 CustomTransitionPage<void> _directionalPage({
@@ -106,6 +114,14 @@ final GoRouter router = GoRouter(
           name: 'settings',
           pageBuilder: (context, state) =>
               _directionalPage(path: '/settings', child: SettingsPage()),
+        ),
+        GoRoute(
+          path: '/content_library',
+          name: 'content_library',
+          pageBuilder: (context, state) => _directionalPage(
+            path: '/content_library',
+            child: const ContentLibraryPage(),
+          ),
         ),
       ],
     ),

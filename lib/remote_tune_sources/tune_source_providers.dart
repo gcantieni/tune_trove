@@ -1,9 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
-import 'package:tune_trove/remote_tune_sources/static_asset_source.dart';
-import 'package:tune_trove/remote_tune_sources/thesession_live_source.dart';
+import 'package:tune_trove/remote_tune_sources/source_confirmation_service.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source.dart';
+
+// ---------------------------------------------------------------------------
+// Infrastructure providers
+// ---------------------------------------------------------------------------
+
+/// Provided by main() via ProviderScope override after
+/// SharedPreferences.getInstance() resolves.
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError(
+    'sharedPreferencesProvider must be overridden in main()',
+  );
+});
 
 final httpClientProvider = Provider<http.Client>((ref) {
   final client = http.Client();
@@ -11,32 +24,61 @@ final httpClientProvider = Provider<http.Client>((ref) {
   return client;
 });
 
+final sourceConfirmationServiceProvider = Provider<SourceConfirmationService>((
+  ref,
+) {
+  return SourceConfirmationService(ref.watch(sharedPreferencesProvider));
+});
+
+// ---------------------------------------------------------------------------
+// Confirmation state — reactive so tuneSourcesProvider rebuilds on change
+// ---------------------------------------------------------------------------
+
+class ConfirmedSourcesNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    return ref.watch(sourceConfirmationServiceProvider).confirmedIds();
+  }
+
+  Future<void> confirm(String sourceId, String license) async {
+    await ref
+        .read(sourceConfirmationServiceProvider)
+        .confirm(sourceId, license);
+    // Re-read from prefs to stay in sync with any external mutations.
+    state = ref.read(sourceConfirmationServiceProvider).confirmedIds();
+  }
+
+  Future<void> revoke(String sourceId) async {
+    await ref.read(sourceConfirmationServiceProvider).revoke(sourceId);
+    state = ref.read(sourceConfirmationServiceProvider).confirmedIds();
+  }
+}
+
+final confirmedSourcesProvider =
+    NotifierProvider<ConfirmedSourcesNotifier, Set<String>>(
+      ConfirmedSourcesNotifier.new,
+    );
+
+// ---------------------------------------------------------------------------
+// Content-gated tune sources
+// ---------------------------------------------------------------------------
+
+/// Returns only the [TuneSource]s whose license terms the user has accepted
+/// (or which are always active because they require no confirmation).
+/// Rebuilds automatically when the user confirms or revokes a source.
 final tuneSourcesProvider = Provider<List<TuneSource>>((ref) {
   final client = ref.watch(httpClientProvider);
-  return [
-    TheSessionTuneSource(client: client),
-    StaticAssetTuneSource(
-      name: "O'Neill's 1001",
-      assetPath: 'assets/data/oneills_tunes.json',
-    ),
-    StaticAssetTuneSource(
-      name: 'Norbeck',
-      assetPath: 'assets/data/norbeck_tunes.json',
-    ),
-    StaticAssetTuneSource(
-      name: 'William Clarke of Feltwell',
-      assetPath: 'assets/data/williamclarke_tunes.json',
-    ),
-    StaticAssetTuneSource(
-      name: 'Paul Hardy Session Tunebook',
-      assetPath: 'assets/data/paulhardy_tunes.json',
-    ),
-    StaticAssetTuneSource(
-      name: 'Pete Mac Tunebook',
-      assetPath: 'assets/data/pete_mac_tunes.json',
-    ),
-  ];
+  final confirmedIds = ref.watch(confirmedSourcesProvider);
+
+  return allContentSources
+      .where((meta) => meta.isAlwaysActive || confirmedIds.contains(meta.id))
+      .map((meta) => buildTuneSource(meta, client: client))
+      .toList();
 });
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
 
 final tuneSearchProvider = FutureProvider.family
     .autoDispose<Map<String, List<RemoteTune>>, String>((ref, query) async {

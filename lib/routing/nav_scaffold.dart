@@ -6,7 +6,14 @@ import 'package:tune_trove/model/database_provider.dart';
 
 final navScaffoldKey = GlobalKey<ScaffoldState>();
 
-const _navRoutes = ['/recorder', '/set_list', '/tune_list', '/recording_list', '/settings'];
+const _navRoutes = [
+  '/recorder',
+  '/set_list',
+  '/tune_list',
+  '/recording_list',
+  '/settings',
+  '/content_library',
+];
 
 int _drawerIndex(String location) {
   for (int i = 0; i < _navRoutes.length; i++) {
@@ -67,6 +74,10 @@ class NavScaffold extends ConsumerWidget {
           const NavigationDrawerDestination(
             icon: Icon(Icons.settings_outlined),
             label: Text('Settings'),
+          ),
+          const NavigationDrawerDestination(
+            icon: Icon(Icons.library_books_outlined),
+            label: Text('Content Library'),
           ),
         ],
       ),

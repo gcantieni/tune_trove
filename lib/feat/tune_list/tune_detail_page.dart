@@ -16,6 +16,8 @@ import 'package:tune_trove/model/providers/sets_provider.dart';
 import 'package:tune_trove/model/providers/tune_recording_provider.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
+import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/shared_widgets/key_picker_sheet.dart';
 import 'package:tune_trove/shared_widgets/recording_picker_dialog.dart';
 import 'package:tune_trove/shared_widgets/timestamp_editor_dialog.dart';
@@ -209,6 +211,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         _readRow('Type', tune.type?.name ?? '—'),
         _readRow('Status', statusLabel.isEmpty ? '—' : statusLabel),
         _readRow('From', (tune.from?.isEmpty ?? true) ? '—' : tune.from!),
+        _SourceAttribution(sourceName: tune.from),
         const SizedBox(height: 16),
         const Text('ABC', style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
@@ -579,5 +582,29 @@ class _LinkedRecordingRow extends ConsumerWidget {
       performedKey: drift.Value(result.performedKey),
     );
     await ref.read(databaseProvider).tuneRecordingDao.updateLink(updated);
+  }
+}
+
+/// Shows attribution for licensed sources (NC-SA etc.) on the tune detail
+/// screen. Required by license terms — must be visible on the same screen as
+/// the content.
+class _SourceAttribution extends StatelessWidget {
+  final String? sourceName;
+  const _SourceAttribution({required this.sourceName});
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = metaBySourceName(allContentSources, sourceName);
+    if (meta == null || meta.isAlwaysActive) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Text(
+        meta.attribution,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontStyle: FontStyle.italic,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
   }
 }
