@@ -49,7 +49,7 @@ class NavScaffold extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(28, 16, 16, 10),
             child: Text(
-              'Tune Catcher',
+              'Tune Trove',
               style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
