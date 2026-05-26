@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:tune_trove/feat/cloudkit_sync/sync_refresh_indicator.dart';
 import 'package:tune_trove/feat/set_list/set_tune_card.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
@@ -115,38 +116,59 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
           body: tunesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
-            data: (tunes) => tunes.isEmpty
-                ? const Center(child: Text('No tunes yet — tap + to add one.'))
-                : ReorderableListView.builder(
-                    buildDefaultDragHandles: false,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: tunes.length,
-                    itemBuilder: (context, index) {
-                      final entry = tunes[index];
-                      return SetTuneCard(
-                        key: ValueKey(entry.link.id),
-                        entry: entry,
-                        index: index,
-                        onDelete: () => ref
+            data: (tunes) => SyncRefreshIndicator(
+              child: tunes.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).size.width * 0.25,
+                      ),
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 48),
+                          child: Center(
+                            child: Text('No tunes yet — tap + to add one.'),
+                          ),
+                        ),
+                      ],
+                    )
+                  : ReorderableListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      buildDefaultDragHandles: false,
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        16,
+                        16,
+                        16 + MediaQuery.of(context).size.width * 0.25,
+                      ),
+                      itemCount: tunes.length,
+                      itemBuilder: (context, index) {
+                        final entry = tunes[index];
+                        return SetTuneCard(
+                          key: ValueKey(entry.link.id),
+                          entry: entry,
+                          index: index,
+                          onDelete: () => ref
+                              .read(databaseProvider)
+                              .setTuneDao
+                              .removeTuneFromSet(entry.link.id),
+                          onKeyChanged: (key) => ref
+                              .read(databaseProvider)
+                              .setTuneDao
+                              .updateKey(entry.link.id, key),
+                        );
+                      },
+                      onReorder: (oldIndex, newIndex) {
+                        final insertAt = newIndex > oldIndex
+                            ? newIndex - 1
+                            : newIndex;
+                        ref
                             .read(databaseProvider)
                             .setTuneDao
-                            .removeTuneFromSet(entry.link.id),
-                        onKeyChanged: (key) => ref
-                            .read(databaseProvider)
-                            .setTuneDao
-                            .updateKey(entry.link.id, key),
-                      );
-                    },
-                    onReorder: (oldIndex, newIndex) {
-                      final insertAt = newIndex > oldIndex
-                          ? newIndex - 1
-                          : newIndex;
-                      ref
-                          .read(databaseProvider)
-                          .setTuneDao
-                          .reorderTune(widget.setId, oldIndex, insertAt);
-                    },
-                  ),
+                            .reorderTune(widget.setId, oldIndex, insertAt);
+                      },
+                    ),
+            ),
           ),
           floatingActionButton: FloatingActionButton(
             tooltip: 'Add tune',

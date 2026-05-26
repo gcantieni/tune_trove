@@ -34,7 +34,12 @@ class TuneListPage extends ConsumerWidget {
               child: SyncRefreshIndicator(
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  children: [TuneListWidget()],
+                  children: [
+                    TuneListWidget(),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.width * 0.25,
+                    ),
+                  ],
                 ),
               ),
             ),

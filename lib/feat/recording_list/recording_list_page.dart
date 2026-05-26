@@ -25,7 +25,10 @@ class RecordingListPage extends StatelessWidget {
         child: SyncRefreshIndicator(
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            children: [RecordingListWidget()],
+            children: [
+              RecordingListWidget(),
+              SizedBox(height: MediaQuery.of(context).size.width * 0.25),
+            ],
           ),
         ),
       ),

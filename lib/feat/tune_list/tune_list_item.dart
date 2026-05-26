@@ -125,23 +125,50 @@ class TuneListItem extends ConsumerWidget {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Card(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            onTap: () => context.push('/tune_list/${tune.id}'),
-            title: Text(tune.name),
-            subtitle: subtitleString.isNotEmpty ? Text(subtitleString) : null,
-            trailing: InkWell(
-              onTap: () => _pickStatus(context, ref, tune),
-              borderRadius: BorderRadius.circular(4),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                child: _buildDotRow(_statusDotCount(tune.status), primary),
-              ),
-            ),
+      child: SizedBox(
+        width: double.infinity,
+        child: InkWell(
+        onTap: () => context.push('/tune_list/${tune.id}'),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(tune.name, style: Theme.of(context).textTheme.titleMedium),
+              if (subtitleString.isNotEmpty || tune.status != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    if (subtitleString.isNotEmpty)
+                      Expanded(
+                        child: Text(
+                          subtitleString,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    InkWell(
+                      onTap: () => _pickStatus(context, ref, tune),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        child: _buildDotRow(
+                          _statusDotCount(tune.status),
+                          primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
+      ),
       ),
     );
   }

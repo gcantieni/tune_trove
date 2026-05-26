@@ -177,7 +177,12 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
   Widget _buildReadView(Recording r) {
     final kind = recordingLinkKindOf(r.url);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        16 + MediaQuery.of(context).size.width * 0.25,
+      ),
       children: [
         _readRow('Name', r.name),
         const SizedBox(height: 8),
@@ -306,7 +311,12 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(context).size.width * 0.25,
+        ),
         children: [
           TextFormField(
             controller: _nameController,
@@ -394,57 +404,89 @@ class _LinkedTuneRow extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 2),
-      child: ListTile(
-        title: Text(tune.name),
-        subtitle: subtitle.isEmpty ? null : Text(subtitle),
+      child: SizedBox(
+        width: double.infinity,
+        child: InkWell(
         onTap: () => context.push('/tune_list/${tune.id}'),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton(
-              onPressed: () => _editTimes(context, ref),
-              child: Text(
-                '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
-                style: const TextStyle(fontFamily: 'monospace'),
-              ),
-            ),
-            if (kind == RecordingLinkKind.youtube && link.startTime != null)
-              IconButton(
-                icon: const Icon(Icons.play_circle_outline, size: 18),
-                tooltip: 'Open at ${formatTime(link.startTime)}',
-                onPressed: () => _launchUrl(
-                  context,
-                  _withTimestamp(recordingUrl, link.startTime!),
-                ),
-              ),
-            if (isLocalOrApple && link.startTime != null)
-              IconButton(
-                icon: const Icon(Icons.play_circle_outline, size: 18),
-                tooltip: 'Play from ${formatTime(link.startTime)}',
-                onPressed: () => ref
-                    .read(audioPlayerProvider.notifier)
-                    .playWithBounds(
-                      recordingUrl,
-                      start: link.startTime,
-                      end: link.endTime,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 4, top: 8, bottom: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        tune.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    tooltip: 'Remove from recording',
+                    onPressed: () => ref
+                        .read(databaseProvider)
+                        .tuneRecordingDao
+                        .unlinkTuneFromRecording(link.tuneId, link.recordingId),
+                  ),
+                ],
               ),
-            if (showSaveLoop)
-              IconButton(
-                icon: const Icon(Icons.save_alt, size: 18),
-                tooltip: 'Save loop as timestamps',
-                onPressed: () => _saveLoop(ref, playerState),
+              Row(
+                children: [
+                  Expanded(
+                    child: subtitle.isNotEmpty
+                        ? Text(
+                            subtitle,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  TextButton(
+                    onPressed: () => _editTimes(context, ref),
+                    child: Text(
+                      '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
+                      style: const TextStyle(fontFamily: 'monospace'),
+                    ),
+                  ),
+                  if (kind == RecordingLinkKind.youtube &&
+                      link.startTime != null)
+                    IconButton(
+                      icon: const Icon(Icons.play_circle_outline, size: 18),
+                      tooltip: 'Open at ${formatTime(link.startTime)}',
+                      onPressed: () => _launchUrl(
+                        context,
+                        _withTimestamp(recordingUrl, link.startTime!),
+                      ),
+                    ),
+                  if (isLocalOrApple && link.startTime != null)
+                    IconButton(
+                      icon: const Icon(Icons.play_circle_outline, size: 18),
+                      tooltip: 'Play from ${formatTime(link.startTime)}',
+                      onPressed: () => ref
+                          .read(audioPlayerProvider.notifier)
+                          .playWithBounds(
+                            recordingUrl,
+                            start: link.startTime,
+                            end: link.endTime,
+                          ),
+                    ),
+                  if (showSaveLoop)
+                    IconButton(
+                      icon: const Icon(Icons.save_alt, size: 18),
+                      tooltip: 'Save loop as timestamps',
+                      onPressed: () => _saveLoop(ref, playerState),
+                    ),
+                ],
               ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Remove from recording',
-              onPressed: () => ref
-                  .read(databaseProvider)
-                  .tuneRecordingDao
-                  .unlinkTuneFromRecording(link.tuneId, link.recordingId),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
       ),
     );
   }

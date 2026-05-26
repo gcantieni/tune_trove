@@ -29,7 +29,12 @@ class SetListPage extends ConsumerWidget {
         data: (sets) => SyncRefreshIndicator(
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + MediaQuery.of(context).size.width * 0.25,
+            ),
             children: sets.isEmpty
                 ? const [
                     Padding(

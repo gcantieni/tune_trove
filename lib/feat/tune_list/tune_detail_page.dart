@@ -204,7 +204,12 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
       });
     }
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        16 + MediaQuery.of(context).size.width * 0.25,
+      ),
       children: [
         _readRow('Name', tune.name),
         _readRow('Key', tune.key ?? '—'),
@@ -304,7 +309,12 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(context).size.width * 0.25,
+        ),
         children: [
           TextFormField(
             controller: _nameController,
@@ -531,34 +541,66 @@ class _LinkedRecordingRow extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 2),
-      child: ListTile(
-        title: Text(recording.name),
-        subtitle: subtitle == null ? null : Text(subtitle),
-        onTap: () => context.push('/recording_list/${recording.id}'),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton(
-              onPressed: () => _editTimes(context, ref),
-              child: Text(
-                [
-                  '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
-                  if (link.performedKey != null &&
-                      link.performedKey!.isNotEmpty)
-                    link.performedKey!,
-                ].join('  ·  '),
-                style: const TextStyle(fontFamily: 'monospace'),
-              ),
+      child: SizedBox(
+        width: double.infinity,
+        child: InkWell(
+          onTap: () => context.push('/recording_list/${recording.id}'),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 4, top: 8, bottom: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          recording.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      tooltip: 'Remove from tune',
+                      onPressed: () => ref
+                          .read(databaseProvider)
+                          .tuneRecordingDao
+                          .unlinkTuneFromRecording(link.tuneId, link.recordingId),
+                    ),
+                  ],
+                ),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => _editTimes(context, ref),
+                      child: Text(
+                        [
+                          '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
+                          if (link.performedKey != null &&
+                              link.performedKey!.isNotEmpty)
+                            link.performedKey!,
+                        ].join('  ·  '),
+                        style: const TextStyle(fontFamily: 'monospace'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Remove from tune',
-              onPressed: () => ref
-                  .read(databaseProvider)
-                  .tuneRecordingDao
-                  .unlinkTuneFromRecording(link.tuneId, link.recordingId),
-            ),
-          ],
+          ),
         ),
       ),
     );
