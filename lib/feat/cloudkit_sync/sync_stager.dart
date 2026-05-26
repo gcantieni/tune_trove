@@ -15,6 +15,8 @@ class SyncStager {
   final SyncOutboundService _outbound;
 
   Timer? _debounce;
+  Timer? _pullDebounce;
+  StreamSubscription<void>? _remoteSub;
   bool _started = false;
 
   SyncStager(this._db, this._sync, this._outbound);
@@ -23,12 +25,24 @@ class SyncStager {
     if (_started) return;
     _started = true;
     _db.onRowChanged = _onRowChanged;
+    // A silent push from another device → pull the latest (no snackbar).
+    _remoteSub = _sync.remoteChanges.listen((_) => _onRemoteChange());
   }
 
   void dispose() {
     _debounce?.cancel();
+    _pullDebounce?.cancel();
+    _remoteSub?.cancel();
     _db.onRowChanged = null;
     _started = false;
+  }
+
+  void _onRemoteChange() {
+    _pullDebounce?.cancel();
+    _pullDebounce = Timer(const Duration(milliseconds: 500), () {
+      // Silent: bypasses SyncNotifier so no snackbar pops while the user reads.
+      unawaited(_outbound.syncNow().catchError((_) => const SendResult()));
+    });
   }
 
   void _onRowChanged(String recordType, String cloudId, {required bool deleted}) {

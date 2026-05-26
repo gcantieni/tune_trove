@@ -72,5 +72,14 @@ abstract class CloudKitSyncService {
   /// Status updates emitted by the engine ('idle' | 'syncing' | 'error').
   Stream<SyncStatusEvent> get statusEvents;
 
+  /// Fires when CloudKit reports (via silent push) that another device changed
+  /// data, so the app can pull the latest.
+  Stream<void> get remoteChanges;
+
+  /// Fires when a last-writer-wins conflict discarded local edits in favor of a
+  /// newer version from another device. The value is how many records were
+  /// overwritten, so the UI can warn the user.
+  Stream<int> get localOverwrites;
+
   void dispose();
 }

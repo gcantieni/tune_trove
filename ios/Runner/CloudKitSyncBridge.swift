@@ -25,6 +25,10 @@ enum CloudKitSyncChannels {
 @available(iOS 17, macOS 14, *)
 @MainActor
 final class CloudKitSyncBridge: NSObject {
+    /// The active bridge, so the app delegate's push handler can reach it
+    /// without threading a reference through Flutter's engine plumbing.
+    static weak var shared: CloudKitSyncBridge?
+
     private var methodChannel: FlutterMethodChannel?
     private var eventChannel: FlutterEventChannel?
     private var eventSink: FlutterEventSink?
@@ -35,6 +39,7 @@ final class CloudKitSyncBridge: NSObject {
         zoneName: "TuneTroveZone",
         ownerName: CKCurrentUserDefaultName
     )
+    private let subscriptionID = "tune-trove-db-changes"
 
     private var syncEngine: CKSyncEngine?
 
@@ -55,6 +60,10 @@ final class CloudKitSyncBridge: NSObject {
     private var sentSavedCount = 0
     private var sentFailures: [String] = []
 
+    /// Counts conflicts during a send that resolved in the *server's* favor — we
+    /// abandoned that many local pushes and should warn the user + pull.
+    private var serverWonCount = 0
+
     func setup(binaryMessenger: FlutterBinaryMessenger) {
         let method = FlutterMethodChannel(
             name: CloudKitSyncChannels.method,
@@ -72,6 +81,45 @@ final class CloudKitSyncBridge: NSObject {
         event.setStreamHandler(self)
         methodChannel = method
         eventChannel = event
+        CloudKitSyncBridge.shared = self
+    }
+
+    // MARK: - Push notifications
+
+    /// Called by the app delegate when a remote notification arrives. Returns
+    /// true if it was a CloudKit push for our subscription (and a sync was
+    /// nudged), so the delegate can report `.newData`.
+    @discardableResult
+    func handleRemoteNotification(_ userInfo: [AnyHashable: Any]) -> Bool {
+        guard let notification = CKNotification(fromRemoteNotificationDictionary: userInfo),
+              notification.subscriptionID == subscriptionID
+        else { return false }
+        print("[CKSync] remote push received — nudging Dart to sync")
+        eventSink?(["type": "remoteChange"])
+        return true
+    }
+
+    /// Registers a silent database subscription so CloudKit pushes when another
+    /// device changes data. Idempotent; guarded by a persisted flag.
+    private func ensureSubscription() {
+        let key = "ck_subscription_\(subscriptionID)"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        Task {
+            do {
+                let subscription = CKDatabaseSubscription(subscriptionID: subscriptionID)
+                let info = CKSubscription.NotificationInfo()
+                info.shouldSendContentAvailable = true
+                subscription.notificationInfo = info
+                _ = try await database.modifySubscriptions(
+                    saving: [subscription],
+                    deleting: []
+                )
+                UserDefaults.standard.set(true, forKey: key)
+                print("[CKSync] database subscription registered")
+            } catch {
+                print("[CKSync] subscription registration failed: \(describeError(error))")
+            }
+        }
     }
 
     // MARK: - Method channel
@@ -162,6 +210,46 @@ final class CloudKitSyncBridge: NSObject {
         return parts.joined(separator: " ")
     }
 
+    /// Last-writer-wins: true when the server's copy is newer than our pending
+    /// local change. Compares `modified_at` and falls back to `created_at`
+    /// (matching the inbound reconciliation rule). Returns false (local wins)
+    /// when either side lacks a timestamp — e.g. join records
+    /// (TuneRecording/SetTune), which have neither.
+    private func serverWins(localFor recordName: String, server: CKRecord) -> Bool {
+        guard let localMs = localTimestampMs(recordName),
+              let serverMs = serverTimestampMs(server)
+        else { return false }
+        return serverMs > localMs
+    }
+
+    private func localTimestampMs(_ recordName: String) -> Int64? {
+        guard let map = pendingRecordMaps[recordName] else { return nil }
+        if let m = (map["modified_at"] as? NSNumber)?.int64Value { return m }
+        if let c = (map["created_at"] as? NSNumber)?.int64Value { return c }
+        return nil
+    }
+
+    private func serverTimestampMs(_ record: CKRecord) -> Int64? {
+        if let d = record["modifiedAt"] as? Date { return Int64(d.timeIntervalSince1970 * 1000) }
+        if let d = record["createdAt"] as? Date { return Int64(d.timeIntervalSince1970 * 1000) }
+        return nil
+    }
+
+    /// True when a failed send was *only* concurrent-edit conflicts
+    /// (`serverRecordChanged`), which `handleSentChanges` has already rebased and
+    /// re-staged — so the send is safe to retry.
+    private func isRecoverableConflict(_ error: CKError) -> Bool {
+        guard error.code == .partialFailure,
+              let partials = error.partialErrorsByItemID, !partials.isEmpty
+        else { return false }
+        return partials.values.allSatisfy {
+            switch ($0 as? CKError)?.code {
+            case .serverRecordChanged, .batchRequestFailed: return true
+            default: return false
+            }
+        }
+    }
+
     // MARK: - Engine lifecycle
 
     private func initializeEngine() {
@@ -178,6 +266,7 @@ final class CloudKitSyncBridge: NSObject {
         // existing zone is a no-op, so this is safe to issue on every launch.
         engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
         syncEngine = engine
+        ensureSubscription()
         print("[CKSync] engine initialized")
     }
 
@@ -208,9 +297,33 @@ final class CloudKitSyncBridge: NSObject {
         let engine = try engineOrThrow()
         sentSavedCount = 0
         sentFailures = []
+        serverWonCount = 0
         emitStatus("syncing")
         defer { emitStatus("idle") }
-        try await engine.sendChanges()
+
+        // `sendChanges` throws a `.partialFailure` of `.serverRecordChanged` when
+        // another device changed a record concurrently. By the time it throws,
+        // `handleSentChanges` has already rebased those records onto the current
+        // server records and re-staged them — so retry the send (bounded) to
+        // flush the rebased versions instead of deferring to the next sync.
+        var attempt = 0
+        while true {
+            do {
+                try await engine.sendChanges()
+                break
+            } catch let error as CKError where attempt < 3 && isRecoverableConflict(error) {
+                attempt += 1
+                print("[CKSync] send conflict — resolved (LWW), retrying (attempt \(attempt))")
+            }
+        }
+
+        // Conflicts the server won mean we dropped local pushes; warn the user
+        // and nudge a pull so this device adopts the winning values.
+        if serverWonCount > 0 {
+            eventSink?(["type": "localOverwritten", "count": serverWonCount])
+            eventSink?(["type": "remoteChange"])
+        }
+
         return [
             "saved": sentSavedCount,
             "failedCount": sentFailures.count,
@@ -326,17 +439,33 @@ final class CloudKitSyncBridge: NSObject {
             let error = failed.error
             switch error.code {
             case .serverRecordChanged:
-                // Local wins: rebase onto the server record (carries the current
-                // change tag) and retry on the next pass. Recoverable — not a
-                // user-facing failure.
-                if let server = error.serverRecord {
-                    serverRecordCache[record.recordID] = server
+                // Concurrent edit. Resolve last-writer-wins by `modified_at`.
+                guard let server = error.serverRecord else {
+                    // No server copy to compare — rebase optimistically (local).
+                    engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+                    break
                 }
-                engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+                serverRecordCache[record.recordID] = server
+                if serverWins(localFor: record.recordID.recordName, server: server) {
+                    // Server's copy is newer: abandon our push and pull it so this
+                    // device adopts the winning value.
+                    pendingRecordMaps.removeValue(forKey: record.recordID.recordName)
+                    engine.state.remove(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+                    serverWonCount += 1
+                    savePendingMaps()
+                } else {
+                    // Local is newer (or no comparable timestamp): rebase onto the
+                    // server's change tag and retry, overwriting the server copy.
+                    engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+                }
             case .zoneNotFound, .userDeletedZone:
                 // Recoverable: recreate the zone and retry.
                 serverRecordCache.removeValue(forKey: record.recordID)
                 engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
+                engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+            case .batchRequestFailed:
+                // Failed only because a sibling in the same batch conflicted;
+                // re-stage and retry once the sibling is rebased.
                 engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
             case .unknownItem:
                 // The record no longer exists server-side (delete race); benign.

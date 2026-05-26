@@ -19,6 +19,11 @@ class SyncOutboundService {
 
   static const _backfillKey = 'sync_initial_push_done';
 
+  /// Serializes sync cycles so concurrent triggers (launch, pull-to-refresh,
+  /// manual button, push) can't overlap — overlapping `fetchChanges` calls would
+  /// corrupt the bridge's per-fetch accumulators.
+  Future<SendResult> _chain = Future.value(const SendResult());
+
   /// Runs one deterministic sync cycle: fetch remote -> reconcile locally ->
   /// stage -> send. Fetching and reconciling *before* staging is what lets a
   /// device with existing tunes adopt remote ids (dedupe) instead of uploading
@@ -28,7 +33,17 @@ class SyncOutboundService {
   /// [fullPush] is requested (the manual "Sync Now" button, as a safety net).
   /// Otherwise this just flushes whatever [SyncStager] staged incrementally at
   /// mutation time.
-  Future<SendResult> syncNow({bool fullPush = false}) async {
+  Future<SendResult> syncNow({bool fullPush = false}) {
+    final result = _chain.then(
+      (_) => _runSync(fullPush: fullPush),
+      onError: (_) => _runSync(fullPush: fullPush),
+    );
+    // Track completion without letting one failure break the chain.
+    _chain = result.then((r) => r, onError: (_) => const SendResult());
+    return result;
+  }
+
+  Future<SendResult> _runSync({required bool fullPush}) async {
     await _sync.initialize();
     final fetched = await _sync.fetchChanges();
     await _reconciliation.applyFetched(fetched);

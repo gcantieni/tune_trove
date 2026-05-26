@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +31,8 @@ class MyApp extends ConsumerStatefulWidget {
 }
 
 class _MyAppState extends ConsumerState<MyApp> {
+  StreamSubscription<int>? _overwriteSub;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +43,20 @@ class _MyAppState extends ConsumerState<MyApp> {
       await ref.read(syncProvider.future);
       await ref.read(syncProvider.notifier).syncNow();
     });
+
+    // Warn when a last-writer-wins conflict discarded a local edit. Subscribe
+    // to the raw stream (not a provider) so repeated same-count events aren't
+    // deduped away.
+    _overwriteSub = ref
+        .read(cloudKitSyncServiceProvider)
+        .localOverwrites
+        .listen(_showOverwriteWarning);
+  }
+
+  @override
+  void dispose() {
+    _overwriteSub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -69,6 +87,21 @@ class _MyAppState extends ConsumerState<MyApp> {
       routerConfig: router,
       builder: (context, child) => Stack(
         children: [child ?? const SizedBox.shrink(), const AbcRendererAnchor()],
+      ),
+    );
+  }
+
+  void _showOverwriteWarning(int count) {
+    final messenger = _scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+    final message = count <= 1
+        ? 'A change you made was replaced by a newer edit from another device.'
+        : '$count of your changes were replaced by newer edits from another device.';
+    messenger.showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.orange.shade900,
+        duration: const Duration(seconds: 6),
+        content: Text(message),
       ),
     );
   }

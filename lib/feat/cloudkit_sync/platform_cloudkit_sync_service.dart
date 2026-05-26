@@ -9,19 +9,26 @@ const _eventChannel = EventChannel('com.gcantieni.tuneTrove/cloudkit_sync_state'
 class PlatformCloudKitSyncService implements CloudKitSyncService {
   StreamSubscription<dynamic>? _sub;
   final _statusController = StreamController<SyncStatusEvent>.broadcast();
+  final _remoteChangesController = StreamController<void>.broadcast();
+  final _localOverwriteController = StreamController<int>.broadcast();
 
   PlatformCloudKitSyncService() {
     _sub = _eventChannel.receiveBroadcastStream().listen(
       (dynamic raw) {
         if (raw is! Map) return;
         final map = raw.cast<String, dynamic>();
-        if (map['type'] == 'status') {
-          _statusController.add(
-            SyncStatusEvent(
-              map['status'] as String? ?? 'idle',
-              message: map['message'] as String?,
-            ),
-          );
+        switch (map['type']) {
+          case 'status':
+            _statusController.add(
+              SyncStatusEvent(
+                map['status'] as String? ?? 'idle',
+                message: map['message'] as String?,
+              ),
+            );
+          case 'remoteChange':
+            _remoteChangesController.add(null);
+          case 'localOverwritten':
+            _localOverwriteController.add((map['count'] as int?) ?? 1);
         }
       },
       onError: _statusController.addError,
@@ -91,8 +98,16 @@ class PlatformCloudKitSyncService implements CloudKitSyncService {
   Stream<SyncStatusEvent> get statusEvents => _statusController.stream;
 
   @override
+  Stream<void> get remoteChanges => _remoteChangesController.stream;
+
+  @override
+  Stream<int> get localOverwrites => _localOverwriteController.stream;
+
+  @override
   void dispose() {
     _sub?.cancel();
     _statusController.close();
+    _remoteChangesController.close();
+    _localOverwriteController.close();
   }
 }

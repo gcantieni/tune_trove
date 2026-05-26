@@ -22,6 +22,9 @@ class MainFlutterWindow: NSWindow {
             let syncBridge = CloudKitSyncBridge()
             syncBridge.setup(binaryMessenger: flutterViewController.engine.binaryMessenger)
             cloudKitSyncBridge = syncBridge
+
+            // Needed to receive CloudKit's silent change pushes.
+            NSApplication.shared.registerForRemoteNotifications()
         }
 
         super.awakeFromNib()
