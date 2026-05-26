@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:tune_trove/feat/cloudkit_sync/sync_refresh_indicator.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/model/providers/sets_provider.dart';
@@ -25,13 +26,22 @@ class SetListPage extends ConsumerWidget {
       body: setsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (sets) => sets.isEmpty
-            ? const Center(child: Text('No sets yet — tap + to create one.'))
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: sets.length,
-                itemBuilder: (context, index) => _SetCard(tuneSet: sets[index]),
-              ),
+        data: (sets) => SyncRefreshIndicator(
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            children: sets.isEmpty
+                ? const [
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48),
+                      child: Center(
+                        child: Text('No sets yet — tap + to create one.'),
+                      ),
+                    ),
+                  ]
+                : [for (final s in sets) _SetCard(tuneSet: s)],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'New set',

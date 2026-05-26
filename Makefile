@@ -40,6 +40,7 @@ coverage:
 
 bump:
 	@bash scripts/bump_version.sh $(if $(MAJOR),major,$(if $(MINOR),minor,patch))
+	@echo "Don't forget to promote any DB schema updates to the icloud sync data on icloud.developer.apple.com"
 
 publish-ios:
 	@bash scripts/publish.sh ios

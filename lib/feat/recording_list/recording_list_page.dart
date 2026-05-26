@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:tune_trove/feat/cloudkit_sync/sync_refresh_indicator.dart';
 import 'package:tune_trove/feat/recording_list/recording_form_widget.dart';
 import 'package:tune_trove/feat/recording_list/recording_list_item.dart';
 import 'package:tune_trove/model/database.dart';
@@ -21,7 +22,12 @@ class RecordingListPage extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: ListView(children: [RecordingListWidget()]),
+        child: SyncRefreshIndicator(
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [RecordingListWidget()],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add recording',

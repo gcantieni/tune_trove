@@ -149,8 +149,14 @@ final class CloudKitSyncBridge: NSObject {
         if let partial = ck.partialErrorsByItemID, !partial.isEmpty {
             parts.append("partialCount=\(partial.count)")
             for (id, itemError) in partial {
-                let pe = itemError as? CKError
-                parts.append("[\(id): code=\(pe?.code.rawValue ?? -1)]")
+                let pe = itemError as NSError
+                let name = (id as? CKRecord.ID)?.recordName ?? "\(id)"
+                var detail = "code=\(pe.code) \(pe.localizedDescription)"
+                // CloudKit puts the precise schema/type rejection reason here.
+                if let server = pe.userInfo["ServerErrorDescription"] as? String {
+                    detail += " — \(server)"
+                }
+                parts.append("[\(name): \(detail)]")
             }
         }
         return parts.joined(separator: " ")

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:tune_trove/feat/cloudkit_sync/sync_refresh_indicator.dart';
 import 'package:tune_trove/feat/tune_list/tune_filter_bar.dart';
 import 'package:tune_trove/feat/tune_list/tune_filters.dart';
 import 'package:tune_trove/feat/tune_list/tune_list_item.dart';
@@ -29,7 +30,14 @@ class TuneListPage extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const TuneFilterBar(),
-            Expanded(child: ListView(children: [TuneListWidget()])),
+            Expanded(
+              child: SyncRefreshIndicator(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [TuneListWidget()],
+                ),
+              ),
+            ),
           ],
         ),
       ),
