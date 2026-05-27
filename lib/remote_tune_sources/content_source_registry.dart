@@ -111,6 +111,16 @@ const List<ContentSourceMeta> allContentSources = [
     confirmationRequired: false,
     bundled: true,
   ),
+  ContentSourceMeta(
+    id: 'kidson',
+    name: 'Old English Country Dances',
+    license: 'Public Domain',
+    attribution:
+        '"Old English Country Dances", collected and edited by Frank Kidson, '
+        'William Reeves, London, 1890. Public domain. Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -180,6 +190,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/erm_tunes.json',
+      );
+    case 'kidson':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/kidson_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');
