@@ -1,6 +1,11 @@
 class ContentSourceMeta {
   final String id;
   final String name;
+
+  /// Short geographic/cultural genre label shown in the Content Library UI
+  /// (e.g. 'Irish', 'Scottish', 'New England / Contra').
+  final String genre;
+
   final String license;
   final String? licenseUrl;
   final String attribution;
@@ -20,6 +25,7 @@ class ContentSourceMeta {
   const ContentSourceMeta({
     required this.id,
     required this.name,
+    required this.genre,
     required this.license,
     this.licenseUrl,
     required this.attribution,
@@ -28,6 +34,7 @@ class ContentSourceMeta {
     this.hidden = false,
   });
 
+  /// Public-domain sources that are on by default (user can still disable them).
   bool get isAlwaysActive => !confirmationRequired;
 }
 

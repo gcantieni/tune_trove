@@ -5,12 +5,14 @@ import 'package:tune_trove/remote_tune_sources/tune_source.dart';
 /// Master registry of every content source the app knows about.
 ///
 /// Sources with [ContentSourceMeta.confirmationRequired] == false are active
-/// on first launch with no user action required (CC0 / public domain).
-/// All others are inactive until the user explicitly confirms their license.
+/// on first launch with no user action required (CC0 / public domain), but
+/// the user may disable any of them. All others are inactive until the user
+/// explicitly confirms their license.
 const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'oneills_1001',
     name: "O'Neill's 1001",
+    genre: 'Irish',
     license: 'Public Domain',
     attribution:
         "O'Neill's 1001 Gems — compiled by Francis O'Neill (1907). Traditional Irish folk tunes; public domain.",
@@ -20,6 +22,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'williamclarke',
     name: 'William Clarke of Feltwell',
+    genre: 'English',
     license: 'Public Domain',
     attribution:
         'William Clarke of Feltwell tune manuscript (~1701). Traditional tunes; public domain.',
@@ -29,6 +32,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'thesession',
     name: 'thesession.org',
+    genre: 'Irish / Celtic',
     license: 'ODbL 1.0',
     licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
     attribution:
@@ -40,6 +44,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'norbeck',
     name: 'Norbeck',
+    genre: 'Irish / Celtic',
     license: 'Free for personal non-commercial use',
     licenseUrl: 'https://www.norbeck.nu/abc/',
     attribution:
@@ -51,6 +56,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'paulhardy',
     name: 'Paul Hardy Session Tunebook',
+    genre: 'British Isles',
     license: 'CC BY-NC-SA 4.0',
     licenseUrl: 'https://creativecommons.org/licenses/by-nc-sa/4.0/',
     attribution: 'Paul Hardy Session Tunebook by Paul Hardy — CC BY-NC-SA 4.0.',
@@ -60,6 +66,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'pete_mac',
     name: 'Pete Mac Tunebook',
+    genre: 'Irish',
     license: 'CC0',
     licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
     attribution: "Pete Mac's Tunebook — CC0 (public domain).",
@@ -69,6 +76,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'athole',
     name: 'The Athole Collection (1884)',
+    genre: 'Scottish',
     license: 'Public Domain',
     attribution:
         'The Athole Collection, compiled by James Stewart-Robertson '
@@ -80,6 +88,7 @@ const List<ContentSourceMeta> allContentSources = [
     id: 'aird',
     name:
         'The James Aird Collection, Vol. 1-6: A Selection of Scotch, English, Irish and Foreign Airs',
+    genre: 'Scottish, English & Irish',
     license: 'Public Domain',
     attribution:
         'The James Aird Collection, Vol. 1-6 (Glasgow, 1778–1782). '
@@ -91,6 +100,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'neil_gow',
     name: 'Neil Gow & Sons Complete Repository (1799–1839)',
+    genre: 'Scottish',
     license: 'Public Domain',
     attribution:
         'Niel Gow & Sons Complete Repository of Original Scots Slow Strathspeys and Dances '
@@ -103,6 +113,7 @@ const List<ContentSourceMeta> allContentSources = [
     id: 'fraser',
     name:
         'Fraser Collection — Airs and Melodies Peculiar to the Highlands and The Isles',
+    genre: 'Scottish (Highland)',
     license: 'Public Domain',
     attribution:
         '"Airs and Melodies Peculiar to the Highlands and The Isles" '
@@ -114,6 +125,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'erm',
     name: 'Edinburgh Repository of Music',
+    genre: 'Scottish & English',
     license: 'Public Domain',
     attribution:
         'Edinburgh Repository of Music, J. Sutherland, Edinburgh, 1815–1825. '
@@ -124,6 +136,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'nefr',
     name: "New England Fiddler's Repertoire",
+    genre: 'New England / Contra',
     license: 'Public Domain',
     attribution:
         "New England Fiddler's Repertoire, compiled by Randy Miller and Jack Perron. "
@@ -134,6 +147,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'kidson',
     name: 'Old English Country Dances',
+    genre: 'English',
     license: 'Public Domain',
     attribution:
         '"Old English Country Dances", collected and edited by Frank Kidson, '

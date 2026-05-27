@@ -14,10 +14,10 @@ class ContentLibraryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final confirmedIds = ref.watch(confirmedSourcesProvider);
 
-    final alwaysActive =
+    final defaultSources =
         allContentSources.where((m) => m.isAlwaysActive && !m.hidden).toList()
           ..sort((a, b) => a.name.compareTo(b.name));
-    final requiresConfirmation =
+    final optionalSources =
         allContentSources.where((m) => !m.isAlwaysActive && !m.hidden).toList()
           ..sort((a, b) => a.name.compareTo(b.name));
 
@@ -33,16 +33,20 @@ class ContentLibraryPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          const _SectionHeader('Always active'),
+          const _SectionHeader('Public domain sources'),
           const _SectionDescription(
-            'These sources contain public-domain tunes and are active by default.',
+            'These collections are included by default. '
+            'Toggle any off to exclude them from search.',
           ),
-          for (final meta in alwaysActive)
+          for (final meta in defaultSources)
             _SourceTile(
               meta: meta,
-              isActive: true,
-              isAlwaysActive: true,
-              onToggle: null,
+              isActive: confirmedIds.contains(meta.id),
+              onToggle: (isCurrentlyActive) => isCurrentlyActive
+                  ? ref.read(confirmedSourcesProvider.notifier).revoke(meta.id)
+                  : ref
+                        .read(confirmedSourcesProvider.notifier)
+                        .confirm(meta.id, meta.license),
             ),
           const SizedBox(height: 8),
           const _SectionHeader('Additional sources'),
@@ -50,12 +54,11 @@ class ContentLibraryPage extends ConsumerWidget {
             'These sources are licensed for personal, non-commercial use. '
             'Tap a source to review its license terms and activate it.',
           ),
-          for (final meta in requiresConfirmation)
+          for (final meta in optionalSources)
             _SourceTile(
               meta: meta,
               isActive: confirmedIds.contains(meta.id),
-              isAlwaysActive: false,
-              onToggle: (isActive) => isActive
+              onToggle: (isCurrentlyActive) => isCurrentlyActive
                   ? _deactivate(context, ref, meta)
                   : _activate(context, ref, meta),
             ),
@@ -83,7 +86,7 @@ class ContentLibraryPage extends ConsumerWidget {
         title: const Text('Remove source'),
         content: Text(
           'Remove "${meta.name}" from your active sources? '
-          'Tunes you already imported will not be affected.',
+          'Tunes you already imported will be hidden.',
         ),
         actions: [
           TextButton(
@@ -143,13 +146,11 @@ class _SectionDescription extends StatelessWidget {
 class _SourceTile extends StatelessWidget {
   final ContentSourceMeta meta;
   final bool isActive;
-  final bool isAlwaysActive;
-  final void Function(bool isCurrentlyActive)? onToggle;
+  final void Function(bool isCurrentlyActive) onToggle;
 
   const _SourceTile({
     required this.meta,
     required this.isActive,
-    required this.isAlwaysActive,
     required this.onToggle,
   });
 
@@ -162,8 +163,14 @@ class _SourceTile extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(meta.license, style: theme.textTheme.bodySmall),
-          if (isActive)
+          Row(
+            children: [
+              _GenreChip(meta.genre),
+              const SizedBox(width: 6),
+              Text(meta.license, style: theme.textTheme.bodySmall),
+            ],
+          ),
+          if (isActive && !meta.isAlwaysActive)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
@@ -176,22 +183,32 @@ class _SourceTile extends StatelessWidget {
             ),
         ],
       ),
-      isThreeLine: isActive,
-      trailing: isAlwaysActive
-          ? Chip(
-              label: const Text('Active'),
-              backgroundColor: theme.colorScheme.secondaryContainer,
-              labelStyle: TextStyle(
-                color: theme.colorScheme.onSecondaryContainer,
-                fontSize: 12,
-              ),
-              side: BorderSide.none,
-            )
-          : Switch(
-              value: isActive,
-              onChanged: onToggle == null ? null : (_) => onToggle!(isActive),
-            ),
-      onTap: onToggle == null ? null : () => onToggle!(isActive),
+      isThreeLine: isActive && !meta.isAlwaysActive,
+      trailing: Switch(value: isActive, onChanged: (_) => onToggle(isActive)),
+      onTap: () => onToggle(isActive),
+    );
+  }
+}
+
+class _GenreChip extends StatelessWidget {
+  final String genre;
+  const _GenreChip(this.genre);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        genre,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
