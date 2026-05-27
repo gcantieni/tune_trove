@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:tune_trove/feat/content_library/source_confirmation_dialog.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
@@ -62,6 +63,7 @@ class ContentLibraryPage extends ConsumerWidget {
                   ? _deactivate(context, ref, meta)
                   : _activate(context, ref, meta),
             ),
+          const _CopyrightFooter(),
         ],
       ),
     );
@@ -186,6 +188,42 @@ class _SourceTile extends StatelessWidget {
       isThreeLine: isActive && !meta.isAlwaysActive,
       trailing: Switch(value: isActive, onChanged: (_) => onToggle(isActive)),
       onTap: () => onToggle(isActive),
+    );
+  }
+}
+
+class _CopyrightFooter extends StatelessWidget {
+  const _CopyrightFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+      child: GestureDetector(
+        onTap: () => launchUrl(
+          Uri.parse('mailto:copyright@yeskenney.com'),
+          mode: LaunchMode.externalApplication,
+        ),
+        child: Text.rich(
+          TextSpan(
+            text: 'Copyright questions or concerns? ',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            children: [
+              TextSpan(
+                text: 'Email us at copyright@yeskenney.com',
+                style: TextStyle(
+                  color: theme.colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
