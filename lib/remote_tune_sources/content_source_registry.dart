@@ -101,6 +101,16 @@ const List<ContentSourceMeta> allContentSources = [
     confirmationRequired: false,
     bundled: true,
   ),
+  ContentSourceMeta(
+    id: 'erm',
+    name: 'Edinburgh Repository of Music',
+    license: 'Public Domain',
+    attribution:
+        'Edinburgh Repository of Music, J. Sutherland, Edinburgh, 1815–1825. '
+        'Public domain. Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -165,6 +175,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/fraser_tunes.json',
+      );
+    case 'erm':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/erm_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');

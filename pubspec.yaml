@@ -80,6 +80,7 @@ flutter:
     - assets/data/aird_tunes.json
     - assets/data/neil_gow_tunes.json
     - assets/data/fraser_tunes.json
+    - assets/data/erm_tunes.json
     - assets/abcjs/
     - assets/song.mp3
 
