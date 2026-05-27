@@ -67,6 +67,16 @@ const List<ContentSourceMeta> allContentSources = [
     bundled: true,
   ),
   ContentSourceMeta(
+    id: 'athole',
+    name: 'The Athole Collection (1884)',
+    license: 'Public Domain',
+    attribution:
+        'The Athole Collection, compiled by James Stewart-Robertson '
+        '(Edinburgh, 1884). Public domain. Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+  ),
+  ContentSourceMeta(
     id: 'aird',
     name:
         'The James Aird Collection, Vol. 1-6: A Selection of Scotch, English, Irish and Foreign Airs',
@@ -180,6 +190,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/pete_mac_tunes.json',
+      );
+    case 'athole':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/athole_tunes.json',
       );
     case 'aird':
       return StaticAssetTuneSource(
