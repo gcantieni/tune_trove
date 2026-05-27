@@ -78,6 +78,17 @@ const List<ContentSourceMeta> allContentSources = [
     confirmationRequired: false,
     bundled: true,
   ),
+  ContentSourceMeta(
+    id: 'neil_gow',
+    name: 'Neil Gow & Sons Complete Repository (1799–1839)',
+    license: 'Public Domain',
+    attribution:
+        'Niel Gow & Sons Complete Repository of Original Scots Slow Strathspeys and Dances '
+        '(Edinburgh, 1799–1839). ABC transcriptions by John Chambers (2021). '
+        'Public domain. Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -132,6 +143,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/aird_tunes.json',
+      );
+    case 'neil_gow':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/neil_gow_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');
