@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_service.dart';
 
 const _methodChannel = MethodChannel('com.gcantieni.tuneTrove/cloudkit_sync');
-const _eventChannel = EventChannel('com.gcantieni.tuneTrove/cloudkit_sync_state');
+const _eventChannel = EventChannel(
+  'com.gcantieni.tuneTrove/cloudkit_sync_state',
+);
 
 class PlatformCloudKitSyncService implements CloudKitSyncService {
   StreamSubscription<dynamic>? _sub;
@@ -13,26 +15,23 @@ class PlatformCloudKitSyncService implements CloudKitSyncService {
   final _localOverwriteController = StreamController<int>.broadcast();
 
   PlatformCloudKitSyncService() {
-    _sub = _eventChannel.receiveBroadcastStream().listen(
-      (dynamic raw) {
-        if (raw is! Map) return;
-        final map = raw.cast<String, dynamic>();
-        switch (map['type']) {
-          case 'status':
-            _statusController.add(
-              SyncStatusEvent(
-                map['status'] as String? ?? 'idle',
-                message: map['message'] as String?,
-              ),
-            );
-          case 'remoteChange':
-            _remoteChangesController.add(null);
-          case 'localOverwritten':
-            _localOverwriteController.add((map['count'] as int?) ?? 1);
-        }
-      },
-      onError: _statusController.addError,
-    );
+    _sub = _eventChannel.receiveBroadcastStream().listen((dynamic raw) {
+      if (raw is! Map) return;
+      final map = raw.cast<String, dynamic>();
+      switch (map['type']) {
+        case 'status':
+          _statusController.add(
+            SyncStatusEvent(
+              map['status'] as String? ?? 'idle',
+              message: map['message'] as String?,
+            ),
+          );
+        case 'remoteChange':
+          _remoteChangesController.add(null);
+        case 'localOverwritten':
+          _localOverwriteController.add((map['count'] as int?) ?? 1);
+      }
+    }, onError: _statusController.addError);
   }
 
   @override

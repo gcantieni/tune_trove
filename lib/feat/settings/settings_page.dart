@@ -15,11 +15,7 @@ class SettingsPage extends ConsumerWidget {
         ),
         title: const Text('Settings'),
       ),
-      body: ListView(
-        children: [
-          _SyncStatusTile(),
-        ],
-      ),
+      body: ListView(children: [_SyncStatusTile()]),
     );
   }
 }
@@ -86,7 +82,9 @@ class _SyncStatusTile extends ConsumerWidget {
       case SyncPhase.success:
       case SyncPhase.syncing:
         final last = state.lastSyncedAt;
-        return last == null ? 'Not synced yet' : 'Last synced ${_relative(last)}';
+        return last == null
+            ? 'Not synced yet'
+            : 'Last synced ${_relative(last)}';
     }
   }
 

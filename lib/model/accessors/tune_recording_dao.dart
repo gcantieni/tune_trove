@@ -25,11 +25,14 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
   /// updated" sorts.
   Future<List<TuneRecordingData>> getAll() => select(tuneRecording).get();
 
-  Future<TuneRecordingData?> getByCloudId(String cloudId) =>
-      (select(tuneRecording)..where((t) => t.cloudId.equals(cloudId)))
-          .getSingleOrNull();
+  Future<TuneRecordingData?> getByCloudId(String cloudId) => (select(
+    tuneRecording,
+  )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
 
-  Future<TuneRecordingData?> getByTuneAndRecording(int tuneId, int recordingId) =>
+  Future<TuneRecordingData?> getByTuneAndRecording(
+    int tuneId,
+    int recordingId,
+  ) =>
       (select(tuneRecording)..where(
             (t) => t.tuneId.equals(tuneId) & t.recordingId.equals(recordingId),
           ))
@@ -175,9 +178,8 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<int> _bumpTuneModified(int tuneId) async {
-    final count = await (update(tunes)..where((t) => t.id.equals(tuneId))).write(
-      TunesCompanion(modifiedAt: Value(DateTime.now())),
-    );
+    final count = await (update(tunes)..where((t) => t.id.equals(tuneId)))
+        .write(TunesCompanion(modifiedAt: Value(DateTime.now())));
     final tune = await (select(
       tunes,
     )..where((t) => t.id.equals(tuneId))).getSingleOrNull();

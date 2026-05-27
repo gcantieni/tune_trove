@@ -84,13 +84,19 @@ class SyncNotifier extends AsyncNotifier<SyncState> {
       available = false;
     }
     if (!available) {
-      state = AsyncData(current.copyWith(phase: SyncPhase.unavailable, clearDetail: true));
+      state = AsyncData(
+        current.copyWith(phase: SyncPhase.unavailable, clearDetail: true),
+      );
       return;
     }
 
-    state = AsyncData(current.copyWith(phase: SyncPhase.syncing, clearDetail: true));
+    state = AsyncData(
+      current.copyWith(phase: SyncPhase.syncing, clearDetail: true),
+    );
     try {
-      final result = await ref.read(syncOutboundProvider).syncNow(fullPush: fullPush);
+      final result = await ref
+          .read(syncOutboundProvider)
+          .syncNow(fullPush: fullPush);
       final now = DateTime.now();
       if (result.hasFailures) {
         final n = result.failedCount;
@@ -113,13 +119,17 @@ class SyncNotifier extends AsyncNotifier<SyncState> {
         );
       }
     } catch (e) {
-      state = AsyncData(current.copyWith(phase: SyncPhase.error, detail: _humanize(e)));
+      state = AsyncData(
+        current.copyWith(phase: SyncPhase.error, detail: _humanize(e)),
+      );
     }
   }
 
   Future<SyncPhase> _phaseFromAvailability() async {
     try {
-      final available = await ref.read(cloudKitSyncServiceProvider).isAvailable();
+      final available = await ref
+          .read(cloudKitSyncServiceProvider)
+          .isAvailable();
       return available ? SyncPhase.idle : SyncPhase.unavailable;
     } catch (_) {
       // Platform channel unavailable (non-Apple platform, etc.).

@@ -24,8 +24,9 @@ class TuneDao extends DatabaseAccessor<AppDatabase> with _$TuneDaoMixin {
   Future<List<Tune>> getAll() => select(tunes).get();
   Future<Tune?> getTune(int id) =>
       (select(tunes)..where((t) => t.id.equals(id))).getSingleOrNull();
-  Future<Tune?> getByCloudId(String cloudId) =>
-      (select(tunes)..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
+  Future<Tune?> getByCloudId(String cloudId) => (select(
+    tunes,
+  )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
 
   // Dedupe lookups: match a row created independently of CloudKit so an
   // incoming remote record adopts the existing row instead of duplicating it.
@@ -47,10 +48,9 @@ class TuneDao extends DatabaseAccessor<AppDatabase> with _$TuneDaoMixin {
 
   // update
   Future<int> updateTune(TunesCompanion updatedTune) async {
-    final count =
-        await (update(tunes)
-              ..where((t) => t.id.equals(updatedTune.id.value)))
-            .write(updatedTune);
+    final count = await (update(
+      tunes,
+    )..where((t) => t.id.equals(updatedTune.id.value))).write(updatedTune);
     final row = await getTune(updatedTune.id.value);
     attachedDatabase.notifyRowChanged('Tune', row?.cloudId, deleted: false);
     return count;

@@ -66,6 +66,18 @@ const List<ContentSourceMeta> allContentSources = [
     confirmationRequired: false,
     bundled: true,
   ),
+  ContentSourceMeta(
+    id: 'aird',
+    name:
+        'The James Aird Collection, Vol. 1-6: A Selection of Scotch, English, Irish and Foreign Airs',
+    license: 'Public Domain',
+    attribution:
+        'The James Aird Collection, Vol. 1-6 (Glasgow, 1778–1782). '
+        'ABC transcriptions by Jack Campin (1999). Public domain. '
+        'Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -115,6 +127,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/pete_mac_tunes.json',
+      );
+    case 'aird':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/aird_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');

@@ -13,8 +13,7 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
 
   // create
   Future<int> insertRecording(RecordingsCompanion recording) async {
-    final cloudId =
-        recording.cloudId.present && recording.cloudId.value != null
+    final cloudId = recording.cloudId.present && recording.cloudId.value != null
         ? recording.cloudId.value!
         : generateUuid();
     final id = await into(
@@ -28,9 +27,9 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
   Future<List<Recording>> getAll() => select(recordings).get();
   Future<Recording?> getRecording(int id) =>
       (select(recordings)..where((r) => r.id.equals(id))).getSingleOrNull();
-  Future<Recording?> getByCloudId(String cloudId) =>
-      (select(recordings)..where((r) => r.cloudId.equals(cloudId)))
-          .getSingleOrNull();
+  Future<Recording?> getByCloudId(String cloudId) => (select(
+    recordings,
+  )..where((r) => r.cloudId.equals(cloudId))).getSingleOrNull();
   Future<int?> findIdByUrl(String url) async {
     final row =
         await (select(recordings)
@@ -55,13 +54,13 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
   // update
   Future<int> updateRecording(Recording updatedRecording) async {
     final count =
-        await (update(recordings)
-              ..where((t) => t.id.equals(updatedRecording.id)))
-            .write(
-              updatedRecording.toCompanion(
-                true,
-              ), // coalesces Recording into RecordingCompanion
-            );
+        await (update(
+          recordings,
+        )..where((t) => t.id.equals(updatedRecording.id))).write(
+          updatedRecording.toCompanion(
+            true,
+          ), // coalesces Recording into RecordingCompanion
+        );
     attachedDatabase.notifyRowChanged(
       'Recording',
       updatedRecording.cloudId,
@@ -73,7 +72,9 @@ class RecordingDao extends DatabaseAccessor<AppDatabase>
   // delete
   Future<int> deleteRecording(int id) async {
     final row = await getRecording(id);
-    final count = await (delete(recordings)..where((r) => r.id.equals(id))).go();
+    final count = await (delete(
+      recordings,
+    )..where((r) => r.id.equals(id))).go();
     attachedDatabase.notifyRowChanged('Recording', row?.cloudId, deleted: true);
     return count;
   }

@@ -45,7 +45,11 @@ class SyncStager {
     });
   }
 
-  void _onRowChanged(String recordType, String cloudId, {required bool deleted}) {
+  void _onRowChanged(
+    String recordType,
+    String cloudId, {
+    required bool deleted,
+  }) {
     unawaited(_stage(recordType, cloudId, deleted: deleted));
   }
 

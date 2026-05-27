@@ -181,9 +181,9 @@ class _RecordingFormWidgetState extends ConsumerState<RecordingFormWidget> {
       await destDir.create(recursive: true);
 
       final filename = _uniqueFilename(destDir, picked.name);
-      final destFile = await File(sourcePath).copy(
-        p.join(destDir.path, filename),
-      );
+      final destFile = await File(
+        sourcePath,
+      ).copy(p.join(destDir.path, filename));
 
       if (!mounted) return;
       _urlController.text = 'file://${destFile.path}';
@@ -228,9 +228,9 @@ class _RecordingFormWidgetState extends ConsumerState<RecordingFormWidget> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('"${_nameController.text}" saved!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('"${_nameController.text}" saved!')));
 
     _formKey.currentState!.reset();
     _nameController.clear();

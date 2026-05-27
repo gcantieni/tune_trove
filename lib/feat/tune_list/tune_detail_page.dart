@@ -547,7 +547,12 @@ class _LinkedRecordingRow extends ConsumerWidget {
           onTap: () => context.push('/recording_list/${recording.id}'),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 4, top: 8, bottom: 4),
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 4,
+              top: 8,
+              bottom: 4,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -569,7 +574,10 @@ class _LinkedRecordingRow extends ConsumerWidget {
                       onPressed: () => ref
                           .read(databaseProvider)
                           .tuneRecordingDao
-                          .unlinkTuneFromRecording(link.tuneId, link.recordingId),
+                          .unlinkTuneFromRecording(
+                            link.tuneId,
+                            link.recordingId,
+                          ),
                     ),
                   ],
                 ),

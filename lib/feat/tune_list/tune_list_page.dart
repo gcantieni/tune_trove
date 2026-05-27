@@ -36,9 +36,7 @@ class TuneListPage extends ConsumerWidget {
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
                     TuneListWidget(),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.width * 0.25,
-                    ),
+                    SizedBox(height: MediaQuery.of(context).size.width * 0.25),
                   ],
                 ),
               ),

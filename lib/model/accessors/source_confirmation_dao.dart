@@ -12,21 +12,22 @@ class SourceConfirmationDao extends DatabaseAccessor<AppDatabase>
   SourceConfirmationDao(super.db);
 
   // read
-  Future<List<SourceConfirmation>> getAll() => select(sourceConfirmations).get();
+  Future<List<SourceConfirmation>> getAll() =>
+      select(sourceConfirmations).get();
 
   /// Reactive set of confirmed source ids. The confirmation state UI watches
   /// this, so a confirmation synced in from another device shows up live.
-  Stream<Set<String>> watchConfirmedIds() => select(sourceConfirmations)
-      .watch()
-      .map((rows) => rows.map((r) => r.sourceId).toSet());
+  Stream<Set<String>> watchConfirmedIds() => select(
+    sourceConfirmations,
+  ).watch().map((rows) => rows.map((r) => r.sourceId).toSet());
 
-  Future<SourceConfirmation?> getByCloudId(String cloudId) =>
-      (select(sourceConfirmations)..where((t) => t.cloudId.equals(cloudId)))
-          .getSingleOrNull();
+  Future<SourceConfirmation?> getByCloudId(String cloudId) => (select(
+    sourceConfirmations,
+  )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
 
-  Future<SourceConfirmation?> getBySourceId(String sourceId) =>
-      (select(sourceConfirmations)..where((t) => t.sourceId.equals(sourceId)))
-          .getSingleOrNull();
+  Future<SourceConfirmation?> getBySourceId(String sourceId) => (select(
+    sourceConfirmations,
+  )..where((t) => t.sourceId.equals(sourceId))).getSingleOrNull();
 
   // local user actions ------------------------------------------------------
 
@@ -92,6 +93,7 @@ class SourceConfirmationDao extends DatabaseAccessor<AppDatabase>
     ),
   );
 
-  Future<void> deleteByCloudId(String cloudId) =>
-      (delete(sourceConfirmations)..where((t) => t.cloudId.equals(cloudId))).go();
+  Future<void> deleteByCloudId(String cloudId) => (delete(
+    sourceConfirmations,
+  )..where((t) => t.cloudId.equals(cloudId))).go();
 }

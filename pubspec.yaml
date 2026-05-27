@@ -77,6 +77,7 @@ flutter:
     - assets/data/paulhardy_tunes.json
     - assets/data/williamclarke_tunes.json
     - assets/data/pete_mac_tunes.json
+    - assets/data/aird_tunes.json
     - assets/abcjs/
     - assets/song.mp3
 

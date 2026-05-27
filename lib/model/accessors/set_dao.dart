@@ -18,14 +18,16 @@ class SetDao extends DatabaseAccessor<AppDatabase> with _$SetDaoMixin {
     final cloudId = set.cloudId.present && set.cloudId.value != null
         ? set.cloudId.value!
         : generateUuid();
-    final id = await into(tuneSets).insert(set.copyWith(cloudId: Value(cloudId)));
+    final id = await into(
+      tuneSets,
+    ).insert(set.copyWith(cloudId: Value(cloudId)));
     attachedDatabase.notifyRowChanged('TuneSet', cloudId, deleted: false);
     return id;
   }
 
-  Future<TuneSet?> getByCloudId(String cloudId) =>
-      (select(tuneSets)..where((t) => t.cloudId.equals(cloudId)))
-          .getSingleOrNull();
+  Future<TuneSet?> getByCloudId(String cloudId) => (select(
+    tuneSets,
+  )..where((t) => t.cloudId.equals(cloudId))).getSingleOrNull();
 
   // Dedupe lookup: a set created independently of CloudKit adopts the incoming
   // remote record instead of duplicating it.
@@ -41,9 +43,9 @@ class SetDao extends DatabaseAccessor<AppDatabase> with _$SetDaoMixin {
       (select(tuneSets)..where((t) => t.id.equals(id))).watchSingleOrNull();
 
   Future<int> updateSet(TuneSetsCompanion updated) async {
-    final count =
-        await (update(tuneSets)..where((t) => t.id.equals(updated.id.value)))
-            .write(updated);
+    final count = await (update(
+      tuneSets,
+    )..where((t) => t.id.equals(updated.id.value))).write(updated);
     final row = await getSet(updated.id.value);
     attachedDatabase.notifyRowChanged('TuneSet', row?.cloudId, deleted: false);
     return count;
