@@ -14,12 +14,12 @@ class ContentLibraryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final confirmedIds = ref.watch(confirmedSourcesProvider);
 
-    final alwaysActive = allContentSources
-        .where((m) => m.isAlwaysActive && !m.hidden)
-        .toList();
-    final requiresConfirmation = allContentSources
-        .where((m) => !m.isAlwaysActive && !m.hidden)
-        .toList();
+    final alwaysActive =
+        allContentSources.where((m) => m.isAlwaysActive && !m.hidden).toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
+    final requiresConfirmation =
+        allContentSources.where((m) => !m.isAlwaysActive && !m.hidden).toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
 
     return Scaffold(
       appBar: AppBar(
