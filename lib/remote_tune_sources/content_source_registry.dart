@@ -112,6 +112,16 @@ const List<ContentSourceMeta> allContentSources = [
     bundled: true,
   ),
   ContentSourceMeta(
+    id: 'nefr',
+    name: "New England Fiddler's Repertoire",
+    license: 'Public Domain',
+    attribution:
+        "New England Fiddler's Repertoire, compiled by Randy Miller and Jack Perron. "
+        'Public domain. Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+  ),
+  ContentSourceMeta(
     id: 'kidson',
     name: 'Old English Country Dances',
     license: 'Public Domain',
@@ -190,6 +200,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/erm_tunes.json',
+      );
+    case 'nefr':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/nefr_tunes.json',
       );
     case 'kidson':
       return StaticAssetTuneSource(

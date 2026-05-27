@@ -82,6 +82,7 @@ flutter:
     - assets/data/fraser_tunes.json
     - assets/data/erm_tunes.json
     - assets/data/kidson_tunes.json
+    - assets/data/nefr_tunes.json
     - assets/abcjs/
     - assets/song.mp3
 
