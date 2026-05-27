@@ -38,7 +38,10 @@ class SyncReconciliationService {
   }
 
   bool _isBaseType(String t) =>
-      t == 'Tune' || t == 'Recording' || t == 'TuneSet';
+      t == 'Tune' ||
+      t == 'Recording' ||
+      t == 'TuneSet' ||
+      t == 'SourceConfirmation';
 
   Future<void> _upsert(String recordType, Map<String, dynamic> fields) async {
     switch (recordType) {
@@ -52,6 +55,8 @@ class SyncReconciliationService {
         await _upsertTuneSet(fields);
       case 'SetTune':
         await _upsertSetTune(fields);
+      case 'SourceConfirmation':
+        await _upsertSourceConfirmation(fields);
     }
   }
 
@@ -77,6 +82,8 @@ class SyncReconciliationService {
       case 'SetTune':
         final row = await _db.setTuneDao.getByCloudId(cloudId);
         if (row != null) await _db.setTuneDao.removeTuneFromSet(row.id);
+      case 'SourceConfirmation':
+        await _db.sourceConfirmationDao.deleteByCloudId(cloudId);
     }
   }
 
@@ -294,6 +301,36 @@ class SyncReconciliationService {
         cloudId: cloudId,
         position: _int(f, 'position'),
         key: _str(f, 'key'),
+      );
+    }
+  }
+
+  Future<void> _upsertSourceConfirmation(Map<String, dynamic> f) async {
+    final cloudId = _cloudId(f);
+    final sourceId = _str(f, 'source_id') ?? _str(f, 'sourceId');
+    if (cloudId == null || sourceId == null) return;
+
+    var existing = await _db.sourceConfirmationDao.getByCloudId(cloudId);
+    existing ??= await _db.sourceConfirmationDao.getBySourceId(sourceId);
+
+    if (existing != null) {
+      // Already confirmed locally; just adopt the remote cloud_id/license.
+      if (existing.cloudId != cloudId ||
+          existing.license != _str(f, 'license')) {
+        await _db.sourceConfirmationDao.adoptRemote(
+          existing.id,
+          cloudId: cloudId,
+          license: _str(f, 'license'),
+          modifiedAt: _dateOf(f['modified_at']),
+        );
+      }
+    } else {
+      await _db.sourceConfirmationDao.insertFromRemote(
+        sourceId: sourceId,
+        cloudId: cloudId,
+        license: _str(f, 'license'),
+        createdAt: _dateOf(f['created_at']) ?? DateTime.now(),
+        modifiedAt: _dateOf(f['modified_at']),
       );
     }
   }

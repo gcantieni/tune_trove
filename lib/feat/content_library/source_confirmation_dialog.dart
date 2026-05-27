@@ -93,6 +93,12 @@ class _SourceConfirmationDialog extends ConsumerWidget {
   }
 
   String _plainLanguageExplanation(String license) {
+    if (license.contains('ODbL')) {
+      return 'This content is available under the Open Database License. '
+          'You may use, share, and adapt it freely, but any derivative '
+          'database you distribute publicly must be released under the '
+          'same ODbL license.';
+    }
     if (license.contains('NC-SA')) {
       return 'This content is available free of charge for personal, '
           'non-commercial use. You may not use it to generate income or '

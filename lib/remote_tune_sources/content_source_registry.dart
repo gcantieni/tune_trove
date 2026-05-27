@@ -29,9 +29,11 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'thesession',
     name: 'thesession.org',
-    license: 'CC BY-NC-SA 3.0',
-    licenseUrl: 'https://creativecommons.org/licenses/by-nc-sa/3.0/',
-    attribution: 'The Session (thesession.org) — CC BY-NC-SA 3.0',
+    license: 'ODbL 1.0',
+    licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
+    attribution:
+        'Contains information from The Session, which is made available '
+        'here under the Open Database License (ODbL).',
     confirmationRequired: true,
     bundled: true,
   ),

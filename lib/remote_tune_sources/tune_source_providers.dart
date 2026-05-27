@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
-import 'package:tune_trove/remote_tune_sources/source_confirmation_service.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source.dart';
 
 // ---------------------------------------------------------------------------
@@ -17,34 +17,28 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   );
 });
 
-final sourceConfirmationServiceProvider = Provider<SourceConfirmationService>((
-  ref,
-) {
-  return SourceConfirmationService(ref.watch(sharedPreferencesProvider));
-});
-
 // ---------------------------------------------------------------------------
-// Confirmation state — reactive so tuneSourcesProvider rebuilds on change
+// Confirmation state — backed by the synced Drift table. Watching the DAO
+// stream means a confirmation made (and synced in) from another device shows
+// up live, activating its source here without re-confirming.
 // ---------------------------------------------------------------------------
 
 class ConfirmedSourcesNotifier extends Notifier<Set<String>> {
   @override
   Set<String> build() {
-    return ref.watch(sourceConfirmationServiceProvider).confirmedIds();
+    final dao = ref.watch(databaseProvider).sourceConfirmationDao;
+    final sub = dao.watchConfirmedIds().listen((ids) => state = ids);
+    ref.onDispose(sub.cancel);
+    return const {};
   }
 
-  Future<void> confirm(String sourceId, String license) async {
-    await ref
-        .read(sourceConfirmationServiceProvider)
-        .confirm(sourceId, license);
-    // Re-read from prefs to stay in sync with any external mutations.
-    state = ref.read(sourceConfirmationServiceProvider).confirmedIds();
-  }
+  Future<void> confirm(String sourceId, String license) => ref
+      .read(databaseProvider)
+      .sourceConfirmationDao
+      .confirm(sourceId, license);
 
-  Future<void> revoke(String sourceId) async {
-    await ref.read(sourceConfirmationServiceProvider).revoke(sourceId);
-    state = ref.read(sourceConfirmationServiceProvider).confirmedIds();
-  }
+  Future<void> revoke(String sourceId) =>
+      ref.read(databaseProvider).sourceConfirmationDao.revoke(sourceId);
 }
 
 final confirmedSourcesProvider =

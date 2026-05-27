@@ -94,6 +94,9 @@ class SyncOutboundService {
           setCloudId: set!.cloudId!,
           tuneCloudId: tune!.cloudId!,
         );
+      case 'SourceConfirmation':
+        final c = await _db.sourceConfirmationDao.getByCloudId(cloudId);
+        return c == null ? null : _serializeSourceConfirmation(c);
     }
     return null;
   }
@@ -159,6 +162,11 @@ class SyncOutboundService {
           tuneCloudId: tune!.cloudId!,
         ),
       );
+    }
+
+    for (final c in await _db.sourceConfirmationDao.getAll()) {
+      if (c.cloudId == null) continue;
+      records.add(_serializeSourceConfirmation(c));
     }
 
     return records;
@@ -231,5 +239,17 @@ class SyncOutboundService {
     'tune_cloud_id': tuneCloudId,
     'position': st.position,
     if (st.key != null) 'key': st.key,
+  };
+
+  static Map<String, dynamic> _serializeSourceConfirmation(
+    SourceConfirmation c,
+  ) => {
+    'recordType': 'SourceConfirmation',
+    'cloudId': c.cloudId,
+    'source_id': c.sourceId,
+    if (c.license != null) 'license': c.license,
+    'created_at': c.createdAt.millisecondsSinceEpoch,
+    if (c.modifiedAt != null)
+      'modified_at': c.modifiedAt!.millisecondsSinceEpoch,
   };
 }

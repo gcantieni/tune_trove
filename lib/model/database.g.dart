@@ -2438,6 +2438,418 @@ class SetTuneCompanion extends UpdateCompanion<SetTuneData> {
   }
 }
 
+class $SourceConfirmationsTable extends SourceConfirmations
+    with TableInfo<$SourceConfirmationsTable, SourceConfirmation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SourceConfirmationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _licenseMeta = const VerificationMeta(
+    'license',
+  );
+  @override
+  late final GeneratedColumn<String> license = GeneratedColumn<String>(
+    'license',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modifiedAtMeta = const VerificationMeta(
+    'modifiedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> modifiedAt = GeneratedColumn<DateTime>(
+    'modified_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sourceId,
+    license,
+    createdAt,
+    modifiedAt,
+    cloudId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'source_confirmations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SourceConfirmation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('license')) {
+      context.handle(
+        _licenseMeta,
+        license.isAcceptableOrUnknown(data['license']!, _licenseMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('modified_at')) {
+      context.handle(
+        _modifiedAtMeta,
+        modifiedAt.isAcceptableOrUnknown(data['modified_at']!, _modifiedAtMeta),
+      );
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SourceConfirmation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SourceConfirmation(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      )!,
+      license: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}license'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      modifiedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}modified_at'],
+      ),
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
+    );
+  }
+
+  @override
+  $SourceConfirmationsTable createAlias(String alias) {
+    return $SourceConfirmationsTable(attachedDatabase, alias);
+  }
+}
+
+class SourceConfirmation extends DataClass
+    implements Insertable<SourceConfirmation> {
+  final int id;
+
+  /// The content source id (e.g. 'thesession'). Natural cross-device key.
+  final String sourceId;
+
+  /// The license string acknowledged at confirmation time.
+  final String? license;
+
+  /// When the source was confirmed (acts as the created/“first seen” time).
+  final DateTime createdAt;
+  final DateTime? modifiedAt;
+  final String? cloudId;
+  const SourceConfirmation({
+    required this.id,
+    required this.sourceId,
+    this.license,
+    required this.createdAt,
+    this.modifiedAt,
+    this.cloudId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['source_id'] = Variable<String>(sourceId);
+    if (!nullToAbsent || license != null) {
+      map['license'] = Variable<String>(license);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || modifiedAt != null) {
+      map['modified_at'] = Variable<DateTime>(modifiedAt);
+    }
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
+    return map;
+  }
+
+  SourceConfirmationsCompanion toCompanion(bool nullToAbsent) {
+    return SourceConfirmationsCompanion(
+      id: Value(id),
+      sourceId: Value(sourceId),
+      license: license == null && nullToAbsent
+          ? const Value.absent()
+          : Value(license),
+      createdAt: Value(createdAt),
+      modifiedAt: modifiedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modifiedAt),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
+    );
+  }
+
+  factory SourceConfirmation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SourceConfirmation(
+      id: serializer.fromJson<int>(json['id']),
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      license: serializer.fromJson<String?>(json['license']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      modifiedAt: serializer.fromJson<DateTime?>(json['modifiedAt']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'sourceId': serializer.toJson<String>(sourceId),
+      'license': serializer.toJson<String?>(license),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'modifiedAt': serializer.toJson<DateTime?>(modifiedAt),
+      'cloudId': serializer.toJson<String?>(cloudId),
+    };
+  }
+
+  SourceConfirmation copyWith({
+    int? id,
+    String? sourceId,
+    Value<String?> license = const Value.absent(),
+    DateTime? createdAt,
+    Value<DateTime?> modifiedAt = const Value.absent(),
+    Value<String?> cloudId = const Value.absent(),
+  }) => SourceConfirmation(
+    id: id ?? this.id,
+    sourceId: sourceId ?? this.sourceId,
+    license: license.present ? license.value : this.license,
+    createdAt: createdAt ?? this.createdAt,
+    modifiedAt: modifiedAt.present ? modifiedAt.value : this.modifiedAt,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
+  );
+  SourceConfirmation copyWithCompanion(SourceConfirmationsCompanion data) {
+    return SourceConfirmation(
+      id: data.id.present ? data.id.value : this.id,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      license: data.license.present ? data.license.value : this.license,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      modifiedAt: data.modifiedAt.present
+          ? data.modifiedAt.value
+          : this.modifiedAt,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SourceConfirmation(')
+          ..write('id: $id, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('license: $license, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('modifiedAt: $modifiedAt, ')
+          ..write('cloudId: $cloudId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, sourceId, license, createdAt, modifiedAt, cloudId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SourceConfirmation &&
+          other.id == this.id &&
+          other.sourceId == this.sourceId &&
+          other.license == this.license &&
+          other.createdAt == this.createdAt &&
+          other.modifiedAt == this.modifiedAt &&
+          other.cloudId == this.cloudId);
+}
+
+class SourceConfirmationsCompanion extends UpdateCompanion<SourceConfirmation> {
+  final Value<int> id;
+  final Value<String> sourceId;
+  final Value<String?> license;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> modifiedAt;
+  final Value<String?> cloudId;
+  const SourceConfirmationsCompanion({
+    this.id = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.license = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.modifiedAt = const Value.absent(),
+    this.cloudId = const Value.absent(),
+  });
+  SourceConfirmationsCompanion.insert({
+    this.id = const Value.absent(),
+    required String sourceId,
+    this.license = const Value.absent(),
+    required DateTime createdAt,
+    this.modifiedAt = const Value.absent(),
+    this.cloudId = const Value.absent(),
+  }) : sourceId = Value(sourceId),
+       createdAt = Value(createdAt);
+  static Insertable<SourceConfirmation> custom({
+    Expression<int>? id,
+    Expression<String>? sourceId,
+    Expression<String>? license,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? modifiedAt,
+    Expression<String>? cloudId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sourceId != null) 'source_id': sourceId,
+      if (license != null) 'license': license,
+      if (createdAt != null) 'created_at': createdAt,
+      if (modifiedAt != null) 'modified_at': modifiedAt,
+      if (cloudId != null) 'cloud_id': cloudId,
+    });
+  }
+
+  SourceConfirmationsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? sourceId,
+    Value<String?>? license,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? modifiedAt,
+    Value<String?>? cloudId,
+  }) {
+    return SourceConfirmationsCompanion(
+      id: id ?? this.id,
+      sourceId: sourceId ?? this.sourceId,
+      license: license ?? this.license,
+      createdAt: createdAt ?? this.createdAt,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      cloudId: cloudId ?? this.cloudId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (license.present) {
+      map['license'] = Variable<String>(license.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (modifiedAt.present) {
+      map['modified_at'] = Variable<DateTime>(modifiedAt.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SourceConfirmationsCompanion(')
+          ..write('id: $id, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('license: $license, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('modifiedAt: $modifiedAt, ')
+          ..write('cloudId: $cloudId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2446,6 +2858,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TuneRecordingTable tuneRecording = $TuneRecordingTable(this);
   late final $TuneSetsTable tuneSets = $TuneSetsTable(this);
   late final $SetTuneTable setTune = $SetTuneTable(this);
+  late final $SourceConfirmationsTable sourceConfirmations =
+      $SourceConfirmationsTable(this);
   late final TuneDao tuneDao = TuneDao(this as AppDatabase);
   late final RecordingDao recordingDao = RecordingDao(this as AppDatabase);
   late final TuneRecordingDao tuneRecordingDao = TuneRecordingDao(
@@ -2453,6 +2867,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final SetDao setDao = SetDao(this as AppDatabase);
   late final SetTuneDao setTuneDao = SetTuneDao(this as AppDatabase);
+  late final SourceConfirmationDao sourceConfirmationDao =
+      SourceConfirmationDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2463,6 +2879,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tuneRecording,
     tuneSets,
     setTune,
+    sourceConfirmations,
   ];
 }
 
@@ -4098,6 +4515,237 @@ typedef $$SetTuneTableProcessedTableManager =
       SetTuneData,
       PrefetchHooks Function({bool setId, bool tuneId})
     >;
+typedef $$SourceConfirmationsTableCreateCompanionBuilder =
+    SourceConfirmationsCompanion Function({
+      Value<int> id,
+      required String sourceId,
+      Value<String?> license,
+      required DateTime createdAt,
+      Value<DateTime?> modifiedAt,
+      Value<String?> cloudId,
+    });
+typedef $$SourceConfirmationsTableUpdateCompanionBuilder =
+    SourceConfirmationsCompanion Function({
+      Value<int> id,
+      Value<String> sourceId,
+      Value<String?> license,
+      Value<DateTime> createdAt,
+      Value<DateTime?> modifiedAt,
+      Value<String?> cloudId,
+    });
+
+class $$SourceConfirmationsTableFilterComposer
+    extends Composer<_$AppDatabase, $SourceConfirmationsTable> {
+  $$SourceConfirmationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get license => $composableBuilder(
+    column: $table.license,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SourceConfirmationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SourceConfirmationsTable> {
+  $$SourceConfirmationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get license => $composableBuilder(
+    column: $table.license,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SourceConfirmationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SourceConfirmationsTable> {
+  $$SourceConfirmationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get license =>
+      $composableBuilder(column: $table.license, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
+}
+
+class $$SourceConfirmationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SourceConfirmationsTable,
+          SourceConfirmation,
+          $$SourceConfirmationsTableFilterComposer,
+          $$SourceConfirmationsTableOrderingComposer,
+          $$SourceConfirmationsTableAnnotationComposer,
+          $$SourceConfirmationsTableCreateCompanionBuilder,
+          $$SourceConfirmationsTableUpdateCompanionBuilder,
+          (
+            SourceConfirmation,
+            BaseReferences<
+              _$AppDatabase,
+              $SourceConfirmationsTable,
+              SourceConfirmation
+            >,
+          ),
+          SourceConfirmation,
+          PrefetchHooks Function()
+        > {
+  $$SourceConfirmationsTableTableManager(
+    _$AppDatabase db,
+    $SourceConfirmationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SourceConfirmationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SourceConfirmationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SourceConfirmationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> sourceId = const Value.absent(),
+                Value<String?> license = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> modifiedAt = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+              }) => SourceConfirmationsCompanion(
+                id: id,
+                sourceId: sourceId,
+                license: license,
+                createdAt: createdAt,
+                modifiedAt: modifiedAt,
+                cloudId: cloudId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String sourceId,
+                Value<String?> license = const Value.absent(),
+                required DateTime createdAt,
+                Value<DateTime?> modifiedAt = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+              }) => SourceConfirmationsCompanion.insert(
+                id: id,
+                sourceId: sourceId,
+                license: license,
+                createdAt: createdAt,
+                modifiedAt: modifiedAt,
+                cloudId: cloudId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SourceConfirmationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SourceConfirmationsTable,
+      SourceConfirmation,
+      $$SourceConfirmationsTableFilterComposer,
+      $$SourceConfirmationsTableOrderingComposer,
+      $$SourceConfirmationsTableAnnotationComposer,
+      $$SourceConfirmationsTableCreateCompanionBuilder,
+      $$SourceConfirmationsTableUpdateCompanionBuilder,
+      (
+        SourceConfirmation,
+        BaseReferences<
+          _$AppDatabase,
+          $SourceConfirmationsTable,
+          SourceConfirmation
+        >,
+      ),
+      SourceConfirmation,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4112,4 +4760,6 @@ class $AppDatabaseManager {
       $$TuneSetsTableTableManager(_db, _db.tuneSets);
   $$SetTuneTableTableManager get setTune =>
       $$SetTuneTableTableManager(_db, _db.setTune);
+  $$SourceConfirmationsTableTableManager get sourceConfirmations =>
+      $$SourceConfirmationsTableTableManager(_db, _db.sourceConfirmations);
 }
