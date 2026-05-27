@@ -89,6 +89,18 @@ const List<ContentSourceMeta> allContentSources = [
     confirmationRequired: false,
     bundled: true,
   ),
+  ContentSourceMeta(
+    id: 'fraser',
+    name:
+        'Fraser Collection — Airs and Melodies Peculiar to the Highlands and The Isles',
+    license: 'Public Domain',
+    attribution:
+        '"Airs and Melodies Peculiar to the Highlands and The Isles" '
+        'by Captain Simon Fraser (Edinburgh, 1816). Public domain. '
+        'Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -148,6 +160,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/neil_gow_tunes.json',
+      );
+    case 'fraser':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/fraser_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');
