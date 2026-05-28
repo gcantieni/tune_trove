@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:tune_trove/feat/abc_midi/abc_play_button.dart';
 import 'package:tune_trove/feat/abc_render/abc_renderer.dart';
 import 'package:tune_trove/feat/abc_render/abc_view.dart';
 import 'package:tune_trove/feat/tune_list/tune_list_item.dart';
@@ -221,6 +222,8 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         const Text('ABC', style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         AbcView(abc: tune.abc, svg: tune.abcSvg),
+        const SizedBox(height: 8),
+        AbcPlayButton(abc: tune.abc),
         const SizedBox(height: 24),
         const Divider(),
         const SizedBox(height: 8),

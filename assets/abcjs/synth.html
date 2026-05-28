@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --btn-fg: rgba(0,0,0,0.85);
+    --btn-outline: rgba(0,0,0,0.35);
+    --btn-hover: rgba(0,0,0,0.05);
+    --btn-active: rgba(0,0,0,0.10);
+    --btn-radius: 20px;
+    --scaffold-bg: #ffffff;
+  }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: var(--scaffold-bg); }
+  #playBtn {
+    box-sizing: border-box;
+    width: 100%; height: 100%;
+    font: 500 14px -apple-system, BlinkMacSystemFont, sans-serif;
+    border: 1px solid var(--btn-outline);
+    border-radius: var(--btn-radius);
+    background: transparent;
+    cursor: pointer;
+    padding: 0 16px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    color: var(--btn-fg);
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background-color 120ms ease;
+  }
+  #playBtn:hover:not(:disabled) { background: var(--btn-hover); }
+  #playBtn:active:not(:disabled) { background: var(--btn-active); }
+  #playBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+<script src="abcjs-basic-min.js"></script>
+</head>
+<body>
+<button id="playBtn" disabled>▶ Play</button>
+<script>
+(function() {
+  var audioContext = null;
+  var currentBuffer = null;
+  var isPlaying = false;
+  var isLoading = false;
+  var btn = document.getElementById('playBtn');
+
+  function emit(kind, detail) {
+    var msg = JSON.stringify({ kind: kind, detail: detail || null });
+    if (window.AbcMidi && window.AbcMidi.postMessage) {
+      window.AbcMidi.postMessage(msg);
+    }
+  }
+
+  function debug(msg) { emit('debug', msg); }
+
+  function refreshButton() {
+    if (isLoading) btn.textContent = '⏳ Loading…';
+    else if (isPlaying) btn.textContent = '⏹ Stop';
+    else btn.textContent = '▶ Play';
+    btn.disabled = !window.currentAbc;
+  }
+
+  window.setCurrentAbc = function(abc) {
+    window.currentAbc = (abc && abc.length) ? abc : null;
+    refreshButton();
+  };
+
+  window.setTheme = function(vars) {
+    var style = document.documentElement.style;
+    for (var key in vars) {
+      style.setProperty('--' + key, vars[key]);
+    }
+  };
+
+  window.onerror = function(message, source, line) {
+    emit('error', 'js error: ' + message + ' @ ' + (source || '?') + ':' + line);
+    return false;
+  };
+  window.addEventListener('unhandledrejection', function(ev) {
+    var r = ev.reason;
+    emit('error', 'unhandled rejection: ' +
+      (r && r.message ? r.message : String(r)));
+  });
+
+  debug('init: AbcMidi=' + !!(window.AbcMidi && window.AbcMidi.postMessage) +
+        ' AbcMidiAsset=' + !!(window.AbcMidiAsset && window.AbcMidiAsset.postMessage));
+
+  // -----------------------------------------------------------------
+  // XHR shim: WKWebView blocks XHR from file:// origins, so we route
+  // abcjs's per-note MP3 fetches through Dart via a JS channel.
+  // -----------------------------------------------------------------
+  var pendingAssetRequests = {};
+  var nextRequestId = 1;
+
+  function b64ToArrayBuffer(b64) {
+    var binary = atob(b64);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  window.deliverAsset = function(id, b64OrNull) {
+    var req = pendingAssetRequests[id];
+    if (!req) return;
+    delete pendingAssetRequests[id];
+    if (b64OrNull == null) { req.fail(); return; }
+    try { req.resolve(b64ToArrayBuffer(b64OrNull)); }
+    catch (e) { req.fail(); }
+  };
+
+  function requestAssetViaDart(url, onArrayBuffer, onFail) {
+    var id = nextRequestId++;
+    pendingAssetRequests[id] = { resolve: onArrayBuffer, fail: onFail };
+    if (window.AbcMidiAsset && window.AbcMidiAsset.postMessage) {
+      window.AbcMidiAsset.postMessage(JSON.stringify({ id: id, url: url }));
+    } else {
+      delete pendingAssetRequests[id];
+      onFail();
+    }
+  }
+
+  var OrigXHR = window.XMLHttpRequest;
+  var noteUrlPattern = /soundfonts\/[^\/]+-mp3\/[^\/]+\.mp3$/;
+
+  function FakeXHR() {
+    this._intercepted = false;
+    this._url = '';
+    this._real = null;
+    this.readyState = 0;
+    this.status = 0;
+    this.response = null;
+    this.responseType = '';
+    this.onload = null;
+    this.onerror = null;
+  }
+
+  FakeXHR.prototype.open = function(method, url, async) {
+    if (noteUrlPattern.test(String(url))) {
+      this._intercepted = true;
+      this._url = String(url);
+      return;
+    }
+    this._real = new OrigXHR();
+    this._real.open(method, url, async !== false);
+  };
+
+  FakeXHR.prototype.send = function() {
+    var self = this;
+    if (self._intercepted) {
+      requestAssetViaDart(self._url, function(buf) {
+        self.status = 200;
+        self.readyState = 4;
+        self.response = buf;
+        if (self.onload) self.onload({ target: self });
+      }, function() {
+        self.status = 404;
+        self.readyState = 4;
+        if (self.onerror) self.onerror({ target: self });
+      });
+      return;
+    }
+    if (!self._real) return;
+    self._real.responseType = self.responseType;
+    self._real.onload = function(e) {
+      self.status = self._real.status;
+      self.response = self._real.response;
+      self.readyState = self._real.readyState;
+      if (self.onload) self.onload(e);
+    };
+    self._real.onerror = function(e) { if (self.onerror) self.onerror(e); };
+    self._real.send();
+  };
+
+  window.XMLHttpRequest = FakeXHR;
+
+  function ensureAudioContext() {
+    if (audioContext) return audioContext;
+    var Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) throw new Error('AudioContext not supported');
+    audioContext = new Ctor();
+    return audioContext;
+  }
+
+  function setLoading(v) { isLoading = v; refreshButton(); }
+  function setPlaying(v) { isPlaying = v; refreshButton(); }
+
+  function doPlay(abc) {
+    if (!ABCJS || !ABCJS.synth) { emit('error', 'ABCJS.synth missing'); return; }
+    if (!ABCJS.synth.supportsAudio()) {
+      emit('error', 'audio not supported'); return;
+    }
+    setLoading(true);
+    emit('loading');
+
+    var ctx;
+    try { ctx = ensureAudioContext(); }
+    catch (e) { setLoading(false); emit('error', e.message); return; }
+
+    var resumed = ctx.state === 'suspended' ? ctx.resume() : Promise.resolve();
+    resumed.then(function() {
+      debug('context resumed inside click, state=' + ctx.state);
+      var parsed = ABCJS.renderAbc('*', abc);
+      var visualObj = parsed && parsed[0];
+      if (!visualObj) {
+        setLoading(false); emit('error', 'parse returned no tune'); return;
+      }
+      if (currentBuffer) { try { currentBuffer.stop(); } catch (e) {} }
+      currentBuffer = new ABCJS.synth.CreateSynth();
+      currentBuffer.init({
+        audioContext: ctx,
+        visualObj: visualObj,
+        options: {
+          soundFontUrl: './soundfonts/',
+          millisecondsPerMeasure: visualObj.millisecondsPerMeasure(),
+        },
+      }).then(function() {
+        return currentBuffer.prime();
+      }).then(function() {
+        currentBuffer.start();
+        setLoading(false);
+        setPlaying(true);
+        emit('playing');
+        var totalMs = (currentBuffer.duration || 0) * 1000;
+        setTimeout(function() {
+          if (isPlaying) {
+            currentBuffer = null;
+            setPlaying(false);
+            emit('ended');
+          }
+        }, totalMs + 100);
+      }).catch(function(err) {
+        currentBuffer = null;
+        setLoading(false); setPlaying(false);
+        emit('error', 'synth: ' + (err && err.message ? err.message : String(err)));
+      });
+    }).catch(function(err) {
+      setLoading(false);
+      emit('error', 'resume: ' + (err && err.message ? err.message : String(err)));
+    });
+  }
+
+  function doStop() {
+    if (currentBuffer) {
+      try { currentBuffer.stop(); } catch (e) {}
+      currentBuffer = null;
+    }
+    if (isPlaying || isLoading) {
+      setLoading(false); setPlaying(false);
+      emit('stopped');
+    }
+  }
+
+  btn.addEventListener('click', function() {
+    if (isPlaying || isLoading) doStop();
+    else if (window.currentAbc) doPlay(window.currentAbc);
+  });
+
+  // Keep playAbc/stopAbc exposed for any programmatic Dart-side triggers,
+  // but real playback should happen through the in-WebView button click so
+  // WebKit registers the user gesture and unlocks AudioContext.
+  window.playAbc = function(abc) { doPlay(abc); };
+  window.stopAbc = function() { doStop(); };
+})();
+</script>
+</body>
+</html>

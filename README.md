@@ -4,6 +4,16 @@
 
 ## Development
 
+### First-time setup
+
+ABC MIDI playback uses per-note SoundFont MP3s that are too noisy to track in git. Fetch them once after cloning (or any time the `assets/abcjs/soundfonts/` folder is empty):
+
+```sh
+make deps
+```
+
+`make deps` runs `flutter pub get` and `scripts/fetch_soundfonts.sh` (idempotent — re-runs skip already-downloaded notes). To pull SoundFonts alone, run the script directly.
+
 ### Generated Code
 
 To generate companion classes to go along with `drift` tables, we use the dart `build_runner` dev requirement. This bash command you can set up in a terminal on the side and just leave on. It will watch for changes and make updates to the companion classes accordingly.

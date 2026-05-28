@@ -171,3 +171,7 @@ app.*.symbols
 .gclient_previous_custom_vars
 .gclient_previous_sync_commits
 .claude
+
+# Soundfonts: downloaded on demand via scripts/fetch_soundfonts.sh — too noisy
+# to track in git (89 binary files per instrument).
+assets/abcjs/soundfonts/

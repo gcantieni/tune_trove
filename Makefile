@@ -26,6 +26,7 @@ build-android:
 
 deps:
 	flutter pub get
+	bash scripts/fetch_soundfonts.sh
 
 test:
 	flutter test --no-pub
