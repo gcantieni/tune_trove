@@ -41,7 +41,8 @@ class SyncReconciliationService {
       t == 'Tune' ||
       t == 'Recording' ||
       t == 'TuneSet' ||
-      t == 'SourceConfirmation';
+      t == 'SourceConfirmation' ||
+      t == 'SourceRanking';
 
   Future<void> _upsert(String recordType, Map<String, dynamic> fields) async {
     switch (recordType) {
@@ -57,6 +58,8 @@ class SyncReconciliationService {
         await _upsertSetTune(fields);
       case 'SourceConfirmation':
         await _upsertSourceConfirmation(fields);
+      case 'SourceRanking':
+        await _upsertSourceRanking(fields);
     }
   }
 
@@ -84,6 +87,8 @@ class SyncReconciliationService {
         if (row != null) await _db.setTuneDao.removeTuneFromSet(row.id);
       case 'SourceConfirmation':
         await _db.sourceConfirmationDao.deleteByCloudId(cloudId);
+      case 'SourceRanking':
+        await _db.sourceRankingsDao.deleteByCloudId(cloudId);
     }
   }
 
@@ -333,6 +338,20 @@ class SyncReconciliationService {
         modifiedAt: _dateOf(f['modified_at']),
       );
     }
+  }
+
+  Future<void> _upsertSourceRanking(Map<String, dynamic> f) async {
+    final cloudId = _cloudId(f);
+    final sourceId = _str(f, 'source_id') ?? _str(f, 'sourceId');
+    final rank = _int(f, 'rank');
+    if (cloudId == null || sourceId == null || rank == null) return;
+
+    await _db.sourceRankingsDao.upsertFromRemote(
+      sourceId: sourceId,
+      cloudId: cloudId,
+      rank: rank,
+      modifiedAt: _dateOf(f['modified_at']),
+    );
   }
 
   // ---------------------------------------------------------------------------

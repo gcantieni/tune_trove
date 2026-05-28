@@ -2850,6 +2850,323 @@ class SourceConfirmationsCompanion extends UpdateCompanion<SourceConfirmation> {
   }
 }
 
+class $SourceRankingsTable extends SourceRankings
+    with TableInfo<$SourceRankingsTable, SourceRanking> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SourceRankingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rankMeta = const VerificationMeta('rank');
+  @override
+  late final GeneratedColumn<int> rank = GeneratedColumn<int>(
+    'rank',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cloudIdMeta = const VerificationMeta(
+    'cloudId',
+  );
+  @override
+  late final GeneratedColumn<String> cloudId = GeneratedColumn<String>(
+    'cloud_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modifiedAtMeta = const VerificationMeta(
+    'modifiedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> modifiedAt = GeneratedColumn<DateTime>(
+    'modified_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [sourceId, rank, cloudId, modifiedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'source_rankings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SourceRanking> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('rank')) {
+      context.handle(
+        _rankMeta,
+        rank.isAcceptableOrUnknown(data['rank']!, _rankMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rankMeta);
+    }
+    if (data.containsKey('cloud_id')) {
+      context.handle(
+        _cloudIdMeta,
+        cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
+      );
+    }
+    if (data.containsKey('modified_at')) {
+      context.handle(
+        _modifiedAtMeta,
+        modifiedAt.isAcceptableOrUnknown(data['modified_at']!, _modifiedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sourceId};
+  @override
+  SourceRanking map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SourceRanking(
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      )!,
+      rank: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rank'],
+      )!,
+      cloudId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cloud_id'],
+      ),
+      modifiedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}modified_at'],
+      ),
+    );
+  }
+
+  @override
+  $SourceRankingsTable createAlias(String alias) {
+    return $SourceRankingsTable(attachedDatabase, alias);
+  }
+}
+
+class SourceRanking extends DataClass implements Insertable<SourceRanking> {
+  final String sourceId;
+  final int rank;
+  final String? cloudId;
+  final DateTime? modifiedAt;
+  const SourceRanking({
+    required this.sourceId,
+    required this.rank,
+    this.cloudId,
+    this.modifiedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['source_id'] = Variable<String>(sourceId);
+    map['rank'] = Variable<int>(rank);
+    if (!nullToAbsent || cloudId != null) {
+      map['cloud_id'] = Variable<String>(cloudId);
+    }
+    if (!nullToAbsent || modifiedAt != null) {
+      map['modified_at'] = Variable<DateTime>(modifiedAt);
+    }
+    return map;
+  }
+
+  SourceRankingsCompanion toCompanion(bool nullToAbsent) {
+    return SourceRankingsCompanion(
+      sourceId: Value(sourceId),
+      rank: Value(rank),
+      cloudId: cloudId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cloudId),
+      modifiedAt: modifiedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modifiedAt),
+    );
+  }
+
+  factory SourceRanking.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SourceRanking(
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      rank: serializer.fromJson<int>(json['rank']),
+      cloudId: serializer.fromJson<String?>(json['cloudId']),
+      modifiedAt: serializer.fromJson<DateTime?>(json['modifiedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sourceId': serializer.toJson<String>(sourceId),
+      'rank': serializer.toJson<int>(rank),
+      'cloudId': serializer.toJson<String?>(cloudId),
+      'modifiedAt': serializer.toJson<DateTime?>(modifiedAt),
+    };
+  }
+
+  SourceRanking copyWith({
+    String? sourceId,
+    int? rank,
+    Value<String?> cloudId = const Value.absent(),
+    Value<DateTime?> modifiedAt = const Value.absent(),
+  }) => SourceRanking(
+    sourceId: sourceId ?? this.sourceId,
+    rank: rank ?? this.rank,
+    cloudId: cloudId.present ? cloudId.value : this.cloudId,
+    modifiedAt: modifiedAt.present ? modifiedAt.value : this.modifiedAt,
+  );
+  SourceRanking copyWithCompanion(SourceRankingsCompanion data) {
+    return SourceRanking(
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      rank: data.rank.present ? data.rank.value : this.rank,
+      cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+      modifiedAt: data.modifiedAt.present
+          ? data.modifiedAt.value
+          : this.modifiedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SourceRanking(')
+          ..write('sourceId: $sourceId, ')
+          ..write('rank: $rank, ')
+          ..write('cloudId: $cloudId, ')
+          ..write('modifiedAt: $modifiedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(sourceId, rank, cloudId, modifiedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SourceRanking &&
+          other.sourceId == this.sourceId &&
+          other.rank == this.rank &&
+          other.cloudId == this.cloudId &&
+          other.modifiedAt == this.modifiedAt);
+}
+
+class SourceRankingsCompanion extends UpdateCompanion<SourceRanking> {
+  final Value<String> sourceId;
+  final Value<int> rank;
+  final Value<String?> cloudId;
+  final Value<DateTime?> modifiedAt;
+  final Value<int> rowid;
+  const SourceRankingsCompanion({
+    this.sourceId = const Value.absent(),
+    this.rank = const Value.absent(),
+    this.cloudId = const Value.absent(),
+    this.modifiedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SourceRankingsCompanion.insert({
+    required String sourceId,
+    required int rank,
+    this.cloudId = const Value.absent(),
+    this.modifiedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : sourceId = Value(sourceId),
+       rank = Value(rank);
+  static Insertable<SourceRanking> custom({
+    Expression<String>? sourceId,
+    Expression<int>? rank,
+    Expression<String>? cloudId,
+    Expression<DateTime>? modifiedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (sourceId != null) 'source_id': sourceId,
+      if (rank != null) 'rank': rank,
+      if (cloudId != null) 'cloud_id': cloudId,
+      if (modifiedAt != null) 'modified_at': modifiedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SourceRankingsCompanion copyWith({
+    Value<String>? sourceId,
+    Value<int>? rank,
+    Value<String?>? cloudId,
+    Value<DateTime?>? modifiedAt,
+    Value<int>? rowid,
+  }) {
+    return SourceRankingsCompanion(
+      sourceId: sourceId ?? this.sourceId,
+      rank: rank ?? this.rank,
+      cloudId: cloudId ?? this.cloudId,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (rank.present) {
+      map['rank'] = Variable<int>(rank.value);
+    }
+    if (cloudId.present) {
+      map['cloud_id'] = Variable<String>(cloudId.value);
+    }
+    if (modifiedAt.present) {
+      map['modified_at'] = Variable<DateTime>(modifiedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SourceRankingsCompanion(')
+          ..write('sourceId: $sourceId, ')
+          ..write('rank: $rank, ')
+          ..write('cloudId: $cloudId, ')
+          ..write('modifiedAt: $modifiedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2860,6 +3177,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SetTuneTable setTune = $SetTuneTable(this);
   late final $SourceConfirmationsTable sourceConfirmations =
       $SourceConfirmationsTable(this);
+  late final $SourceRankingsTable sourceRankings = $SourceRankingsTable(this);
   late final TuneDao tuneDao = TuneDao(this as AppDatabase);
   late final RecordingDao recordingDao = RecordingDao(this as AppDatabase);
   late final TuneRecordingDao tuneRecordingDao = TuneRecordingDao(
@@ -2869,6 +3187,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final SetTuneDao setTuneDao = SetTuneDao(this as AppDatabase);
   late final SourceConfirmationDao sourceConfirmationDao =
       SourceConfirmationDao(this as AppDatabase);
+  late final SourceRankingsDao sourceRankingsDao = SourceRankingsDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2880,6 +3201,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tuneSets,
     setTune,
     sourceConfirmations,
+    sourceRankings,
   ];
 }
 
@@ -4746,6 +5068,191 @@ typedef $$SourceConfirmationsTableProcessedTableManager =
       SourceConfirmation,
       PrefetchHooks Function()
     >;
+typedef $$SourceRankingsTableCreateCompanionBuilder =
+    SourceRankingsCompanion Function({
+      required String sourceId,
+      required int rank,
+      Value<String?> cloudId,
+      Value<DateTime?> modifiedAt,
+      Value<int> rowid,
+    });
+typedef $$SourceRankingsTableUpdateCompanionBuilder =
+    SourceRankingsCompanion Function({
+      Value<String> sourceId,
+      Value<int> rank,
+      Value<String?> cloudId,
+      Value<DateTime?> modifiedAt,
+      Value<int> rowid,
+    });
+
+class $$SourceRankingsTableFilterComposer
+    extends Composer<_$AppDatabase, $SourceRankingsTable> {
+  $$SourceRankingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rank => $composableBuilder(
+    column: $table.rank,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SourceRankingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SourceRankingsTable> {
+  $$SourceRankingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rank => $composableBuilder(
+    column: $table.rank,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cloudId => $composableBuilder(
+    column: $table.cloudId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SourceRankingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SourceRankingsTable> {
+  $$SourceRankingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<int> get rank =>
+      $composableBuilder(column: $table.rank, builder: (column) => column);
+
+  GeneratedColumn<String> get cloudId =>
+      $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$SourceRankingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SourceRankingsTable,
+          SourceRanking,
+          $$SourceRankingsTableFilterComposer,
+          $$SourceRankingsTableOrderingComposer,
+          $$SourceRankingsTableAnnotationComposer,
+          $$SourceRankingsTableCreateCompanionBuilder,
+          $$SourceRankingsTableUpdateCompanionBuilder,
+          (
+            SourceRanking,
+            BaseReferences<_$AppDatabase, $SourceRankingsTable, SourceRanking>,
+          ),
+          SourceRanking,
+          PrefetchHooks Function()
+        > {
+  $$SourceRankingsTableTableManager(
+    _$AppDatabase db,
+    $SourceRankingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SourceRankingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SourceRankingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SourceRankingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> sourceId = const Value.absent(),
+                Value<int> rank = const Value.absent(),
+                Value<String?> cloudId = const Value.absent(),
+                Value<DateTime?> modifiedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SourceRankingsCompanion(
+                sourceId: sourceId,
+                rank: rank,
+                cloudId: cloudId,
+                modifiedAt: modifiedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String sourceId,
+                required int rank,
+                Value<String?> cloudId = const Value.absent(),
+                Value<DateTime?> modifiedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SourceRankingsCompanion.insert(
+                sourceId: sourceId,
+                rank: rank,
+                cloudId: cloudId,
+                modifiedAt: modifiedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SourceRankingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SourceRankingsTable,
+      SourceRanking,
+      $$SourceRankingsTableFilterComposer,
+      $$SourceRankingsTableOrderingComposer,
+      $$SourceRankingsTableAnnotationComposer,
+      $$SourceRankingsTableCreateCompanionBuilder,
+      $$SourceRankingsTableUpdateCompanionBuilder,
+      (
+        SourceRanking,
+        BaseReferences<_$AppDatabase, $SourceRankingsTable, SourceRanking>,
+      ),
+      SourceRanking,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4762,4 +5269,6 @@ class $AppDatabaseManager {
       $$SetTuneTableTableManager(_db, _db.setTune);
   $$SourceConfirmationsTableTableManager get sourceConfirmations =>
       $$SourceConfirmationsTableTableManager(_db, _db.sourceConfirmations);
+  $$SourceRankingsTableTableManager get sourceRankings =>
+      $$SourceRankingsTableTableManager(_db, _db.sourceRankings);
 }

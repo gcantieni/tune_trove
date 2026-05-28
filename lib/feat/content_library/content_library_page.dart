@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tune_trove/feat/cloudkit_sync/sync_refresh_indicator.dart';
 import 'package:tune_trove/feat/content_library/source_confirmation_dialog.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
@@ -30,40 +32,55 @@ class ContentLibraryPage extends ConsumerWidget {
         ),
         title: const Text('Content Library'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: [
-          const _SectionHeader('Public domain sources'),
-          const _SectionDescription(
-            'These collections are included by default. '
-            'Toggle any off to exclude them from search.',
-          ),
-          for (final meta in defaultSources)
-            _SourceTile(
-              meta: meta,
-              isActive: confirmedIds.contains(meta.id),
-              onToggle: (isCurrentlyActive) => isCurrentlyActive
-                  ? ref.read(confirmedSourcesProvider.notifier).revoke(meta.id)
-                  : ref
-                        .read(confirmedSourcesProvider.notifier)
-                        .confirm(meta.id, meta.license),
+      body: SyncRefreshIndicator(
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            ListTile(
+              leading: const Icon(Icons.sort),
+              title: const Text('Search Order'),
+              subtitle: const Text(
+                'Set the order results appear from each source',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/content_library/search_order'),
             ),
-          const SizedBox(height: 8),
-          const _SectionHeader('Additional sources'),
-          const _SectionDescription(
-            'These sources are licensed for personal, non-commercial use. '
-            'Tap a source to review its license terms and activate it.',
-          ),
-          for (final meta in optionalSources)
-            _SourceTile(
-              meta: meta,
-              isActive: confirmedIds.contains(meta.id),
-              onToggle: (isCurrentlyActive) => isCurrentlyActive
-                  ? _deactivate(context, ref, meta)
-                  : _activate(context, ref, meta),
+            const Divider(height: 1),
+            const _SectionHeader('Public domain sources'),
+            const _SectionDescription(
+              'These collections are included by default. '
+              'Toggle any off to exclude them from search.',
             ),
-          const _CopyrightFooter(),
-        ],
+            for (final meta in defaultSources)
+              _SourceTile(
+                meta: meta,
+                isActive: confirmedIds.contains(meta.id),
+                onToggle: (isCurrentlyActive) => isCurrentlyActive
+                    ? ref
+                          .read(confirmedSourcesProvider.notifier)
+                          .revoke(meta.id)
+                    : ref
+                          .read(confirmedSourcesProvider.notifier)
+                          .confirm(meta.id, meta.license),
+              ),
+            const SizedBox(height: 8),
+            const _SectionHeader('Additional sources'),
+            const _SectionDescription(
+              'These sources are licensed for personal, non-commercial use. '
+              'Tap a source to review its license terms and activate it.',
+            ),
+            for (final meta in optionalSources)
+              _SourceTile(
+                meta: meta,
+                isActive: confirmedIds.contains(meta.id),
+                onToggle: (isCurrentlyActive) => isCurrentlyActive
+                    ? _deactivate(context, ref, meta)
+                    : _activate(context, ref, meta),
+              ),
+            const _CopyrightFooter(),
+          ],
+        ),
       ),
     );
   }

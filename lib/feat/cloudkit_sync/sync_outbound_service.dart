@@ -97,6 +97,9 @@ class SyncOutboundService {
       case 'SourceConfirmation':
         final c = await _db.sourceConfirmationDao.getByCloudId(cloudId);
         return c == null ? null : _serializeSourceConfirmation(c);
+      case 'SourceRanking':
+        final r = await _db.sourceRankingsDao.getByCloudId(cloudId);
+        return r == null ? null : _serializeSourceRanking(r);
     }
     return null;
   }
@@ -167,6 +170,11 @@ class SyncOutboundService {
     for (final c in await _db.sourceConfirmationDao.getAll()) {
       if (c.cloudId == null) continue;
       records.add(_serializeSourceConfirmation(c));
+    }
+
+    for (final r in await _db.sourceRankingsDao.getAll()) {
+      if (r.cloudId == null) continue;
+      records.add(_serializeSourceRanking(r));
     }
 
     return records;
@@ -251,5 +259,14 @@ class SyncOutboundService {
     'created_at': c.createdAt.millisecondsSinceEpoch,
     if (c.modifiedAt != null)
       'modified_at': c.modifiedAt!.millisecondsSinceEpoch,
+  };
+
+  static Map<String, dynamic> _serializeSourceRanking(SourceRanking r) => {
+    'recordType': 'SourceRanking',
+    'cloudId': r.cloudId,
+    'source_id': r.sourceId,
+    'rank': r.rank,
+    if (r.modifiedAt != null)
+      'modified_at': r.modifiedAt!.millisecondsSinceEpoch,
   };
 }

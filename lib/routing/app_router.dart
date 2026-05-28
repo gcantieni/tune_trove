@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:tune_trove/feat/content_library/content_library_page.dart';
+import 'package:tune_trove/feat/content_library/source_ranking_page.dart';
 import 'package:tune_trove/feat/recorder/recorder_page.dart';
 import 'package:tune_trove/feat/recording_list/recording_detail_page.dart';
 import 'package:tune_trove/feat/recording_list/recording_list_page.dart';
@@ -122,6 +123,13 @@ final GoRouter router = GoRouter(
             path: '/content_library',
             child: const ContentLibraryPage(),
           ),
+          routes: [
+            GoRoute(
+              path: 'search_order',
+              name: 'source_ranking',
+              builder: (context, state) => const SourceRankingPage(),
+            ),
+          ],
         ),
       ],
     ),

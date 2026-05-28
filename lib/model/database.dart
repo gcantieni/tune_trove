@@ -10,6 +10,7 @@ import 'package:tune_trove/model/accessors/recording_dao.dart';
 import 'package:tune_trove/model/accessors/set_dao.dart';
 import 'package:tune_trove/model/accessors/set_tune_dao.dart';
 import 'package:tune_trove/model/accessors/source_confirmation_dao.dart';
+import 'package:tune_trove/model/accessors/source_rankings_dao.dart';
 import 'package:tune_trove/model/accessors/tune_dao.dart';
 import 'package:tune_trove/model/accessors/tune_recording_dao.dart';
 import 'package:tune_trove/model/database.steps.dart';
@@ -17,6 +18,7 @@ import 'package:tune_trove/model/tables/recordings.dart';
 import 'package:tune_trove/model/tables/set_tune.dart';
 import 'package:tune_trove/model/tables/sets.dart';
 import 'package:tune_trove/model/tables/source_confirmations.dart';
+import 'package:tune_trove/model/tables/source_rankings.dart';
 import 'package:tune_trove/model/tables/tune_recording.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
 
@@ -31,6 +33,7 @@ part 'database.g.dart';
     TuneSets,
     SetTune,
     SourceConfirmations,
+    SourceRankings,
   ],
   daos: [
     TuneDao,
@@ -39,6 +42,7 @@ part 'database.g.dart';
     SetDao,
     SetTuneDao,
     SourceConfirmationDao,
+    SourceRankingsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -77,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -190,6 +194,8 @@ class AppDatabase extends _$AppDatabase {
       if (from < stepsTarget) await steps(m, from, stepsTarget);
       // v9 -> v10: add the synced source_confirmations table (purely additive).
       if (from < 10 && to >= 10) await m.createTable(sourceConfirmations);
+      // v10 -> v11: add the source_rankings table (purely additive).
+      if (from < 11 && to >= 11) await m.createTable(sourceRankings);
     },
   );
 

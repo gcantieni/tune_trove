@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tune_trove/model/accessors/source_confirmation_dao.dart';
+import 'package:tune_trove/model/accessors/source_rankings_dao.dart';
 import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
@@ -39,6 +40,7 @@ const _seededKey = 'seeded_source_ids';
 /// seeded on this device. Called once on startup; safe to call multiple times.
 Future<void> _seedNewPublicDomainSources(
   SourceConfirmationDao dao,
+  SourceRankingsDao rankingsDao,
   SharedPreferences prefs,
 ) async {
   final seeded = (prefs.getStringList(_seededKey) ?? []).toSet();
@@ -50,6 +52,7 @@ Future<void> _seedNewPublicDomainSources(
   if (toSeed.isEmpty) return;
   for (final meta in toSeed) {
     await dao.confirm(meta.id, meta.license);
+    await rankingsDao.appendSource(meta.id);
   }
   await prefs.setStringList(_seededKey, [
     ...seeded,
@@ -60,22 +63,34 @@ Future<void> _seedNewPublicDomainSources(
 class ConfirmedSourcesNotifier extends Notifier<Set<String>> {
   @override
   Set<String> build() {
-    final dao = ref.watch(databaseProvider).sourceConfirmationDao;
+    final db = ref.watch(databaseProvider);
     final prefs = ref.read(sharedPreferencesProvider);
     // Seed any newly-added public-domain sources on this device.
-    unawaited(_seedNewPublicDomainSources(dao, prefs));
-    final sub = dao.watchConfirmedIds().listen((ids) => state = ids);
+    unawaited(
+      _seedNewPublicDomainSources(
+        db.sourceConfirmationDao,
+        db.sourceRankingsDao,
+        prefs,
+      ),
+    );
+    final sub = db.sourceConfirmationDao.watchConfirmedIds().listen(
+      (ids) => state = ids,
+    );
     ref.onDispose(sub.cancel);
     return const {};
   }
 
-  Future<void> confirm(String sourceId, String license) => ref
-      .read(databaseProvider)
-      .sourceConfirmationDao
-      .confirm(sourceId, license);
+  Future<void> confirm(String sourceId, String license) async {
+    final db = ref.read(databaseProvider);
+    await db.sourceConfirmationDao.confirm(sourceId, license);
+    await db.sourceRankingsDao.appendSource(sourceId);
+  }
 
-  Future<void> revoke(String sourceId) =>
-      ref.read(databaseProvider).sourceConfirmationDao.revoke(sourceId);
+  Future<void> revoke(String sourceId) async {
+    final db = ref.read(databaseProvider);
+    await db.sourceConfirmationDao.revoke(sourceId);
+    await db.sourceRankingsDao.removeSource(sourceId);
+  }
 }
 
 final confirmedSourcesProvider =
@@ -101,17 +116,40 @@ final activeSourceNamesProvider = Provider<Set<String>>((ref) {
 });
 
 // ---------------------------------------------------------------------------
+// Source ranking — user-controlled search-result order
+// ---------------------------------------------------------------------------
+
+/// Ordered list of active source IDs as the user has ranked them.
+/// Lower index = appears first in search results.
+final sourceRankOrderProvider = StreamProvider<List<String>>((ref) {
+  return ref.watch(databaseProvider).sourceRankingsDao.watchRankedSourceIds();
+});
+
+// ---------------------------------------------------------------------------
 // Content-gated tune sources
 // ---------------------------------------------------------------------------
 
-/// Returns only the [TuneSource]s the user currently has active.
-/// Rebuilds automatically when the user confirms or revokes a source.
+/// Returns only the [TuneSource]s the user currently has active, sorted by
+/// the user's saved rank ([sourceRankOrderProvider]).
+/// Rebuilds automatically when the user confirms, revokes, or reorders sources.
 final tuneSourcesProvider = Provider<List<TuneSource>>((ref) {
   final confirmedIds = ref.watch(confirmedSourcesProvider);
-  return allContentSources
+  final rankedIds = ref.watch(sourceRankOrderProvider).value ?? [];
+
+  final activeSources = allContentSources
       .where((meta) => !meta.hidden && confirmedIds.contains(meta.id))
-      .map(buildTuneSource)
       .toList();
+
+  activeSources.sort((a, b) {
+    final aIdx = rankedIds.indexOf(a.id);
+    final bIdx = rankedIds.indexOf(b.id);
+    if (aIdx == -1 && bIdx == -1) return 0;
+    if (aIdx == -1) return 1;
+    if (bIdx == -1) return -1;
+    return aIdx.compareTo(bIdx);
+  });
+
+  return activeSources.map(buildTuneSource).toList();
 });
 
 // ---------------------------------------------------------------------------
