@@ -155,6 +155,19 @@ const List<ContentSourceMeta> allContentSources = [
     confirmationRequired: false,
     bundled: true,
   ),
+  ContentSourceMeta(
+    id: 'nelson',
+    name: 'The Nelson Music Collection',
+    genre: 'American / Square Dance',
+    license: 'Public Domain',
+    attribution:
+        '"Selected Authentic Square Dance Melodies" (1969), '
+        'compiled by Newton F. Tolman and K. Dep. Gilbert. '
+        'Transcribed to ABC by Ralph Palmer. Public domain. Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+    hidden: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -239,6 +252,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/kidson_tunes.json',
+      );
+    case 'nelson':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/nelson_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');
