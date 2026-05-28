@@ -34,15 +34,44 @@ git -C "$REPO_ROOT" ls-files \
         | grep "^author " \
         | sed 's/^author //'
     done \
-  | sort \
-  | uniq -c \
-  | sort -rn \
-  | awk '
-      BEGIN { total = 0 }
-      { total += $1; lines[NR] = $1; names[NR] = ""; for (i=2;i<=NF;i++) names[NR] = names[NR] (i>2?" ":"") $i; count = NR }
-      END {
-        print "Git blame attribution (" total " total lines)"
-        print "============================================"
-        for (i = 1; i <= count; i++)
-          printf "%6.2f%%  %-6d  %s\n", lines[i]/total*100, lines[i], names[i]
-      }'
+  | tr -s ' ' \
+  | sort | uniq -c | sort -rn \
+  > /tmp/blame_stats_lines.txt
+
+git -C "$REPO_ROOT" log --format="%an" \
+  | tr -s ' ' \
+  | sort | uniq -c | sort -rn \
+  > /tmp/blame_stats_commits.txt
+
+awk '
+  FNR == NR {
+    count = $1
+    name = ""
+    for (i = 2; i <= NF; i++) name = name (i > 2 ? " " : "") $i
+    lines[name] = count
+    order[++n] = name
+    line_total += count
+    next
+  }
+  {
+    count = $1
+    name = ""
+    for (i = 2; i <= NF; i++) name = name (i > 2 ? " " : "") $i
+    commits[name] = count
+    commit_total += count
+    if (!(name in lines)) { lines[name] = 0; order[++n] = name }
+  }
+  END {
+    printf "\n%-22s  %7s  %6s    %7s  %8s\n", "Contributor", "Lines", "Lines%", "Commits", "Commits%"
+    printf "%-22s  %7s  %6s    %7s  %8s\n", "----------------------", "-------", "------", "-------", "--------"
+    for (i = 1; i <= n; i++) {
+      name = order[i]
+      lc = lines[name] + 0
+      cc = commits[name] + 0
+      lpct = line_total > 0 ? lc / line_total * 100 : 0
+      cpct = commit_total > 0 ? cc / commit_total * 100 : 0
+      printf "%-22s  %7d  %5.1f%%    %7d  %7.1f%%\n", name, lc, lpct, cc, cpct
+    }
+    printf "\n%-22s  %7d  %6s    %7d  %8s\n", "TOTAL", line_total, "100%", commit_total, "100%"
+  }
+' /tmp/blame_stats_lines.txt /tmp/blame_stats_commits.txt
