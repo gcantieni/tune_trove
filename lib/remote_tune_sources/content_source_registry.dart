@@ -214,6 +214,17 @@ const List<ContentSourceMeta> allContentSources = [
         'Company (1940). Courtesy of John Chambers.',
     confirmationRequired: true,
   ),
+  ContentSourceMeta(
+    id: 'pringle',
+    name: "John Pringle's Collection",
+    genre: 'Scottish',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
+    attribution:
+        "John Pringle's Collection of Reels Strathspey & Jigs (1801). "
+        'Courtesy of John Chambers.',
+    confirmationRequired: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -323,6 +334,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/ryans_mammoth_tunes.json',
+      );
+    case 'pringle':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/pringle_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');
