@@ -86,6 +86,7 @@ flutter:
     - assets/data/nefr_tunes.json
     - assets/data/nelson_tunes.json
     - assets/data/meikle_tunes.json
+    - assets/data/mulhollan_tunes.json
     - assets/abcjs/
     - assets/song.mp3
 

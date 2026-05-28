@@ -180,6 +180,17 @@ const List<ContentSourceMeta> allContentSources = [
     bundled: true,
     hidden: true,
   ),
+  ContentSourceMeta(
+    id: 'mulhollan',
+    name: 'The John Macpherson Mulhollan Collection',
+    genre: 'Scottish (Highland)',
+    license: 'Public Domain',
+    attribution:
+        '"Airs and Melodies Peculiar to the Highlands and The Isles" '
+        'by John Macpherson Mulhollan (1814). Public domain. Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -274,6 +285,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/meikle_tunes.json',
+      );
+    case 'mulhollan':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/mulhollan_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');
