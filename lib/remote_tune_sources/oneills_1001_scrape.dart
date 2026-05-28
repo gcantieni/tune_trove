@@ -23,7 +23,7 @@ void main() async {
     final tunes = <Map<String, dynamic>>[];
 
     for (var i = 1; i <= _count; i++) {
-      final filename = i.toString().padLeft(4, '0') + '.abc';
+      final filename = '${i.toString().padLeft(4, '0')}.abc';
       final url = Uri.parse('$_baseUrl$filename');
       final response = await client.get(url);
       if (response.statusCode != 200) {

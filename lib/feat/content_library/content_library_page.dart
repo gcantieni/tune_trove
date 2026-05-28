@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import 'package:tune_trove/feat/content_library/source_confirmation_dialog.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 import 'package:tune_trove/routing/nav_scaffold.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContentLibraryPage extends ConsumerWidget {
   const ContentLibraryPage({super.key});

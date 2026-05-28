@@ -138,8 +138,9 @@ double? parseTime(String raw) {
           sec < 0 ||
           sec >= 60 ||
           cs < 0 ||
-          cs > 99)
+          cs > 99) {
         return null;
+      }
       return m * 60 + sec + cs / 100.0;
     } else {
       final sec = int.tryParse(secPart);

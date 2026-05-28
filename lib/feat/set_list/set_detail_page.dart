@@ -158,14 +158,11 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
                               .updateKey(entry.link.id, key),
                         );
                       },
-                      onReorder: (oldIndex, newIndex) {
-                        final insertAt = newIndex > oldIndex
-                            ? newIndex - 1
-                            : newIndex;
+                      onReorderItem: (oldIndex, newIndex) {
                         ref
                             .read(databaseProvider)
                             .setTuneDao
-                            .reorderTune(widget.setId, oldIndex, insertAt);
+                            .reorderTune(widget.setId, oldIndex, newIndex);
                       },
                     ),
             ),

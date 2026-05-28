@@ -398,8 +398,9 @@ class _ScrubbingRangeSliderState extends ConsumerState<_ScrubbingRangeSlider> {
               onPanUpdate: (details) {
                 if (_dragStart == null ||
                     _dragStartValue == null ||
-                    _activeThumb == null)
+                    _activeThumb == null) {
                   return;
+                }
                 final dx = details.localPosition.dx - _dragStart!.dx;
                 final vertDist = (details.localPosition.dy - _dragStart!.dy)
                     .abs();

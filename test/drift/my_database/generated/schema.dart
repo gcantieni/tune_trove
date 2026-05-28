@@ -1,5 +1,5 @@
 // dart format width=80
-// ignore_for_file: unused_local_variable, unused_import
+// ignore_for_file: unused_local_variable, unused_import, directives_ordering
 import 'package:drift/drift.dart';
 import 'package:drift/internal/migrations.dart';
 import 'schema_v1.dart' as v1;
