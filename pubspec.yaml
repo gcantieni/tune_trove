@@ -73,6 +73,7 @@ flutter:
   assets:
     - assets/data/thesession_tunes.json
     - assets/data/oneills_1001_tunes.json
+    - assets/data/oneills_1850_tunes.json
     - assets/data/norbeck_tunes.json
     - assets/data/paulhardy_tunes.json
     - assets/data/williamclarke_tunes.json

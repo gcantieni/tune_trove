@@ -16,9 +16,23 @@ const List<ContentSourceMeta> allContentSources = [
     license: 'GNU GPL',
     licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
-        "O'Neill's 1001 Gems — compiled by Francis O'Neill (1907). Traditional Irish folk tunes. " +
-        "Transcription copyrighted 1997-2000 by the contributors to the O'Neill's Project. " +
+        "O'Neill's 1001 Gems — compiled by Francis O'Neill (1907). Traditional Irish folk tunes. "
+        "Transcription copyrighted 1997-2000 by the contributors to the O'Neill's Project. "
         "Courtesy of John Chambers.",
+    confirmationRequired: true,
+    bundled: true,
+  ),
+  ContentSourceMeta(
+    id: 'oneills_1850',
+    name: "O'Neill's 1850",
+    genre: 'Irish',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
+    attribution:
+        "O'Neill's Music of Ireland: Eighteen Hundred and Fifty Melodies — "
+        "compiled by Capt. Francis O'Neill (1903). "
+        "Transcription copyrighted 1997-2000 by the contributors to the O'Neill's Project. "
+        'Courtesy of John Chambers.',
     confirmationRequired: true,
     bundled: true,
   ),
@@ -28,7 +42,8 @@ const List<ContentSourceMeta> allContentSources = [
     genre: 'English',
     license: 'Public Domain',
     attribution:
-        'William Clarke of Feltwell tune manuscript (~1701). Traditional tunes; public domain.',
+        'William Clarke of Feltwell tune manuscript (~1701). Traditional tunes; public domain. '
+        'Transcription by Lyn Law, David Dolby, Anahata and Mary Humphreys',
     confirmationRequired: false,
     bundled: true,
   ),
@@ -223,6 +238,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/oneills_1001_tunes.json',
+      );
+    case 'oneills_1850':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/oneills_1850_tunes.json',
       );
     case 'norbeck':
       return StaticAssetTuneSource(
