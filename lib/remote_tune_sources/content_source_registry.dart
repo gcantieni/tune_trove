@@ -20,7 +20,6 @@ const List<ContentSourceMeta> allContentSources = [
         "Transcription copyrighted 1997-2000 by the contributors to the O'Neill's Project. "
         "Courtesy of John Chambers.",
     confirmationRequired: true,
-    bundled: true,
   ),
   ContentSourceMeta(
     id: 'oneills_1850',
@@ -34,7 +33,6 @@ const List<ContentSourceMeta> allContentSources = [
         "Transcription copyrighted 1997-2000 by the contributors to the O'Neill's Project. "
         'Courtesy of John Chambers.',
     confirmationRequired: true,
-    bundled: true,
   ),
   ContentSourceMeta(
     id: 'williamclarke',
@@ -43,9 +41,8 @@ const List<ContentSourceMeta> allContentSources = [
     license: 'Public Domain',
     attribution:
         'William Clarke of Feltwell tune manuscript (~1701). Traditional tunes; public domain. '
-        'Transcription by Lyn Law, David Dolby, Anahata and Mary Humphreys',
+        'Transcription by Lyn Law, David Dolby, Anahata and Mary Humphreys.',
     confirmationRequired: false,
-    bundled: true,
   ),
   ContentSourceMeta(
     id: 'thesession',
@@ -57,7 +54,6 @@ const List<ContentSourceMeta> allContentSources = [
         'Contains information from The Session, which is made available '
         'here under the Open Database License (ODbL).',
     confirmationRequired: true,
-    bundled: true,
   ),
   ContentSourceMeta(
     id: 'norbeck',
@@ -79,7 +75,6 @@ const List<ContentSourceMeta> allContentSources = [
     licenseUrl: 'https://creativecommons.org/licenses/by-nc-sa/4.0/',
     attribution: 'Paul Hardy Session Tunebook by Paul Hardy — CC BY-NC-SA 4.0.',
     confirmationRequired: true,
-    bundled: true,
   ),
   ContentSourceMeta(
     id: 'pete_mac',
@@ -89,100 +84,98 @@ const List<ContentSourceMeta> allContentSources = [
     licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
     attribution: "Pete Mac's Tunebook — CC0 (public domain).",
     confirmationRequired: false,
-    bundled: true,
   ),
   ContentSourceMeta(
     id: 'athole',
     name: 'The Athole Collection (1884)',
     genre: 'Scottish',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         'The Athole Collection, compiled by James Stewart-Robertson '
-        '(Edinburgh, 1884). Public domain. Courtesy of John Chambers.',
-    confirmationRequired: false,
-    bundled: true,
+        '(Edinburgh, 1884). Courtesy of John Chambers.',
+    confirmationRequired: true,
   ),
   ContentSourceMeta(
     id: 'aird',
     name:
         'The James Aird Collection, Vol. 1-6: A Selection of Scotch, English, Irish and Foreign Airs',
     genre: 'Scottish, English & Irish',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         'The James Aird Collection, Vol. 1-6 (Glasgow, 1778–1782). '
-        'ABC transcriptions by Jack Campin (1999). Public domain. '
-        'Courtesy of John Chambers.',
-    confirmationRequired: false,
-    bundled: true,
+        'ABC transcriptions by Jack Campin (1999). Courtesy of John Chambers.',
+    confirmationRequired: true,
   ),
   ContentSourceMeta(
     id: 'neil_gow',
     name: 'Neil Gow & Sons Complete Repository (1799–1839)',
     genre: 'Scottish',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         'Niel Gow & Sons Complete Repository of Original Scots Slow Strathspeys and Dances '
         '(Edinburgh, 1799–1839). ABC transcriptions by John Chambers (2021). '
-        'Public domain. Courtesy of John Chambers.',
-    confirmationRequired: false,
-    bundled: true,
+        'Courtesy of John Chambers.',
+    confirmationRequired: true,
   ),
   ContentSourceMeta(
     id: 'fraser',
     name:
         'Fraser Collection — Airs and Melodies Peculiar to the Highlands and The Isles',
     genre: 'Scottish (Highland)',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         '"Airs and Melodies Peculiar to the Highlands and The Isles" '
-        'by Captain Simon Fraser (Edinburgh, 1816). Public domain. '
-        'Courtesy of John Chambers.',
-    confirmationRequired: false,
-    bundled: true,
+        'by Captain Simon Fraser (Edinburgh, 1816). Courtesy of John Chambers.',
+    confirmationRequired: true,
   ),
   ContentSourceMeta(
     id: 'erm',
     name: 'Edinburgh Repository of Music',
     genre: 'Scottish & English',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         'Edinburgh Repository of Music, J. Sutherland, Edinburgh, 1815–1825. '
-        'Public domain. Courtesy of John Chambers.',
-    confirmationRequired: false,
-    bundled: true,
+        'Courtesy of John Chambers.',
+    confirmationRequired: true,
   ),
   ContentSourceMeta(
     id: 'nefr',
     name: "New England Fiddler's Repertoire",
     genre: 'New England / Contra',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         "New England Fiddler's Repertoire, compiled by Randy Miller and Jack Perron. "
-        'Public domain. Courtesy of John Chambers.',
-    confirmationRequired: false,
-    bundled: true,
+        'Courtesy of John Chambers.',
+    confirmationRequired: true,
   ),
   ContentSourceMeta(
     id: 'kidson',
     name: 'Old English Country Dances',
     genre: 'English',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         '"Old English Country Dances", collected and edited by Frank Kidson, '
-        'William Reeves, London, 1890. Public domain. Courtesy of John Chambers.',
-    confirmationRequired: false,
-    bundled: true,
+        'William Reeves, London, 1890. Courtesy of John Chambers.',
+    confirmationRequired: true,
   ),
   ContentSourceMeta(
     id: 'nelson',
     name: 'The Nelson Music Collection',
     genre: 'American / Square Dance',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         '"Selected Authentic Square Dance Melodies" (1969), '
         'compiled by Newton F. Tolman and K. Dep. Gilbert. '
-        'Transcribed to ABC by Ralph Palmer. Public domain. Courtesy of John Chambers.',
-    confirmationRequired: false,
+        'Transcribed to ABC by Ralph Palmer. Courtesy of John Chambers.',
+    confirmationRequired: true,
     bundled: true,
     hidden: true,
   ),
@@ -190,11 +183,11 @@ const List<ContentSourceMeta> allContentSources = [
     id: 'meikle',
     name: 'Originally Mine',
     genre: 'Scottish',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
-        '"Originally Mine" by George Meikle. '
-        'Public domain. Courtesy of John Chambers.',
-    confirmationRequired: false,
+        '"Originally Mine" by George Meikle. Courtesy of John Chambers.',
+    confirmationRequired: true,
     bundled: true,
     hidden: true,
   ),
@@ -202,12 +195,12 @@ const List<ContentSourceMeta> allContentSources = [
     id: 'mulhollan',
     name: 'The John Macpherson Mulhollan Collection',
     genre: 'Scottish (Highland)',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
         '"Airs and Melodies Peculiar to the Highlands and The Isles" '
-        'by John Macpherson Mulhollan (1814). Public domain. Courtesy of John Chambers.',
-    confirmationRequired: false,
-    bundled: true,
+        'by John Macpherson Mulhollan (1814). Courtesy of John Chambers.',
+    confirmationRequired: true,
   ),
 ];
 

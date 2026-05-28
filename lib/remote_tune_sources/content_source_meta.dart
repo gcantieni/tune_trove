@@ -30,9 +30,9 @@ class ContentSourceMeta {
     this.licenseUrl,
     required this.attribution,
     required this.confirmationRequired,
-    this.bundled = false,
+    bool? bundled,
     this.hidden = false,
-  });
+  }) : bundled = bundled ?? !hidden;
 
   /// Public-domain sources that are on by default (user can still disable them).
   bool get isAlwaysActive => !confirmationRequired;
