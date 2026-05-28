@@ -168,6 +168,18 @@ const List<ContentSourceMeta> allContentSources = [
     bundled: true,
     hidden: true,
   ),
+  ContentSourceMeta(
+    id: 'meikle',
+    name: 'Originally Mine',
+    genre: 'Scottish',
+    license: 'Public Domain',
+    attribution:
+        '"Originally Mine" by George Meikle. '
+        'Public domain. Courtesy of John Chambers.',
+    confirmationRequired: false,
+    bundled: true,
+    hidden: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -257,6 +269,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/nelson_tunes.json',
+      );
+    case 'meikle':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/meikle_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');
