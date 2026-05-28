@@ -1,0 +1,11 @@
+GNU GPL.
+
+The original O'Neill's Music of Ireland has been out of copyright for many years now. This collection of ABC transcriptions is copyrighted 1997-2000 by the contributors to the O'Neill's Project. You are welcome to download anything here and use it, as long as you give credit to the transcribers, and take credit for any corrections or enhancements that you might make.
+
+This information is free; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
+
+This work is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. In particular, if you find yourself engaging in wild dancing or sitting in a quiet corner with a glass of stout and a contemplative mood, don't blame us. This is traditional Irish music, you know.
+
+You should have received a copy of the GNU General Public License along with this work; if not, write to the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA. See the GNU General Public License for more details.
+
+If you find any discrepancies between the notes in the ABC here and the original O'Neill's, please send in the error reports. We've found a few typos in the transcriptions (and in the book), and we expect there are more to be found.

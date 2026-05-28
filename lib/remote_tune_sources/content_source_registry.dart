@@ -13,10 +13,13 @@ const List<ContentSourceMeta> allContentSources = [
     id: 'oneills_1001',
     name: "O'Neill's 1001",
     genre: 'Irish',
-    license: 'Public Domain',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
-        "O'Neill's 1001 Gems — compiled by Francis O'Neill (1907). Traditional Irish folk tunes; public domain.",
-    confirmationRequired: false,
+        "O'Neill's 1001 Gems — compiled by Francis O'Neill (1907). Traditional Irish folk tunes. " +
+        "Transcription copyrighted 1997-2000 by the contributors to the O'Neill's Project. " +
+        "Courtesy of John Chambers.",
+    confirmationRequired: true,
     bundled: true,
   ),
   ContentSourceMeta(
@@ -219,7 +222,7 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
     case 'oneills_1001':
       return StaticAssetTuneSource(
         name: meta.name,
-        assetPath: 'assets/data/oneills_tunes.json',
+        assetPath: 'assets/data/oneills_1001_tunes.json',
       );
     case 'norbeck':
       return StaticAssetTuneSource(

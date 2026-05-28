@@ -1,11 +1,11 @@
-// One-time script to produce assets/data/oneills_tunes.json from John Chambers'
+// One-time script to produce assets/data/oneills_1001_tunes.json from John Chambers'
 // O'Neill's 1001 transcription (transcribed by Frank Nordberg).
 //
 // Usage:
-//   dart lib/remote_tune_sources/oneills_scrape.dart
+//   dart lib/remote_tune_sources/oneills_1001_scrape.dart
 //
 // Fetches all 1001 numbered ABC files from the X/ directory and writes a JSON
-// array of {name, type, key, abc} objects to assets/data/oneills_tunes.json.
+// array of {name, type, key, abc} objects to assets/data/oneills_1001_tunes.json.
 // Never compiled into the app.
 
 import 'dart:convert';
@@ -15,7 +15,7 @@ import 'package:http/http.dart' as http;
 
 const _baseUrl = 'https://trillian.mit.edu/~jc/music/book/ONeills/_1001/X/';
 const _count = 1001;
-const _outPath = 'assets/data/oneills_tunes.json';
+const _outPath = 'assets/data/oneills_1001_tunes.json';
 
 void main() async {
   final client = http.Client();
