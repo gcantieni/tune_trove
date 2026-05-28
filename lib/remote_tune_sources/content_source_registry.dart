@@ -202,6 +202,18 @@ const List<ContentSourceMeta> allContentSources = [
         'by John Macpherson Mulhollan (1814). Courtesy of John Chambers.',
     confirmationRequired: true,
   ),
+  ContentSourceMeta(
+    id: 'ryans_mammoth',
+    name: "Ryan's Mammoth Collection",
+    genre: 'American / Fiddle',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
+    attribution:
+        "Ryan's Mammoth Collection of Fiddle Tunes, ed. William Bradbury Ryan "
+        '(Boston, 1884); republished as "1000 Fiddle Tunes" by Cole Publishing '
+        'Company (1940). Courtesy of John Chambers.',
+    confirmationRequired: true,
+  ),
 ];
 
 /// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
@@ -306,6 +318,11 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
       return StaticAssetTuneSource(
         name: meta.name,
         assetPath: 'assets/data/mulhollan_tunes.json',
+      );
+    case 'ryans_mammoth':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        assetPath: 'assets/data/ryans_mammoth_tunes.json',
       );
     default:
       throw ArgumentError('Unknown content source id: ${meta.id}');
