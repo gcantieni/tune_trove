@@ -17,6 +17,7 @@ const List<String> kTuneGenres = [
   'Texas',
   'Cape Breton',
   'French-Canadian',
+  'Quebecois',
   'Swedish',
   'Danish',
   'Norwegian',

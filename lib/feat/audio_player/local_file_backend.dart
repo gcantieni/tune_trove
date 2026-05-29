@@ -39,7 +39,7 @@ class LocalFileBackend implements AudioPlayerBackend {
     _trackUri = trackUri;
     _title = _titleFromUri(trackUri);
 
-    final audioDuration = await _player.setFilePath(_pathFromUri(trackUri));
+    final audioDuration = await _player.setFilePath(pathFromTrackUri(trackUri));
     _duration = (audioDuration?.inMilliseconds ?? 0) / 1000.0;
 
     if (startTime != null && startTime > 0) {
@@ -102,17 +102,20 @@ class LocalFileBackend implements AudioPlayerBackend {
     );
   }
 
-  String _pathFromUri(String uri) {
-    if (uri.startsWith('file://')) return uri.replaceFirst('file://', '');
-    if (uri.startsWith('app-data:')) return uri.replaceFirst('app-data:', '');
-    return uri;
-  }
-
   String _titleFromUri(String uri) {
-    final name = _pathFromUri(uri).split('/').last;
+    final name = pathFromTrackUri(uri).split('/').last;
     final dot = name.lastIndexOf('.');
     return dot > 0 ? name.substring(0, dot) : name;
   }
+}
+
+/// Resolves a recording URI to a filesystem path that [just_audio] can load.
+/// Strips the recognized local schemes (`file://`, `app-data:`) and passes
+/// anything else through unchanged.
+String pathFromTrackUri(String uri) {
+  if (uri.startsWith('file://')) return uri.replaceFirst('file://', '');
+  if (uri.startsWith('app-data:')) return uri.replaceFirst('app-data:', '');
+  return uri;
 }
 
 final localFileBackendProvider = Provider<AudioPlayerBackend>((ref) {

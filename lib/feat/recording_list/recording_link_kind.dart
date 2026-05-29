@@ -36,3 +36,18 @@ IconData iconForLinkKind(RecordingLinkKind kind) {
       return Icons.link;
   }
 }
+
+/// Whether this kind plays back inside the app (via the audio player /
+/// [PlaybackCard]) rather than launching an external app. Local audio files and
+/// Apple Music tracks are played in-app.
+bool supportsInAppPlayback(RecordingLinkKind kind) {
+  switch (kind) {
+    case RecordingLinkKind.file:
+    case RecordingLinkKind.appleMusic:
+      return true;
+    case RecordingLinkKind.youtube:
+    case RecordingLinkKind.spotify:
+    case RecordingLinkKind.generic:
+      return false;
+  }
+}

@@ -130,7 +130,7 @@ void main() {
   test('filteredTunesProvider filters by genre', () async {
     final tunes = [
       _tune(id: 1, name: "Cooley's", genre: 'Irish', type: TuneType.reel, createdAt: DateTime(2024)),
-      _tune(id: 2, name: 'Soldier\'s Joy', genre: 'Old-time', type: TuneType.reel, createdAt: DateTime(2024, 1, 2)),
+      _tune(id: 2, name: "Soldier's Joy", genre: 'Old-time', type: TuneType.reel, createdAt: DateTime(2024, 1, 2)),
     ];
     final container = _container(tunes);
     addTearDown(container.dispose);
@@ -228,7 +228,7 @@ void main() {
   test('availableGenresProvider returns sorted distinct genres', () async {
     final tunes = [
       _tune(id: 1, name: "Cooley's", genre: 'Irish', createdAt: DateTime(2024)),
-      _tune(id: 2, name: 'Soldier\'s Joy', genre: 'Old-time', createdAt: DateTime(2024, 1, 2)),
+      _tune(id: 2, name: "Soldier's Joy", genre: 'Old-time', createdAt: DateTime(2024, 1, 2)),
       _tune(id: 3, name: 'The Morning Dew', genre: 'Irish', createdAt: DateTime(2024, 1, 3)),
     ];
     final container = _container(tunes);

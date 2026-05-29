@@ -395,8 +395,7 @@ class _LinkedTuneRow extends ConsumerWidget {
     ].join(' · ');
 
     final kind = recordingLinkKindOf(recordingUrl);
-    final isLocalOrApple =
-        kind == RecordingLinkKind.file || kind == RecordingLinkKind.appleMusic;
+    final isLocalOrApple = supportsInAppPlayback(kind);
     final playerState = ref.watch(audioPlayerProvider);
     final isThisRecordingActive = playerState.trackUri == recordingUrl;
     final showSaveLoop =

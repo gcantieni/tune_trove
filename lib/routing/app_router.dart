@@ -91,7 +91,7 @@ final GoRouter router = GoRouter(
           name: 'recording_list',
           pageBuilder: (context, state) => _directionalPage(
             path: '/recording_list',
-            child: RecordingListPage(),
+            child: const RecordingListPage(),
           ),
           routes: [
             GoRoute(

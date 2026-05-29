@@ -5,6 +5,7 @@ import UIKit
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
     private var musicKitBridge: AnyObject?
     private var cloudKitSyncBridge: AnyObject?
+    private var audioImportBridge: AnyObject?
 
     override func application(
         _ application: UIApplication,
@@ -37,6 +38,16 @@ import UIKit
 
     func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+        // Audio file import (incl. the Voice Memos share sheet) works on all
+        // supported iOS versions, so register it outside the iOS 17 gate used by
+        // the other bridges.
+        if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AudioImportBridge") {
+            let importBridge = AudioImportBridge()
+            importBridge.setup(binaryMessenger: registrar.messenger())
+            audioImportBridge = importBridge
+        }
+
         if #available(iOS 17, *) {
             guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "MusicKitBridge") else { return }
             let bridge = MusicKitBridge()

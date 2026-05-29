@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:drift/drift.dart' as drift;
 import 'package:file_picker/file_picker.dart';
@@ -8,9 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import 'package:tune_trove/feat/recording_list/apple_music_search_delegate.dart';
+import 'package:tune_trove/feat/recording_list/recording_file_store.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
 
@@ -176,35 +175,16 @@ class _RecordingFormWidgetState extends ConsumerState<RecordingFormWidget> {
         return;
       }
 
-      final docsDir = await getApplicationDocumentsDirectory();
-      final destDir = Directory(p.join(docsDir.path, 'audio_recordings'));
-      await destDir.create(recursive: true);
-
-      final filename = _uniqueFilename(destDir, picked.name);
-      final destFile = await File(
-        sourcePath,
-      ).copy(p.join(destDir.path, filename));
+      final destPath = await copyIntoAudioStore(sourcePath, picked.name);
 
       if (!mounted) return;
-      _urlController.text = 'file://${destFile.path}';
+      _urlController.text = 'file://$destPath';
       if (_nameController.text.trim().isEmpty) {
-        _nameController.text = p.basenameWithoutExtension(filename);
+        _nameController.text = p.basenameWithoutExtension(destPath);
       }
     } finally {
       if (mounted) setState(() => _pickingFile = false);
     }
-  }
-
-  String _uniqueFilename(Directory dir, String name) {
-    final ext = p.extension(name);
-    final base = p.basenameWithoutExtension(name);
-    var candidate = name;
-    var counter = 2;
-    while (File(p.join(dir.path, candidate)).existsSync()) {
-      candidate = '${base}_$counter$ext';
-      counter++;
-    }
-    return candidate;
   }
 
   Future<void> _submit() async {

@@ -108,7 +108,7 @@ void main() {
       expect(companion.genre.value, 'Irish');
     });
 
-    test('prefers the tune\'s own genre over the source default', () async {
+    test("prefers the tune's own genre over the source default", () async {
       final tunes = parseStaticJson(
         [
           {'name': 'Tagged', 'key': 'G', 'abc': '', 'genre': 'Old-time'},
