@@ -51,6 +51,7 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
   Widget build(BuildContext context) {
     final filters = ref.watch(tuneFiltersProvider);
     final notifier = ref.read(tuneFiltersProvider.notifier);
+    final availableGenres = ref.watch(availableGenresProvider);
     final availableKeys = ref.watch(availableKeysProvider);
 
     return Padding(
@@ -93,6 +94,18 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
                 },
               ),
             ),
+          _FilterChipMenu<String?>(
+            label: 'Genre',
+            value: filters.genre,
+            displayValue: (g) => g,
+            options: [
+              const _FilterOption<String?>(value: null, label: 'Any'),
+              for (final g in availableGenres)
+                _FilterOption<String?>(value: g, label: g),
+            ],
+            onChanged: notifier.setGenre,
+            onClear: () => notifier.setGenre(null),
+          ),
           _FilterChipMenu<TuneType?>(
             label: 'Type',
             value: filters.type,

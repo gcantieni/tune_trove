@@ -13,6 +13,7 @@ Tune _tune({
   required String name,
   TuneType? type,
   String? key,
+  String? genre,
   required DateTime createdAt,
   DateTime? modifiedAt,
 }) {
@@ -20,6 +21,7 @@ Tune _tune({
     id: id,
     name: name,
     key: key,
+    genre: genre,
     type: type,
     createdAt: createdAt,
     modifiedAt: modifiedAt,
@@ -69,6 +71,24 @@ Future<List<String>> _awaitAvailableKeys(ProviderContainer container) async {
   return keys;
 }
 
+// Waits for allTunesProvider to have data, then reads availableGenresProvider
+// while the underlying stream is still alive.
+Future<List<String>> _awaitAvailableGenres(ProviderContainer container) async {
+  final completer = Completer<void>();
+  ProviderSubscription<AsyncValue<List<Tune>>>? sub;
+  sub = container.listen<AsyncValue<List<Tune>>>(
+    allTunesProvider,
+    (_, next) {
+      if (!completer.isCompleted) next.whenData((_) => completer.complete());
+    },
+    fireImmediately: true,
+  );
+  await completer.future;
+  final genres = container.read(availableGenresProvider);
+  sub.close();
+  return genres;
+}
+
 void main() {
   test('isActive is false for default filters', () {
     expect(const TuneFilters().isActive, isFalse);
@@ -105,6 +125,20 @@ void main() {
     final list = await _awaitFilteredTunes(container);
     expect(list, hasLength(1));
     expect(list.first.key, 'Em');
+  });
+
+  test('filteredTunesProvider filters by genre', () async {
+    final tunes = [
+      _tune(id: 1, name: "Cooley's", genre: 'Irish', type: TuneType.reel, createdAt: DateTime(2024)),
+      _tune(id: 2, name: 'Soldier\'s Joy', genre: 'Old-time', type: TuneType.reel, createdAt: DateTime(2024, 1, 2)),
+    ];
+    final container = _container(tunes);
+    addTearDown(container.dispose);
+    container.read(tuneFiltersProvider.notifier).setGenre('Irish');
+
+    final list = await _awaitFilteredTunes(container);
+    expect(list, hasLength(1));
+    expect(list.first.genre, 'Irish');
   });
 
   test('filteredTunesProvider matches curly apostrophe against straight apostrophe', () async {
@@ -189,6 +223,19 @@ void main() {
 
     final keys = await _awaitAvailableKeys(container);
     expect(keys, ['D', 'Em']);
+  });
+
+  test('availableGenresProvider returns sorted distinct genres', () async {
+    final tunes = [
+      _tune(id: 1, name: "Cooley's", genre: 'Irish', createdAt: DateTime(2024)),
+      _tune(id: 2, name: 'Soldier\'s Joy', genre: 'Old-time', createdAt: DateTime(2024, 1, 2)),
+      _tune(id: 3, name: 'The Morning Dew', genre: 'Irish', createdAt: DateTime(2024, 1, 3)),
+    ];
+    final container = _container(tunes);
+    addTearDown(container.dispose);
+
+    final genres = await _awaitAvailableGenres(container);
+    expect(genres, ['Irish', 'Old-time']);
   });
 
   test('TuneFiltersNotifier.clear resets state', () {

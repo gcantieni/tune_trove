@@ -47,7 +47,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'thesession',
     name: 'thesession.org',
-    genre: 'Irish / Celtic',
+    genre: '',
     license: 'ODbL 1.0',
     licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
     attribution:
@@ -58,7 +58,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'norbeck',
     name: 'Norbeck',
-    genre: 'Irish / Celtic',
+    genre: '',
     license: 'Free for personal non-commercial use',
     licenseUrl: 'https://www.norbeck.nu/abc/',
     attribution:
@@ -70,7 +70,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'paulhardy',
     name: 'Paul Hardy Session Tunebook',
-    genre: 'British Isles',
+    genre: '',
     license: 'CC BY-NC-SA 4.0',
     licenseUrl: 'https://creativecommons.org/licenses/by-nc-sa/4.0/',
     attribution: 'Paul Hardy Session Tunebook by Paul Hardy — CC BY-NC-SA 4.0.',
@@ -100,7 +100,7 @@ const List<ContentSourceMeta> allContentSources = [
     id: 'aird',
     name:
         'The James Aird Collection, Vol. 1-6: A Selection of Scotch, English, Irish and Foreign Airs',
-    genre: 'Scottish, English & Irish',
+    genre: '',
     license: 'GNU GPL',
     licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
@@ -124,7 +124,7 @@ const List<ContentSourceMeta> allContentSources = [
     id: 'fraser',
     name:
         'Fraser Collection — Airs and Melodies Peculiar to the Highlands and The Isles',
-    genre: 'Scottish (Highland)',
+    genre: 'Scottish',
     license: 'GNU GPL',
     licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
@@ -135,7 +135,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'erm',
     name: 'Edinburgh Repository of Music',
-    genre: 'Scottish & English',
+    genre: 'Scottish',
     license: 'GNU GPL',
     licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
@@ -146,7 +146,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'nefr',
     name: "New England Fiddler's Repertoire",
-    genre: 'New England / Contra',
+    genre: 'New England',
     license: 'GNU GPL',
     licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
@@ -168,7 +168,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'nelson',
     name: 'The Nelson Music Collection',
-    genre: 'American / Square Dance',
+    genre: 'New England',
     license: 'GNU GPL',
     licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
@@ -194,7 +194,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'mulhollan',
     name: 'The John Macpherson Mulhollan Collection',
-    genre: 'Scottish (Highland)',
+    genre: 'Scottish',
     license: 'GNU GPL',
     licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
@@ -205,7 +205,7 @@ const List<ContentSourceMeta> allContentSources = [
   ContentSourceMeta(
     id: 'ryans_mammoth',
     name: "Ryan's Mammoth Collection",
-    genre: 'American / Fiddle',
+    genre: 'Scottish',
     license: 'GNU GPL',
     licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
     attribution:
@@ -248,96 +248,115 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
     case 'thesession':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/thesession_tunes.json',
       );
     case 'oneills_1001':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/oneills_1001_tunes.json',
       );
     case 'oneills_1850':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/oneills_1850_tunes.json',
       );
     case 'norbeck':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/norbeck_tunes.json',
       );
     case 'williamclarke':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/williamclarke_tunes.json',
       );
     case 'paulhardy':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/paulhardy_tunes.json',
       );
     case 'pete_mac':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/pete_mac_tunes.json',
       );
     case 'athole':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/athole_tunes.json',
       );
     case 'aird':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/aird_tunes.json',
       );
     case 'neil_gow':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/neil_gow_tunes.json',
       );
     case 'fraser':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/fraser_tunes.json',
       );
     case 'erm':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/erm_tunes.json',
       );
     case 'nefr':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/nefr_tunes.json',
       );
     case 'kidson':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/kidson_tunes.json',
       );
     case 'nelson':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/nelson_tunes.json',
       );
     case 'meikle':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/meikle_tunes.json',
       );
     case 'mulhollan':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/mulhollan_tunes.json',
       );
     case 'ryans_mammoth':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/ryans_mammoth_tunes.json',
       );
     case 'pringle':
       return StaticAssetTuneSource(
         name: meta.name,
+        defaultGenre: meta.genre,
         assetPath: 'assets/data/pringle_tunes.json',
       );
     default:

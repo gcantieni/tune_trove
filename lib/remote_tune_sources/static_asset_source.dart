@@ -20,6 +20,7 @@ List<RemoteTune> parseStaticJson(
       name: e['name'] as String,
       type: _safeType(e['type'] as String?),
       key: e['key'] as String?,
+      genre: e['genre'] as String?,
       abc: e['abc'] as String?,
       sourceName: sourceName,
       sourceId: id != null ? '$id' : null,
@@ -40,11 +41,19 @@ class StaticAssetTuneSource implements TuneSource {
   @override
   final String name;
 
+  /// Genre applied to imported tunes that don't carry their own genre, so a
+  /// repository's tunes are categorized by its cultural/geographic genre
+  /// (e.g. 'Irish', 'Scottish') unless the source data overrides it.
+  final String? defaultGenre;
+
   final String _assetPath;
   List<RemoteTune>? _cache;
 
-  StaticAssetTuneSource({required this.name, required String assetPath})
-    : _assetPath = assetPath;
+  StaticAssetTuneSource({
+    required this.name,
+    required String assetPath,
+    this.defaultGenre,
+  }) : _assetPath = assetPath;
 
   Future<List<RemoteTune>> _load() async {
     if (_cache != null) return _cache!;
@@ -71,11 +80,16 @@ class StaticAssetTuneSource implements TuneSource {
   @override
   Future<TunesCompanion> resolve(RemoteTune tune) async {
     final tsId = int.tryParse(tune.sourceId ?? '');
+    // Fall back to the repository's genre, treating an empty default (sources
+    // with no meaningful single genre) as "unset" rather than storing ''.
+    final fallback = (defaultGenre?.isEmpty ?? true) ? null : defaultGenre;
+    final genre = tune.genre ?? fallback;
     return TunesCompanion.insert(
       name: tune.name,
       createdAt: DateTime.now(),
       abc: drift.Value(tune.abc),
       key: drift.Value(tune.key),
+      genre: drift.Value(genre),
       type: drift.Value(tune.type),
       from: drift.Value(name),
       tsId: drift.Value(tsId),

@@ -54,6 +54,22 @@ void main() {
       final tunes = parseStaticJson(data, 'Test');
       expect(tunes[0].type, isNull);
     });
+
+    test('parses an explicit genre when present', () {
+      final data = [
+        {'name': 'Has Genre', 'key': 'G', 'abc': '', 'genre': 'Bluegrass'},
+      ];
+      final tunes = parseStaticJson(data, 'Test');
+      expect(tunes[0].genre, 'Bluegrass');
+    });
+
+    test('leaves genre null when absent', () {
+      final tunes = parseStaticJson(
+        _sampleData.cast<Map<String, dynamic>>(),
+        'Test',
+      );
+      expect(tunes[0].genre, isNull);
+    });
   });
 
   group('resolve', () {
@@ -74,6 +90,68 @@ void main() {
       expect(companion.abc.value, contains("Cooley's"));
       expect(companion.key.value, 'Edor');
       expect(companion.type.value, TuneType.reel);
+    });
+
+    test('applies the source default genre when the tune has none', () async {
+      final tunes = parseStaticJson(
+        _sampleData.cast<Map<String, dynamic>>(),
+        "O'Neill's 1001",
+      );
+      final source = StaticAssetTuneSource(
+        name: "O'Neill's 1001",
+        assetPath: 'unused',
+        defaultGenre: 'Irish',
+      );
+
+      final companion = await source.resolve(tunes[0]);
+
+      expect(companion.genre.value, 'Irish');
+    });
+
+    test('prefers the tune\'s own genre over the source default', () async {
+      final tunes = parseStaticJson(
+        [
+          {'name': 'Tagged', 'key': 'G', 'abc': '', 'genre': 'Old-time'},
+        ],
+        'Test',
+      );
+      final source = StaticAssetTuneSource(
+        name: 'Test',
+        assetPath: 'unused',
+        defaultGenre: 'Irish',
+      );
+
+      final companion = await source.resolve(tunes[0]);
+
+      expect(companion.genre.value, 'Old-time');
+    });
+
+    test('leaves genre null when neither tune nor source specify one', () async {
+      final tunes = parseStaticJson(
+        _sampleData.cast<Map<String, dynamic>>(),
+        'Test',
+      );
+      final source = StaticAssetTuneSource(name: 'Test', assetPath: 'unused');
+
+      final companion = await source.resolve(tunes[0]);
+
+      expect(companion.genre.value, isNull);
+    });
+
+    test('treats an empty source default genre as unset (null)', () async {
+      final tunes = parseStaticJson(
+        _sampleData.cast<Map<String, dynamic>>(),
+        'Test',
+      );
+      final source = StaticAssetTuneSource(
+        name: 'Test',
+        assetPath: 'unused',
+        defaultGenre: '',
+      );
+
+      final companion = await source.resolve(tunes[0]);
+
+      expect(companion.genre.value, isNull);
     });
   });
 

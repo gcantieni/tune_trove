@@ -4,6 +4,7 @@ class RemoteTune {
   final String name;
   final TuneType? type;
   final String? key;
+  final String? genre;
   final String sourceName;
   final String? sourceId;
   final String? abc;
@@ -14,6 +15,7 @@ class RemoteTune {
     required this.sourceName,
     this.type,
     this.key,
+    this.genre,
     this.sourceId,
     this.abc,
     this.url,

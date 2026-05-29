@@ -10,12 +10,14 @@ import 'package:tune_trove/util/search_normalize.dart';
 enum TuneSort { newestFirst, oldestFirst, nameAZ, nameZA }
 
 class TuneFilters {
+  final String? genre;
   final TuneType? type;
   final String? key;
   final String nameQuery;
   final TuneSort sort;
 
   const TuneFilters({
+    this.genre,
     this.type,
     this.key,
     this.nameQuery = '',
@@ -23,18 +25,21 @@ class TuneFilters {
   });
 
   bool get isActive =>
+      (genre != null && genre!.isNotEmpty) ||
       type != null ||
       (key != null && key!.isNotEmpty) ||
       nameQuery.isNotEmpty ||
       sort != TuneSort.newestFirst;
 
   TuneFilters copyWith({
+    Object? genre = _sentinel,
     Object? type = _sentinel,
     Object? key = _sentinel,
     String? nameQuery,
     TuneSort? sort,
   }) {
     return TuneFilters(
+      genre: identical(genre, _sentinel) ? this.genre : genre as String?,
       type: identical(type, _sentinel) ? this.type : type as TuneType?,
       key: identical(key, _sentinel) ? this.key : key as String?,
       nameQuery: nameQuery ?? this.nameQuery,
@@ -49,6 +54,7 @@ class TuneFiltersNotifier extends Notifier<TuneFilters> {
   @override
   TuneFilters build() => const TuneFilters();
 
+  void setGenre(String? genre) => state = state.copyWith(genre: genre);
   void setType(TuneType? type) => state = state.copyWith(type: type);
   void setKey(String? key) => state = state.copyWith(key: key);
   void setNameQuery(String query) => state = state.copyWith(nameQuery: query);
@@ -73,6 +79,11 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
     final query = normalizeForSearch(filters.nameQuery.trim());
     final filtered = all.where((t) {
       if (!isSourceNameVisible(t.from, activeSourceNames)) return false;
+      if (filters.genre != null &&
+          filters.genre!.isNotEmpty &&
+          t.genre != filters.genre) {
+        return false;
+      }
       if (filters.type != null && t.type != filters.type) return false;
       if (filters.key != null &&
           filters.key!.isNotEmpty &&
@@ -120,6 +131,28 @@ final availableKeysProvider = Provider.autoDispose<List<String>>((ref) {
             t.key!.trim(),
       };
       final list = keys.toList()..sort();
+      return list;
+    },
+    orElse: () => const <String>[],
+  );
+});
+
+/// Distinct, non-empty genres present in the current tune library, sorted
+/// for stable dropdown ordering. Reads from `allTunesProvider` so it
+/// reacts to inserts/deletes.
+final availableGenresProvider = Provider.autoDispose<List<String>>((ref) {
+  final activeSourceNames = ref.watch(activeSourceNamesProvider);
+  final allAsync = ref.watch(allTunesProvider);
+  return allAsync.maybeWhen(
+    data: (tunes) {
+      final genres = <String>{
+        for (final t in tunes)
+          if (isSourceNameVisible(t.from, activeSourceNames) &&
+              t.genre != null &&
+              t.genre!.trim().isNotEmpty)
+            t.genre!.trim(),
+      };
+      final list = genres.toList()..sort();
       return list;
     },
     orElse: () => const <String>[],

@@ -20,12 +20,16 @@ class _AbcPlayButtonState extends ConsumerState<AbcPlayButton> {
   Brightness? _lastBrightness;
   ColorScheme? _lastScheme;
 
+  // Cached so dispose() can clear the active tune without touching `ref`,
+  // which is unsafe once the element has been deactivated.
+  late final AbcMidiPlayer _player = ref.read(abcMidiPlayerProvider);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(abcMidiPlayerProvider).setCurrentAbc(widget.abc);
+      _player.setCurrentAbc(widget.abc);
     });
   }
 
@@ -37,7 +41,7 @@ class _AbcPlayButtonState extends ConsumerState<AbcPlayButton> {
     if (scheme != _lastScheme || brightness != _lastBrightness) {
       _lastScheme = scheme;
       _lastBrightness = brightness;
-      ref.read(abcMidiPlayerProvider).setTheme(_themeVars(scheme, brightness));
+      _player.setTheme(_themeVars(scheme, brightness));
     }
   }
 
@@ -45,7 +49,7 @@ class _AbcPlayButtonState extends ConsumerState<AbcPlayButton> {
   void didUpdateWidget(AbcPlayButton old) {
     super.didUpdateWidget(old);
     if (old.abc != widget.abc) {
-      ref.read(abcMidiPlayerProvider).setCurrentAbc(widget.abc);
+      _player.setCurrentAbc(widget.abc);
     }
   }
 
@@ -68,7 +72,7 @@ class _AbcPlayButtonState extends ConsumerState<AbcPlayButton> {
     // Clear the active tune so a stale tap in the WebView can't play after
     // the user navigated away. Audio that's already playing keeps going —
     // the user can stop it from the button on whatever tune they revisit.
-    ref.read(abcMidiPlayerProvider).setCurrentAbc(null);
+    _player.setCurrentAbc(null);
     super.dispose();
   }
 

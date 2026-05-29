@@ -17,6 +17,7 @@ import 'package:tune_trove/model/providers/sets_provider.dart';
 import 'package:tune_trove/model/providers/tune_recording_provider.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/model/tune_genres.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/shared_widgets/key_picker_sheet.dart';
@@ -37,6 +38,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   String? _key;
+  String? _genre;
   final _fromController = TextEditingController();
   final _abcController = TextEditingController();
   TuneType? _type;
@@ -50,9 +52,19 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     super.dispose();
   }
 
+  // Canonical genres, plus the current value if it predates the list (e.g.
+  // synced from another device or imported with a legacy free-text genre) so
+  // the dropdown can render it without crashing and editing won't drop it.
+  List<String> get _genreOptions {
+    final current = _genre;
+    if (current == null || kTuneGenres.contains(current)) return kTuneGenres;
+    return [...kTuneGenres, current];
+  }
+
   void _enterEdit(Tune tune) {
     _nameController.text = tune.name;
     _key = tune.key != null ? normalizePickerKey(tune.key!) : null;
+    _genre = (tune.genre?.isEmpty ?? true) ? null : tune.genre;
     _fromController.text = tune.from ?? '';
     _abcController.text = tune.abc ?? '';
     _type = tune.type;
@@ -104,6 +116,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         id: drift.Value(tune.id),
         name: drift.Value(_nameController.text.trim()),
         key: drift.Value(keyText.isEmpty ? null : keyText),
+        genre: drift.Value(_genre),
         from: drift.Value(fromText.isEmpty ? null : fromText),
         abc: drift.Value(newAbc),
         // Invalidate the cached SVG when ABC changes; the renderer
@@ -215,6 +228,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         _readRow('Name', tune.name),
         _readRow('Key', tune.key ?? '—'),
         _readRow('Type', tune.type?.name ?? '—'),
+        _readRow('Genre', (tune.genre?.isEmpty ?? true) ? '—' : tune.genre!),
         _readRow('Status', statusLabel.isEmpty ? '—' : statusLabel),
         _readRow('From', (tune.from?.isEmpty ?? true) ? '—' : tune.from!),
         _SourceAttribution(sourceName: tune.from),
@@ -358,6 +372,17 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
                 DropdownMenuItem<TuneType?>(value: t, child: Text(t.name)),
             ],
             onChanged: (v) => setState(() => _type = v),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            initialValue: _genre,
+            decoration: const InputDecoration(labelText: 'Genre'),
+            items: [
+              const DropdownMenuItem<String?>(child: Text('—')),
+              for (final g in _genreOptions)
+                DropdownMenuItem<String?>(value: g, child: Text(g)),
+            ],
+            onChanged: (v) => setState(() => _genre = v),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<TuneStatus?>(
