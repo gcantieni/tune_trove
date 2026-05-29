@@ -15,7 +15,8 @@ class AbcPlayButton extends ConsumerStatefulWidget {
 }
 
 class _AbcPlayButtonState extends ConsumerState<AbcPlayButton> {
-  static const double _width = 450;
+  static const double _maxWidth = 450;
+  static const double _minWidth = 260;
   static const double _height = 80;
   Brightness? _lastBrightness;
   ColorScheme? _lastScheme;
@@ -78,10 +79,22 @@ class _AbcPlayButtonState extends ConsumerState<AbcPlayButton> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : _maxWidth;
+        final width = available.clamp(_minWidth, _maxWidth);
+        return _buildContent(context, width);
+      },
+    );
+  }
+
+  Widget _buildContent(BuildContext context, double width) {
     final disabled = widget.abc == null || widget.abc!.trim().isEmpty;
     if (disabled) {
       return SizedBox(
-        width: _width,
+        width: width,
         height: _height,
         child: OutlinedButton.icon(
           icon: const Icon(Icons.play_arrow, size: 18),
@@ -99,11 +112,7 @@ class _AbcPlayButtonState extends ConsumerState<AbcPlayButton> {
         final state = snapshot.data ?? const AbcMidiState();
         return Row(
           children: [
-            SizedBox(
-              width: _width,
-              height: _height,
-              child: player.viewWidget(),
-            ),
+            SizedBox(width: width, height: _height, child: player.viewWidget()),
             if (state.status == AbcMidiStatus.error) ...[
               const SizedBox(width: 8),
               Expanded(
