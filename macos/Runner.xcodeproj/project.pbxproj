@@ -30,6 +30,7 @@
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		TUNE00010000000000010001 /* MusicKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = TUNE00010000000000010002 /* MusicKitBridge.swift */; };
 		TUNE00010000000000020001 /* CloudKitSyncBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = TUNE00010000000000020002 /* CloudKitSyncBridge.swift */; };
+		TUNE00010000000000030001 /* AudioImportBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = TUNE00010000000000030002 /* AudioImportBridge.swift */; };
 		TUNE00050000000000010002 /* TuneTrove.icon in Resources */ = {isa = PBXBuildFile; fileRef = 80FDABDE2FBFD1520055A34D /* TuneTrove.icon */; };
 /* End PBXBuildFile section */
 
@@ -86,6 +87,7 @@
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		TUNE00010000000000010002 /* MusicKitBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MusicKitBridge.swift; path = ../../ios/Runner/MusicKitBridge.swift; sourceTree = "<group>"; };
 		TUNE00010000000000020002 /* CloudKitSyncBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CloudKitSyncBridge.swift; path = ../../ios/Runner/CloudKitSyncBridge.swift; sourceTree = "<group>"; };
+		TUNE00010000000000030002 /* AudioImportBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AudioImportBridge.swift; path = ../../ios/Runner/AudioImportBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -176,6 +178,7 @@
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				TUNE00010000000000010002 /* MusicKitBridge.swift */,
 				TUNE00010000000000020002 /* CloudKitSyncBridge.swift */,
+				TUNE00010000000000030002 /* AudioImportBridge.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -360,6 +363,7 @@
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 				TUNE00010000000000010001 /* MusicKitBridge.swift in Sources */,
 				TUNE00010000000000020001 /* CloudKitSyncBridge.swift in Sources */,
+				TUNE00010000000000030001 /* AudioImportBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
