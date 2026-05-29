@@ -1,21 +1,115 @@
-// Contribution / IP-attribution report for the repo.
+// =============================================================================
+// IP-attribution report
+// =============================================================================
 //
 // Usage:
 //   dart scripts/stats.dart
 //
-// Reports, per contributor, across the hand-authored source set (generated code,
-// vendored libraries, platform boilerplate, raw data and DB-migration scaffolding
-// excluded):
+// -----------------------------------------------------------------------------
+// PURPOSE
+// -----------------------------------------------------------------------------
+// Estimate how much of this product's intellectual property — the real,
+// value-adding engineering — is attributable to each contributor. It exists to
+// answer questions like "who built what, and how much of it" for equity / credit
+// / contribution discussions, NOT to police productivity.
+//
+// The guiding principle is "feature IP, not boilerplate": generated code,
+// vendored libraries, platform scaffolding, raw data, and migration plumbing are
+// deliberately excluded so the numbers reflect authored design work rather than
+// `flutter create` output or a checked-in dataset. Any single metric is gameable
+// or biased, so attribution is triangulated across five, then folded into one
+// headline IP% — see WHY MULTIPLE METRICS below.
+//
+// -----------------------------------------------------------------------------
+// WHAT IT REPORTS  (Table 1, one row per contributor)
+// -----------------------------------------------------------------------------
 //   - Surviving lines : non-blank lines still authored by them at HEAD
 //                       (git blame -w -M -C, so reformatted/moved lines stay with
-//                        their original author)
-//   - Churn           : total lines added+deleted over all history (effort, incl.
-//                       code later rewritten)
-//   - Net             : added - deleted over history
-//   - Commits         : non-merge commit count
-//   - Files authored  : files this person originally created
-//   - IP%             : weighted average of the four percentage metrics (see weights)
-// Plus a per-feature ownership breakdown of surviving lines.
+//                        their original author rather than the last toucher).
+//   - Churn           : total lines added+deleted over all history — effort,
+//                       including code later rewritten or deleted.
+//   - Net             : added - deleted over history (codebase growth). Shown for
+//                       reference; NOT scored — it's directional and can go
+//                       negative (a net deleter isn't a negative contributor).
+//   - Commits         : non-merge commit count. Weakest signal (a typo and a
+//                       feature count equally) but cheap and orthogonal.
+//   - Files authored  : files this person originally created (oldest add commit).
+//                       Captures who originated/designed a module vs. edited it.
+//   - IP%             : the headline. Weighted average of the four percentage
+//                       metrics above (Lines%, Churn%, Commit%, Authored%).
+//
+// Table 2 breaks surviving lines down per feature/module (see _moduleOf), which
+// is the direct "who owns which feature" view.
+//
+// -----------------------------------------------------------------------------
+// WHY MULTIPLE METRICS (and why IP% is an average of them)
+// -----------------------------------------------------------------------------
+// Each metric is biased on its own:
+//   - Surviving lines flatters whoever's code happens to remain and undercounts
+//     effort on since-rewritten code.
+//   - Churn flatters verbose/iterative work and noisy refactors.
+//   - Commits flatter frequent committers regardless of size.
+//   - Files authored flatter early movers who scaffolded many small files.
+// Averaging them cancels much of the individual bias. Because every input column
+// already sums to 100% across contributors, IP% does too — so it reads directly
+// as "share of IP". Weights are tuneable (see the W* constants) to re-emphasize a
+// signal without breaking that property.
+//
+// -----------------------------------------------------------------------------
+// METHODOLOGY / KEY CHOICES  (so results are reproducible and defensible)
+// -----------------------------------------------------------------------------
+//   - Blame is taken at HEAD (committed tree only) so uncommitted working-tree
+//     edits never show up as a phantom "Not Committed Yet" contributor.
+//   - `git blame -w -M -C`: ignore whitespace, follow moves within a file and
+//     copies/moves across files, so reformatting and relocating code does not
+//     transfer credit away from the original author.
+//   - Blank lines are excluded from surviving-line counts. (Churn can't drop them
+//     — `git log --numstat` has no blank-line granularity — so churn/net include
+//     blank lines. Accept this as a known, small asymmetry.)
+//   - Author names are whitespace-normalized (see _normalize) so a git identity
+//     configured with stray double spaces isn't split into two contributors.
+//   - One inclusion model, two consumers: _includeRe + _excludeRe define the
+//     authored-source set once. The blame/files-authored passes apply it to the
+//     CURRENT file list; the churn pass applies the SAME regexes to historical
+//     `git log` paths (so a file later renamed/deleted is still judged by the
+//     same rules). Keep these two uses in sync — that's the whole point of having
+//     a single source of truth.
+//
+// -----------------------------------------------------------------------------
+// MAINTENANCE GUIDE
+// -----------------------------------------------------------------------------
+// This script needs occasional upkeep as the repo evolves. When you touch it:
+//
+//   * New generated / vendored / boilerplate / data artifact lands in the repo?
+//     Add a pattern to _excludeRe (with a comment saying WHY it isn't IP). This
+//     is the most common maintenance task — e.g. a new codegen suffix, a new
+//     bundled third-party dir, another one-time data scraper. If unsure whether
+//     something counts as IP, prefer excluding generated/derived output and
+//     keeping hand-authored code.
+//   * Renamed/relocated a large excluded artifact? Remember the churn pass walks
+//     HISTORY, so the OLD path can still inflate someone's churn. Keep the old
+//     location in _excludeRe too (see the `^data/` entry — the dataset's pre-move
+//     home — for precedent).
+//   * New top-level source area or feature layout? Update _moduleOf so Table 2
+//     keeps grouping sensibly; unrecognized paths fall through to "other".
+//   * New source language/extension? Add it to _extensions.
+//   * Reweighting IP%? Edit the W* constants only. They're relative and
+//     normalized, so you don't need them to sum to anything.
+//   * Adding/removing a metric? Update both the per-author collection and the
+//     scoreOf() average, and keep IP%'s "inputs each sum to 100%" invariant
+//     intact (only add percentage-of-total columns to the score).
+//
+// GOTCHA (do not reintroduce): the original implementation was a bash+awk script.
+// awk mangles backslashes in `-v` regex assignments, so `\.(g|freezed)\.dart$`
+// silently became `.(g|freezed).dart$` (literal dots → "any char") and wrongly
+// excluded files like `dialog.dart` from churn. This Dart port exists partly to
+// avoid that class of stringly-typed-shell bug — keep regexes as real RegExp
+// objects, never rebuild patterns by interpolating into a shell/awk layer.
+//
+// VERIFYING CHANGES: every percentage column in Table 1, and every row in
+// Table 2, should sum to ~100%. `dart analyze scripts/stats.dart` must stay
+// clean. Spot-check a module in Table 2 against `git blame -w -M -C HEAD` on a
+// known file.
 
 // Regex patterns are kept uniformly raw for safety — so adding a `\.` to one
 // later can't silently turn into an escape — even when a given pattern has no
