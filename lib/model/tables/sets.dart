@@ -6,4 +6,5 @@ class TuneSets extends Table {
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get modifiedAt => dateTime().nullable()();
   TextColumn get cloudId => text().nullable()();
+  IntColumn get position => integer().withDefault(const Constant(0))();
 }

@@ -231,6 +231,7 @@ class SyncOutboundService {
     'recordType': 'TuneSet',
     'cloudId': s.cloudId,
     'name': s.name,
+    'position': s.position,
     'created_at': s.createdAt.millisecondsSinceEpoch,
     if (s.modifiedAt != null)
       'modified_at': s.modifiedAt!.millisecondsSinceEpoch,

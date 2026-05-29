@@ -1747,6 +1747,18 @@ class $TuneSetsTable extends TuneSets with TableInfo<$TuneSetsTable, TuneSet> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1754,6 +1766,7 @@ class $TuneSetsTable extends TuneSets with TableInfo<$TuneSetsTable, TuneSet> {
     createdAt,
     modifiedAt,
     cloudId,
+    position,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1798,6 +1811,12 @@ class $TuneSetsTable extends TuneSets with TableInfo<$TuneSetsTable, TuneSet> {
         cloudId.isAcceptableOrUnknown(data['cloud_id']!, _cloudIdMeta),
       );
     }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    }
     return context;
   }
 
@@ -1827,6 +1846,10 @@ class $TuneSetsTable extends TuneSets with TableInfo<$TuneSetsTable, TuneSet> {
         DriftSqlType.string,
         data['${effectivePrefix}cloud_id'],
       ),
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
     );
   }
 
@@ -1842,12 +1865,14 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
   final DateTime createdAt;
   final DateTime? modifiedAt;
   final String? cloudId;
+  final int position;
   const TuneSet({
     required this.id,
     required this.name,
     required this.createdAt,
     this.modifiedAt,
     this.cloudId,
+    required this.position,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1861,6 +1886,7 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
     if (!nullToAbsent || cloudId != null) {
       map['cloud_id'] = Variable<String>(cloudId);
     }
+    map['position'] = Variable<int>(position);
     return map;
   }
 
@@ -1875,6 +1901,7 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
       cloudId: cloudId == null && nullToAbsent
           ? const Value.absent()
           : Value(cloudId),
+      position: Value(position),
     );
   }
 
@@ -1889,6 +1916,7 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       modifiedAt: serializer.fromJson<DateTime?>(json['modifiedAt']),
       cloudId: serializer.fromJson<String?>(json['cloudId']),
+      position: serializer.fromJson<int>(json['position']),
     );
   }
   @override
@@ -1900,6 +1928,7 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'modifiedAt': serializer.toJson<DateTime?>(modifiedAt),
       'cloudId': serializer.toJson<String?>(cloudId),
+      'position': serializer.toJson<int>(position),
     };
   }
 
@@ -1909,12 +1938,14 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
     DateTime? createdAt,
     Value<DateTime?> modifiedAt = const Value.absent(),
     Value<String?> cloudId = const Value.absent(),
+    int? position,
   }) => TuneSet(
     id: id ?? this.id,
     name: name ?? this.name,
     createdAt: createdAt ?? this.createdAt,
     modifiedAt: modifiedAt.present ? modifiedAt.value : this.modifiedAt,
     cloudId: cloudId.present ? cloudId.value : this.cloudId,
+    position: position ?? this.position,
   );
   TuneSet copyWithCompanion(TuneSetsCompanion data) {
     return TuneSet(
@@ -1925,6 +1956,7 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
           ? data.modifiedAt.value
           : this.modifiedAt,
       cloudId: data.cloudId.present ? data.cloudId.value : this.cloudId,
+      position: data.position.present ? data.position.value : this.position,
     );
   }
 
@@ -1935,13 +1967,15 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
           ..write('name: $name, ')
           ..write('createdAt: $createdAt, ')
           ..write('modifiedAt: $modifiedAt, ')
-          ..write('cloudId: $cloudId')
+          ..write('cloudId: $cloudId, ')
+          ..write('position: $position')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, createdAt, modifiedAt, cloudId);
+  int get hashCode =>
+      Object.hash(id, name, createdAt, modifiedAt, cloudId, position);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1950,7 +1984,8 @@ class TuneSet extends DataClass implements Insertable<TuneSet> {
           other.name == this.name &&
           other.createdAt == this.createdAt &&
           other.modifiedAt == this.modifiedAt &&
-          other.cloudId == this.cloudId);
+          other.cloudId == this.cloudId &&
+          other.position == this.position);
 }
 
 class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
@@ -1959,12 +1994,14 @@ class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
   final Value<DateTime> createdAt;
   final Value<DateTime?> modifiedAt;
   final Value<String?> cloudId;
+  final Value<int> position;
   const TuneSetsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.modifiedAt = const Value.absent(),
     this.cloudId = const Value.absent(),
+    this.position = const Value.absent(),
   });
   TuneSetsCompanion.insert({
     this.id = const Value.absent(),
@@ -1972,6 +2009,7 @@ class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
     required DateTime createdAt,
     this.modifiedAt = const Value.absent(),
     this.cloudId = const Value.absent(),
+    this.position = const Value.absent(),
   }) : name = Value(name),
        createdAt = Value(createdAt);
   static Insertable<TuneSet> custom({
@@ -1980,6 +2018,7 @@ class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? modifiedAt,
     Expression<String>? cloudId,
+    Expression<int>? position,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1987,6 +2026,7 @@ class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
       if (createdAt != null) 'created_at': createdAt,
       if (modifiedAt != null) 'modified_at': modifiedAt,
       if (cloudId != null) 'cloud_id': cloudId,
+      if (position != null) 'position': position,
     });
   }
 
@@ -1996,6 +2036,7 @@ class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
     Value<DateTime>? createdAt,
     Value<DateTime?>? modifiedAt,
     Value<String?>? cloudId,
+    Value<int>? position,
   }) {
     return TuneSetsCompanion(
       id: id ?? this.id,
@@ -2003,6 +2044,7 @@ class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
       createdAt: createdAt ?? this.createdAt,
       modifiedAt: modifiedAt ?? this.modifiedAt,
       cloudId: cloudId ?? this.cloudId,
+      position: position ?? this.position,
     );
   }
 
@@ -2024,6 +2066,9 @@ class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
     if (cloudId.present) {
       map['cloud_id'] = Variable<String>(cloudId.value);
     }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
     return map;
   }
 
@@ -2034,7 +2079,8 @@ class TuneSetsCompanion extends UpdateCompanion<TuneSet> {
           ..write('name: $name, ')
           ..write('createdAt: $createdAt, ')
           ..write('modifiedAt: $modifiedAt, ')
-          ..write('cloudId: $cloudId')
+          ..write('cloudId: $cloudId, ')
+          ..write('position: $position')
           ..write(')'))
         .toString();
   }
@@ -4134,6 +4180,7 @@ typedef $$TuneSetsTableCreateCompanionBuilder =
       required DateTime createdAt,
       Value<DateTime?> modifiedAt,
       Value<String?> cloudId,
+      Value<int> position,
     });
 typedef $$TuneSetsTableUpdateCompanionBuilder =
     TuneSetsCompanion Function({
@@ -4142,6 +4189,7 @@ typedef $$TuneSetsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime?> modifiedAt,
       Value<String?> cloudId,
+      Value<int> position,
     });
 
 final class $$TuneSetsTableReferences
@@ -4198,6 +4246,11 @@ class $$TuneSetsTableFilterComposer
 
   ColumnFilters<String> get cloudId => $composableBuilder(
     column: $table.cloudId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4260,6 +4313,11 @@ class $$TuneSetsTableOrderingComposer
     column: $table.cloudId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TuneSetsTableAnnotationComposer
@@ -4287,6 +4345,9 @@ class $$TuneSetsTableAnnotationComposer
 
   GeneratedColumn<String> get cloudId =>
       $composableBuilder(column: $table.cloudId, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
 
   Expression<T> setTuneRefs<T extends Object>(
     Expression<T> Function($$SetTuneTableAnnotationComposer a) f,
@@ -4347,12 +4408,14 @@ class $$TuneSetsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> modifiedAt = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
+                Value<int> position = const Value.absent(),
               }) => TuneSetsCompanion(
                 id: id,
                 name: name,
                 createdAt: createdAt,
                 modifiedAt: modifiedAt,
                 cloudId: cloudId,
+                position: position,
               ),
           createCompanionCallback:
               ({
@@ -4361,12 +4424,14 @@ class $$TuneSetsTableTableManager
                 required DateTime createdAt,
                 Value<DateTime?> modifiedAt = const Value.absent(),
                 Value<String?> cloudId = const Value.absent(),
+                Value<int> position = const Value.absent(),
               }) => TuneSetsCompanion.insert(
                 id: id,
                 name: name,
                 createdAt: createdAt,
                 modifiedAt: modifiedAt,
                 cloudId: cloudId,
+                position: position,
               ),
           withReferenceMapper: (p0) => p0
               .map(

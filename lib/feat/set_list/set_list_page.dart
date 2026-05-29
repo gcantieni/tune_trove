@@ -27,25 +27,43 @@ class SetListPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (sets) => SyncRefreshIndicator(
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              16 + MediaQuery.of(context).size.width * 0.25,
-            ),
-            children: sets.isEmpty
-                ? const [
+          child: sets.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).size.width * 0.25,
+                  ),
+                  children: const [
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 48),
                       child: Center(
                         child: Text('No sets yet — tap + to create one.'),
                       ),
                     ),
-                  ]
-                : [for (final s in sets) _SetCard(tuneSet: s)],
-          ),
+                  ],
+                )
+              : ReorderableListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    16 + MediaQuery.of(context).size.width * 0.25,
+                  ),
+                  itemCount: sets.length,
+                  itemBuilder: (context, index) => _SetCard(
+                    key: ValueKey(sets[index].id),
+                    tuneSet: sets[index],
+                    index: index,
+                  ),
+                  onReorderItem: (oldIndex, newIndex) {
+                    ref
+                        .read(databaseProvider)
+                        .setDao
+                        .reorderSet(oldIndex, newIndex);
+                  },
+                ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -72,9 +90,10 @@ class SetListPage extends ConsumerWidget {
 }
 
 class _SetCard extends ConsumerWidget {
-  const _SetCard({required this.tuneSet});
+  const _SetCard({required this.tuneSet, required this.index, super.key});
 
   final TuneSet tuneSet;
+  final int index;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -105,7 +124,11 @@ class _SetCard extends ConsumerWidget {
         child: ListTile(
           title: Text(tuneSet.name),
           subtitle: subtitle != null ? Text(subtitle) : null,
-          trailing: const Icon(Icons.chevron_right),
+          // Drag handle — immediate drag, no long-press needed.
+          trailing: ReorderableDragStartListener(
+            index: index,
+            child: const Icon(Icons.drag_handle),
+          ),
           onTap: () => context.push('/set_list/${tuneSet.id}'),
         ),
       ),

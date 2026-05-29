@@ -220,12 +220,14 @@ class SyncReconciliationService {
       final remoteNewer = incoming != null && incoming.isAfter(localModified);
       if (existing.cloudId == cloudId && !remoteNewer) return;
       if (remoteNewer) {
+        final position = _int(f, 'position');
         await _db.setDao.updateSet(
           TuneSetsCompanion(
             id: Value(existing.id),
             name: Value(_str(f, 'name') ?? existing.name),
             modifiedAt: Value(_dateOf(f['modified_at'])),
             cloudId: Value(cloudId),
+            position: position != null ? Value(position) : const Value.absent(),
           ),
         );
       } else {
@@ -234,12 +236,14 @@ class SyncReconciliationService {
         );
       }
     } else {
+      final position = _int(f, 'position');
       await _db.setDao.insertSet(
         TuneSetsCompanion.insert(
           name: _str(f, 'name') ?? '',
           createdAt: _dateOf(f['created_at']) ?? DateTime.now(),
           modifiedAt: Value(_dateOf(f['modified_at'])),
           cloudId: Value(cloudId),
+          position: position != null ? Value(position) : const Value.absent(),
         ),
       );
     }

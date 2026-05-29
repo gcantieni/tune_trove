@@ -81,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -196,6 +196,16 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10 && to >= 10) await m.createTable(sourceConfirmations);
       // v10 -> v11: add the source_rankings table (purely additive).
       if (from < 11 && to >= 11) await m.createTable(sourceRankings);
+      // v11 -> v12: add a position column to tune_sets so sets are user-orderable.
+      // Defaults to 0; backfill stable positions by id so existing sets keep a
+      // deterministic order instead of all tying at 0.
+      if (from < 12 && to >= 12) {
+        await m.addColumn(tuneSets, tuneSets.position);
+        await customStatement(
+          'UPDATE tune_sets SET position = '
+          '(SELECT COUNT(*) FROM tune_sets t2 WHERE t2.id < tune_sets.id)',
+        );
+      }
     },
   );
 
