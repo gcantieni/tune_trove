@@ -1,2 +1,2 @@
-Public Domain.
+GNU GPL.
 Courtesy of John Chambers.

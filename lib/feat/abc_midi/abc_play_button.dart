@@ -15,8 +15,8 @@ class AbcPlayButton extends ConsumerStatefulWidget {
 }
 
 class _AbcPlayButtonState extends ConsumerState<AbcPlayButton> {
-  static const double _width = 120;
-  static const double _height = 40;
+  static const double _width = 450;
+  static const double _height = 80;
   Brightness? _lastBrightness;
   ColorScheme? _lastScheme;
 

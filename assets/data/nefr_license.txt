@@ -1,4 +1,4 @@
-Public Domain.
+GNU GPL.
 Courtesy of John Chambers.
 
 From John Chambers:
