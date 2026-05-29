@@ -13,17 +13,30 @@
   }
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden;
     background: var(--scaffold-bg); }
-  #playBtn {
+  body { box-sizing: border-box; padding: 2px 0; }
+  #controls {
     box-sizing: border-box;
     width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; gap: 6px;
     font: 500 14px -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--btn-fg);
+  }
+  .row {
+    display: flex; align-items: center; gap: 12px;
+    height: 32px;
+    min-height: 0;
+  }
+  #playBtn {
+    box-sizing: border-box;
+    height: 100%; flex: 0 0 auto;
+    font: inherit;
     border: 1px solid var(--btn-outline);
     border-radius: var(--btn-radius);
     background: transparent;
     cursor: pointer;
     padding: 0 16px;
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    color: var(--btn-fg);
+    color: inherit;
     user-select: none;
     -webkit-user-select: none;
     transition: background-color 120ms ease;
@@ -31,11 +44,82 @@
   #playBtn:hover:not(:disabled) { background: var(--btn-hover); }
   #playBtn:active:not(:disabled) { background: var(--btn-active); }
   #playBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #loopLabel {
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+  }
+  #loopCb {
+    appearance: none; -webkit-appearance: none;
+    width: 18px; height: 18px;
+    margin: 0;
+    border: 2px solid var(--btn-outline);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+  #loopCb:hover { border-color: var(--btn-fg); }
+  #loopCb:checked {
+    background: var(--btn-fg);
+    border-color: var(--btn-fg);
+  }
+  #loopCb:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px; top: 0;
+    width: 4px; height: 9px;
+    border: solid var(--scaffold-bg);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  #tempoSlider {
+    flex: 1 1 0; min-width: 0;
+    -webkit-appearance: none; appearance: none;
+    background: transparent;
+    height: 24px;
+    cursor: pointer;
+    margin: 0;
+  }
+  #tempoSlider::-webkit-slider-runnable-track {
+    height: 3px;
+    background: var(--btn-outline);
+    border-radius: 2px;
+  }
+  #tempoSlider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: var(--btn-fg);
+    border-radius: 50%;
+    margin-top: -5.5px;
+    cursor: pointer;
+  }
+  #tempoLabel {
+    font-size: 12px;
+    min-width: 58px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
 </style>
 <script src="abcjs-basic-min.js"></script>
 </head>
 <body>
-<button id="playBtn" disabled>▶ Play</button>
+<div id="controls">
+  <div class="row">
+    <button id="playBtn" disabled>▶ Play</button>
+    <label id="loopLabel">
+      <input type="checkbox" id="loopCb">
+      <span>Loop</span>
+    </label>
+    <span id="tempoLabel">100 BPM</span>
+  </div>
+  <div class="row">
+    <input type="range" id="tempoSlider"
+      min="25" max="200" step="5" value="100">
+  </div>
+</div>
 <script>
 (function() {
   var audioContext = null;
@@ -43,6 +127,26 @@
   var isPlaying = false;
   var isLoading = false;
   var btn = document.getElementById('playBtn');
+  var loopCb = document.getElementById('loopCb');
+  var tempoSlider = document.getElementById('tempoSlider');
+  var tempoLabel = document.getElementById('tempoLabel');
+  var currentBpm = parseInt(tempoSlider.value, 10) || 100;
+  var tempoRestartTimer = null;
+  tempoSlider.addEventListener('input', function() {
+    currentBpm = parseInt(tempoSlider.value, 10) || 100;
+    tempoLabel.textContent = currentBpm + ' BPM';
+    // Live-update playback: debounce a restart so dragging doesn't thrash
+    // through dozens of init/prime cycles.
+    if ((isPlaying || isLoading) && window.currentAbc) {
+      if (tempoRestartTimer) clearTimeout(tempoRestartTimer);
+      tempoRestartTimer = setTimeout(function() {
+        tempoRestartTimer = null;
+        if ((isPlaying || isLoading) && window.currentAbc) {
+          doPlay(window.currentAbc);
+        }
+      }, 250);
+    }
+  });
 
   function emit(kind, detail) {
     var msg = JSON.stringify({ kind: kind, detail: detail || null });
@@ -57,7 +161,7 @@
     if (isLoading) btn.textContent = '⏳ Loading…';
     else if (isPlaying) btn.textContent = '⏹ Stop';
     else btn.textContent = '▶ Play';
-    btn.disabled = !window.currentAbc;
+    btn.disabled = !window.currentAbc || clickLocked;
   }
 
   window.setCurrentAbc = function(abc) {
@@ -184,11 +288,20 @@
   function setLoading(v) { isLoading = v; refreshButton(); }
   function setPlaying(v) { isPlaying = v; refreshButton(); }
 
+  // Each call to doPlay/doStop bumps sessionId. In-flight init/prime/start
+  // chains and the end-of-tune setTimeout all carry a captured mySession and
+  // bail if they've been superseded — otherwise stale end-of-tune timers
+  // from prior plays would re-enter the loop branch and stack multiple
+  // CreateSynth instances onto the same AudioContext.
+  var sessionId = 0;
+  var clickLocked = false;
+
   function doPlay(abc) {
     if (!ABCJS || !ABCJS.synth) { emit('error', 'ABCJS.synth missing'); return; }
     if (!ABCJS.synth.supportsAudio()) {
       emit('error', 'audio not supported'); return;
     }
+    var mySession = ++sessionId;
     setLoading(true);
     emit('loading');
 
@@ -196,50 +309,63 @@
     try { ctx = ensureAudioContext(); }
     catch (e) { setLoading(false); emit('error', e.message); return; }
 
+    if (currentBuffer) { try { currentBuffer.stop(); } catch (e) {} }
+    var myBuffer = new ABCJS.synth.CreateSynth();
+    currentBuffer = myBuffer;
+
+    function abandon() {
+      try { myBuffer.stop(); } catch (e) {}
+      if (currentBuffer === myBuffer) currentBuffer = null;
+    }
+
     var resumed = ctx.state === 'suspended' ? ctx.resume() : Promise.resolve();
     resumed.then(function() {
-      debug('context resumed inside click, state=' + ctx.state);
+      if (mySession !== sessionId) { abandon(); return; }
       var parsed = ABCJS.renderAbc('*', abc);
       var visualObj = parsed && parsed[0];
       if (!visualObj) {
+        abandon();
         setLoading(false); emit('error', 'parse returned no tune'); return;
       }
-      if (currentBuffer) { try { currentBuffer.stop(); } catch (e) {} }
-      currentBuffer = new ABCJS.synth.CreateSynth();
-      currentBuffer.init({
+      return myBuffer.init({
         audioContext: ctx,
         visualObj: visualObj,
         options: {
           soundFontUrl: './soundfonts/',
-          millisecondsPerMeasure: visualObj.millisecondsPerMeasure(),
+          qpm: currentBpm,
         },
       }).then(function() {
-        return currentBuffer.prime();
+        if (mySession !== sessionId) { abandon(); return; }
+        return myBuffer.prime();
       }).then(function() {
-        currentBuffer.start();
+        if (mySession !== sessionId) { abandon(); return; }
+        myBuffer.start();
         setLoading(false);
         setPlaying(true);
         emit('playing');
-        var totalMs = (currentBuffer.duration || 0) * 1000;
+        var totalMs = (myBuffer.duration || 0) * 1000;
         setTimeout(function() {
-          if (isPlaying) {
-            currentBuffer = null;
+          if (mySession !== sessionId) return; // superseded — stale tick
+          if (!isPlaying) return;
+          if (currentBuffer === myBuffer) currentBuffer = null;
+          if (loopCb.checked && window.currentAbc) {
+            doPlay(window.currentAbc);
+          } else {
             setPlaying(false);
             emit('ended');
           }
         }, totalMs + 100);
-      }).catch(function(err) {
-        currentBuffer = null;
-        setLoading(false); setPlaying(false);
-        emit('error', 'synth: ' + (err && err.message ? err.message : String(err)));
       });
     }).catch(function(err) {
-      setLoading(false);
-      emit('error', 'resume: ' + (err && err.message ? err.message : String(err)));
+      if (mySession !== sessionId) return;
+      abandon();
+      setLoading(false); setPlaying(false);
+      emit('error', (err && err.message ? err.message : String(err)));
     });
   }
 
   function doStop() {
+    ++sessionId; // invalidate any in-flight session
     if (currentBuffer) {
       try { currentBuffer.stop(); } catch (e) {}
       currentBuffer = null;
@@ -251,8 +377,17 @@
   }
 
   btn.addEventListener('click', function() {
+    if (clickLocked || btn.disabled) return;
+    // Brief lock so a rapid second click can't fire before refreshButton
+    // repaints the new state. refreshButton honors clickLocked.
+    clickLocked = true;
+    refreshButton();
     if (isPlaying || isLoading) doStop();
     else if (window.currentAbc) doPlay(window.currentAbc);
+    setTimeout(function() {
+      clickLocked = false;
+      refreshButton();
+    }, 250);
   });
 
   // Keep playAbc/stopAbc exposed for any programmatic Dart-side triggers,
