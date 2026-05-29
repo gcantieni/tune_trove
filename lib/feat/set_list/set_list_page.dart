@@ -86,13 +86,50 @@ class _SetCard extends ConsumerWidget {
         ? '1 tune'
         : '$count tunes';
 
-    return Card(
-      child: ListTile(
-        title: Text(tuneSet.name),
-        subtitle: subtitle != null ? Text(subtitle) : null,
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => context.push('/set_list/${tuneSet.id}'),
+    return Dismissible(
+      key: ValueKey(tuneSet.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmDelete(context),
+      onDismissed: (_) =>
+          ref.read(databaseProvider).setDao.deleteSet(tuneSet.id),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        color: Theme.of(context).colorScheme.errorContainer,
+        child: Icon(
+          Icons.delete_outline,
+          color: Theme.of(context).colorScheme.onErrorContainer,
+        ),
+      ),
+      child: Card(
+        child: ListTile(
+          title: Text(tuneSet.name),
+          subtitle: subtitle != null ? Text(subtitle) : null,
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/set_list/${tuneSet.id}'),
+        ),
       ),
     );
+  }
+
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete set'),
+        content: Text('Delete "${tuneSet.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 }
