@@ -21,7 +21,7 @@ const _navOrder = [
   '/settings',
   '/content_library',
 ];
-int _previousNavIndex = 3; // recorder is the initial location
+int _previousNavIndex = 1; // tune_list is the initial location
 
 CustomTransitionPage<void> _directionalPage({
   required String path,
@@ -47,7 +47,7 @@ CustomTransitionPage<void> _directionalPage({
 }
 
 final GoRouter router = GoRouter(
-  initialLocation: '/recorder', // recording should be the app's "quick draw"
+  initialLocation: '/tune_list',
   routes: [
     ShellRoute(
       builder: (context, state, child) {

@@ -8,9 +8,9 @@ final navScaffoldKey = GlobalKey<ScaffoldState>();
 
 const _navRoutes = [
   '/recorder',
-  '/set_list',
   '/tune_list',
   '/recording_list',
+  '/set_list',
   '/settings',
   '/content_library',
 ];
@@ -59,16 +59,16 @@ class NavScaffold extends ConsumerWidget {
           ),
           const Divider(indent: 28, endIndent: 28, height: 1),
           const NavigationDrawerDestination(
-            icon: Icon(Icons.queue_music),
-            label: Text('Sets'),
-          ),
-          const NavigationDrawerDestination(
             icon: Icon(Icons.music_note),
             label: Text('Tunes'),
           ),
           const NavigationDrawerDestination(
             icon: Icon(Icons.audio_file_outlined),
             label: Text('Recordings'),
+          ),
+          const NavigationDrawerDestination(
+            icon: Icon(Icons.queue_music),
+            label: Text('Sets'),
           ),
           const Divider(indent: 28, endIndent: 28, height: 1),
           const NavigationDrawerDestination(
