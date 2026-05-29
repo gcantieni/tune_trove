@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:tune_trove/shared_widgets/key_picker_sheet.dart';
+
 /// Dialog that edits link details (timestamps + performed key) for a
 /// tune–recording pair. Returns `({double? start, double? end, String? performedKey})`
 /// on save, or `null` if cancelled. All fields are optional.
@@ -23,7 +25,7 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _startController;
   late final TextEditingController _endController;
-  late final TextEditingController _keyController;
+  String? _performedKey;
 
   @override
   void initState() {
@@ -34,17 +36,24 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
     _endController = TextEditingController(
       text: widget.initialEnd == null ? '' : formatTime(widget.initialEnd),
     );
-    _keyController = TextEditingController(
-      text: widget.initialPerformedKey ?? '',
-    );
+    final initialKey = widget.initialPerformedKey;
+    _performedKey = (initialKey == null || initialKey.isEmpty)
+        ? null
+        : normalizePickerKey(initialKey);
   }
 
   @override
   void dispose() {
     _startController.dispose();
     _endController.dispose();
-    _keyController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickKey() async {
+    final result = await showKeyPickerSheet(context, currentKey: _performedKey);
+    // null = dismissed; empty string = explicit clear.
+    if (result == null) return;
+    setState(() => _performedKey = result.isEmpty ? null : result);
   }
 
   String? _validateTime(String? raw) {
@@ -54,11 +63,10 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    final key = _keyController.text.trim();
     Navigator.of(context).pop((
       start: parseTime(_startController.text),
       end: parseTime(_endController.text),
-      performedKey: key.isEmpty ? null : key,
+      performedKey: _performedKey,
     ));
   }
 
@@ -89,11 +97,16 @@ class _TimestampEditorDialogState extends State<TimestampEditorDialog> {
               validator: _validateTime,
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _keyController,
-              decoration: const InputDecoration(
-                labelText: 'Performed key',
-                hintText: 'e.g. D, G, Edor (leave blank for none)',
+            InkWell(
+              onTap: _pickKey,
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: 'Performed key'),
+                child: Text(
+                  _performedKey ?? 'Tap to set (leave blank for none)',
+                  style: _performedKey != null
+                      ? null
+                      : TextStyle(color: Theme.of(context).colorScheme.outline),
+                ),
               ),
             ),
           ],

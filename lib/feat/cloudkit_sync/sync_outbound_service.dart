@@ -100,6 +100,9 @@ class SyncOutboundService {
       case 'SourceRanking':
         final r = await _db.sourceRankingsDao.getByCloudId(cloudId);
         return r == null ? null : _serializeSourceRanking(r);
+      case 'AppSetting':
+        final s = await _db.appSettingsDao.getByCloudId(cloudId);
+        return s == null ? null : _serializeAppSetting(s);
     }
     return null;
   }
@@ -175,6 +178,11 @@ class SyncOutboundService {
     for (final r in await _db.sourceRankingsDao.getAll()) {
       if (r.cloudId == null) continue;
       records.add(_serializeSourceRanking(r));
+    }
+
+    for (final s in await _db.appSettingsDao.getAll()) {
+      if (s.cloudId == null) continue;
+      records.add(_serializeAppSetting(s));
     }
 
     return records;
@@ -269,5 +277,14 @@ class SyncOutboundService {
     'rank': r.rank,
     if (r.modifiedAt != null)
       'modified_at': r.modifiedAt!.millisecondsSinceEpoch,
+  };
+
+  static Map<String, dynamic> _serializeAppSetting(AppSetting s) => {
+    'recordType': 'AppSetting',
+    'cloudId': s.cloudId,
+    'key': s.key,
+    'value': s.value,
+    if (s.modifiedAt != null)
+      'modified_at': s.modifiedAt!.millisecondsSinceEpoch,
   };
 }

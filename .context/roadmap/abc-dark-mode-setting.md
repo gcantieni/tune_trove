@@ -1,5 +1,11 @@
 # Roadmap: Optional White-on-Black Sheet Music in Dark Theme
 
+> **Status: Implemented.** Stored as the `invertNotationInDarkMode` key in the
+> synced `app_settings` table (`AppSettings` / `AppSettingsDao`), exposed via
+> `invertNotationInDarkModeProvider`, toggled from the Settings page, and read by
+> `AbcView`. Defaults to on. Remember to deploy the `AppSetting` CloudKit record
+> type to Production before the next release.
+
 ## Background
 
 ABC notation is rendered via `abcjs` → SVG, then displayed using `flutter_svg`. In dark mode, `AbcView` (`lib/feat/abc_render/abc_view.dart`) applies a `ColorFilter.matrix` that remaps the SVG's black notation and white background to `colorScheme.onSurface` and `colorScheme.surface` respectively, so the sheet music matches the app theme.

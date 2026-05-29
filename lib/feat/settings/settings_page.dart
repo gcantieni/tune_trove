@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_notifier.dart';
+import 'package:tune_trove/feat/settings/settings_providers.dart';
+import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/routing/nav_scaffold.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -15,7 +17,34 @@ class SettingsPage extends ConsumerWidget {
         ),
         title: const Text('Settings'),
       ),
-      body: ListView(children: [_SyncStatusTile()]),
+      body: ListView(
+        children: [
+          _SyncStatusTile(),
+          const Divider(height: 1),
+          _InvertNotationTile(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Toggles whether ABC sheet music is inverted (white-on-black) to match the
+/// theme in dark mode. Has no visible effect in light mode.
+class _InvertNotationTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final invert = ref.watch(invertNotationInDarkModeProvider).value ?? true;
+    return SwitchListTile(
+      secondary: const Icon(Icons.music_note),
+      title: const Text('Invert sheet music in dark mode'),
+      subtitle: const Text(
+        'Render notation white-on-black to match the dark theme',
+      ),
+      value: invert,
+      onChanged: (value) => ref
+          .read(databaseProvider)
+          .appSettingsDao
+          .setValue(kInvertNotationInDarkMode, value.toString()),
     );
   }
 }

@@ -10,9 +10,8 @@ part 'set_dao.g.dart';
 class SetDao extends DatabaseAccessor<AppDatabase> with _$SetDaoMixin {
   SetDao(super.db);
 
-  Future<List<TuneSet>> getAll() => (select(
-    tuneSets,
-  )..orderBy([(t) => OrderingTerm.asc(t.position)])).get();
+  Future<List<TuneSet>> getAll() =>
+      (select(tuneSets)..orderBy([(t) => OrderingTerm.asc(t.position)])).get();
   Future<TuneSet?> getSet(int id) =>
       (select(tuneSets)..where((t) => t.id.equals(id))).getSingleOrNull();
 

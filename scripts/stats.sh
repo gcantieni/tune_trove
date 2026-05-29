@@ -18,6 +18,9 @@ DATA_SOURCES="^assets/(data/|abcjs/)"
 SCRAPE_SCRIPTS="^lib/remote_tune_sources/[^/]+_scrape\.dart$"
 # Drift-generated artifacts: migration steps, schema snapshots (JSON + Dart)
 DRIFT_GENERATED="(database\.steps\.dart|drift_schema.*\.json|test/drift/.*/generated/)"
+# Hand-written DB migration scaffolding (migration tests). Not feature IP — boilerplate
+# that verifies schema upgrades, regenerated/extended every schema bump.
+MIGRATION_CODE="(^test/drift/|migration_test\.dart$)"
 
 git -C "$REPO_ROOT" ls-files \
   | grep -E "\.($EXTENSIONS)$" \
@@ -29,6 +32,7 @@ git -C "$REPO_ROOT" ls-files \
   | grep -v -E "$DATA_SOURCES" \
   | grep -v -E "$SCRAPE_SCRIPTS" \
   | grep -v -E "$DRIFT_GENERATED" \
+  | grep -v -E "$MIGRATION_CODE" \
   | while IFS= read -r file; do
       git -C "$REPO_ROOT" blame --line-porcelain "$file" 2>/dev/null \
         | grep "^author " \
@@ -36,12 +40,12 @@ git -C "$REPO_ROOT" ls-files \
     done \
   | tr -s ' ' \
   | sort | uniq -c | sort -rn \
-  > /tmp/blame_stats_lines.txt
+  > /tmp/stats_lines.txt
 
 git -C "$REPO_ROOT" log --format="%an" \
   | tr -s ' ' \
   | sort | uniq -c | sort -rn \
-  > /tmp/blame_stats_commits.txt
+  > /tmp/stats_commits.txt
 
 awk '
   FNR == NR {
@@ -74,4 +78,4 @@ awk '
     }
     printf "\n%-22s  %7d  %6s    %7d  %8s\n", "TOTAL", line_total, "100%", commit_total, "100%"
   }
-' /tmp/blame_stats_lines.txt /tmp/blame_stats_commits.txt
+' /tmp/stats_lines.txt /tmp/stats_commits.txt

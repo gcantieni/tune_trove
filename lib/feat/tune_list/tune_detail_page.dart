@@ -208,7 +208,6 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
   }
 
   Widget _buildReadView(Tune tune) {
-    final statusLabel = tuneStatusToString(tune.status);
     // Backfill: if a tune has ABC but no cached SVG (existing rows
     // pre-dating the column, or a previous render failure), kick off
     // a render in the background.
@@ -226,10 +225,31 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
       ),
       children: [
         _readRow('Name', tune.name),
-        _readRow('Key', tune.key ?? '—'),
-        _readRow('Type', tune.type?.name ?? '—'),
-        _readRow('Genre', (tune.genre?.isEmpty ?? true) ? '—' : tune.genre!),
-        _readRow('Status', statusLabel.isEmpty ? '—' : statusLabel),
+        _quickEditRow(
+          label: 'Key',
+          value: tune.key,
+          emptyHint: 'Set key…',
+          onTap: () => _quickEditKey(tune),
+        ),
+        _quickEditRow(
+          label: 'Type',
+          value: tune.type?.name,
+          emptyHint: 'Set type…',
+          onTap: () => _quickEditType(tune),
+        ),
+        _quickEditRow(
+          label: 'Genre',
+          value: tune.genre,
+          emptyHint: 'Set genre…',
+          onTap: () => _quickEditGenre(tune),
+        ),
+        _readRowChild(
+          'Status',
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TuneStatusQuickEdit(tune: tune, showLabel: true),
+          ),
+        ),
         _readRow('From', (tune.from?.isEmpty ?? true) ? '—' : tune.from!),
         _SourceAttribution(sourceName: tune.from),
         const SizedBox(height: 16),
@@ -303,7 +323,111 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     );
   }
 
-  Widget _readRow(String label, String value) {
+  Widget _readRow(String label, String value) =>
+      _readRowChild(label, Text(value));
+
+  /// A read row whose value is tappable to quick-edit. Shows [value], or
+  /// [emptyHint] (dimmed) when there's nothing set yet.
+  Widget _quickEditRow({
+    required String label,
+    required String? value,
+    required String emptyHint,
+    required VoidCallback onTap,
+  }) {
+    final hasValue = value != null && value.isNotEmpty;
+    return _readRowChild(
+      label,
+      Align(
+        alignment: Alignment.centerLeft,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Text(
+              hasValue ? value : emptyHint,
+              style: hasValue
+                  ? null
+                  : TextStyle(color: Theme.of(context).colorScheme.outline),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _writeField(int tuneId, TunesCompanion changes) => ref
+      .read(databaseProvider)
+      .tuneDao
+      .updateTune(changes.copyWith(modifiedAt: drift.Value(DateTime.now())));
+
+  Future<void> _quickEditKey(Tune tune) async {
+    final result = await showKeyPickerSheet(context, currentKey: tune.key);
+    // null = dismissed; empty string = explicit clear.
+    if (result == null || !mounted) return;
+    await _writeField(
+      tune.id,
+      TunesCompanion(
+        id: drift.Value(tune.id),
+        key: drift.Value(result.isEmpty ? null : result),
+      ),
+    );
+  }
+
+  Future<void> _quickEditType(Tune tune) async {
+    final result = await showModalBottomSheet<_Pick<TuneType?>>(
+      context: context,
+      builder: (_) => _OptionPickerSheet<TuneType?>(
+        title: 'Set type',
+        current: tune.type,
+        options: [
+          const _PickOption<TuneType?>(value: null, label: '—'),
+          for (final t in TuneType.values)
+            _PickOption<TuneType?>(value: t, label: t.name),
+        ],
+      ),
+    );
+    if (result == null || !mounted) return;
+    await _writeField(
+      tune.id,
+      TunesCompanion(id: drift.Value(tune.id), type: drift.Value(result.value)),
+    );
+  }
+
+  Future<void> _quickEditGenre(Tune tune) async {
+    // Keep any current value that predates the canonical list so it stays
+    // selectable and isn't silently dropped.
+    final current = tune.genre;
+    final options = <String?>[
+      null,
+      ...kTuneGenres,
+      if (current != null &&
+          current.isNotEmpty &&
+          !kTuneGenres.contains(current))
+        current,
+    ];
+    final result = await showModalBottomSheet<_Pick<String?>>(
+      context: context,
+      builder: (_) => _OptionPickerSheet<String?>(
+        title: 'Set genre',
+        current: current,
+        options: [
+          for (final g in options)
+            _PickOption<String?>(value: g, label: g ?? '—'),
+        ],
+      ),
+    );
+    if (result == null || !mounted) return;
+    await _writeField(
+      tune.id,
+      TunesCompanion(
+        id: drift.Value(tune.id),
+        genre: drift.Value(result.value),
+      ),
+    );
+  }
+
+  Widget _readRowChild(String label, Widget child) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -316,7 +440,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(child: child),
         ],
       ),
     );
@@ -682,6 +806,69 @@ class _SourceAttribution extends StatelessWidget {
           fontStyle: FontStyle.italic,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
+      ),
+    );
+  }
+}
+
+/// Wraps a chosen value so a dismissed picker (returns null) is distinguishable
+/// from an explicit "None" selection (returns `_Pick(null)`).
+class _Pick<T> {
+  final T value;
+  const _Pick(this.value);
+}
+
+class _PickOption<T> {
+  final T value;
+  final String label;
+  const _PickOption({required this.value, required this.label});
+}
+
+/// Bottom sheet listing a finite set of options with the current one checked.
+/// Pops a [_Pick] holding the chosen value.
+class _OptionPickerSheet<T> extends StatelessWidget {
+  const _OptionPickerSheet({
+    required this.title,
+    required this.current,
+    required this.options,
+  });
+
+  final String title;
+  final T current;
+  final List<_PickOption<T>> options;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final opt in options)
+                  ListTile(
+                    title: Text(opt.label),
+                    trailing: opt.value == current
+                        ? const Icon(Icons.check)
+                        : null,
+                    onTap: () => Navigator.of(context).pop(_Pick<T>(opt.value)),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

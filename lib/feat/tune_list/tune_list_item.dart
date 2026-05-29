@@ -97,6 +97,45 @@ Future<void> _pickStatus(BuildContext context, WidgetRef ref, Tune tune) async {
       );
 }
 
+/// Tappable status indicator (the 1–5 dot scale) that opens the status picker
+/// and writes the choice back. Shared between the tune list and the tune
+/// detail page. Set [showLabel] to render the textual status beside the dots.
+class TuneStatusQuickEdit extends ConsumerWidget {
+  const TuneStatusQuickEdit({
+    required this.tune,
+    this.showLabel = false,
+    super.key,
+  });
+
+  final Tune tune;
+  final bool showLabel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final primary = Theme.of(context).colorScheme.primary;
+    // A tune with no status set is treated as Todo (the lowest rung) rather
+    // than rendering as blank/'—'.
+    final status = tune.status ?? TuneStatus.todo;
+    return InkWell(
+      onTap: () => _pickStatus(context, ref, tune),
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDotRow(_statusDotCount(status), primary),
+            if (showLabel) ...[
+              const SizedBox(width: 8),
+              Text(tuneStatusToString(status)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class TuneListItem extends ConsumerWidget {
   const TuneListItem({required this.tune});
 
@@ -121,8 +160,6 @@ class TuneListItem extends ConsumerWidget {
       if (subtitleString.isNotEmpty) subtitleString += " ";
       subtitleString += "from ${tune.from}";
     }
-
-    final primary = Theme.of(context).colorScheme.primary;
 
     return Card(
       child: SizedBox(
@@ -151,20 +188,7 @@ class TuneListItem extends ConsumerWidget {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
-                      InkWell(
-                        onTap: () => _pickStatus(context, ref, tune),
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
-                          child: _buildDotRow(
-                            _statusDotCount(tune.status),
-                            primary,
-                          ),
-                        ),
-                      ),
+                      TuneStatusQuickEdit(tune: tune),
                     ],
                   ),
                 ],

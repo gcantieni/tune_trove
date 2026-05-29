@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 // local references
+import 'package:tune_trove/model/accessors/app_settings_dao.dart';
 import 'package:tune_trove/model/accessors/recording_dao.dart';
 import 'package:tune_trove/model/accessors/set_dao.dart';
 import 'package:tune_trove/model/accessors/set_tune_dao.dart';
@@ -14,6 +15,7 @@ import 'package:tune_trove/model/accessors/source_rankings_dao.dart';
 import 'package:tune_trove/model/accessors/tune_dao.dart';
 import 'package:tune_trove/model/accessors/tune_recording_dao.dart';
 import 'package:tune_trove/model/database.steps.dart';
+import 'package:tune_trove/model/tables/app_settings.dart';
 import 'package:tune_trove/model/tables/recordings.dart';
 import 'package:tune_trove/model/tables/set_tune.dart';
 import 'package:tune_trove/model/tables/sets.dart';
@@ -34,6 +36,7 @@ part 'database.g.dart';
     SetTune,
     SourceConfirmations,
     SourceRankings,
+    AppSettings,
   ],
   daos: [
     TuneDao,
@@ -43,6 +46,7 @@ part 'database.g.dart';
     SetTuneDao,
     SourceConfirmationDao,
     SourceRankingsDao,
+    AppSettingsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -81,7 +85,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -206,6 +210,8 @@ class AppDatabase extends _$AppDatabase {
           '(SELECT COUNT(*) FROM tune_sets t2 WHERE t2.id < tune_sets.id)',
         );
       }
+      // v12 -> v13: add the synced app_settings key-value table (purely additive).
+      if (from < 13 && to >= 13) await m.createTable(appSettings);
     },
   );
 
