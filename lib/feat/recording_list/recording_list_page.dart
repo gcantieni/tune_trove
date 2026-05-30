@@ -21,25 +21,40 @@ class RecordingListPage extends ConsumerStatefulWidget {
   ConsumerState<RecordingListPage> createState() => _RecordingListPageState();
 }
 
-class _RecordingListPageState extends ConsumerState<RecordingListPage> {
+class _RecordingListPageState extends ConsumerState<RecordingListPage>
+    with WidgetsBindingObserver {
   StreamSubscription<SharedAudioFile>? _sharedFilesSub;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final service = ref.read(audioImportServiceProvider);
     _sharedFilesSub = service.incomingFiles.listen(_handleSharedFile);
     // Handle a file the app may have been cold-launched with.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final initial = await service.takeInitialSharedFile();
-      if (initial != null) _handleSharedFile(initial);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _drainInitialImports());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _sharedFilesSub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // A Share Extension can drop files in the App Group container while the app
+    // is backgrounded; pick them up when we come back to the foreground.
+    if (state == AppLifecycleState.resumed) _drainInitialImports();
+  }
+
+  /// Pulls any queued shared files (cold launch, or queued by a Share Extension
+  /// while backgrounded) and imports them.
+  Future<void> _drainInitialImports() async {
+    final service = ref.read(audioImportServiceProvider);
+    final initial = await service.takeInitialSharedFile();
+    if (initial != null && mounted) _handleSharedFile(initial);
   }
 
   /// Copies an imported audio file (iOS share sheet, or macOS Finder "Open
