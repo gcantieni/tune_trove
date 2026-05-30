@@ -13,6 +13,8 @@
 		<string>CloudKit</string>
 	</array>
 	<key>com.apple.security.application-groups</key>
-	<array/>
+	<array>
+		<string>group.com.gcantieni.tuneTrove</string>
+	</array>
 </dict>
 </plist>
