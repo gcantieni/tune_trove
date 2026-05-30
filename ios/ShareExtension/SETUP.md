@@ -41,14 +41,30 @@ does NOT exist — see `.context/playbooks/entitlements.md`.) Group id:
 1. **App Group on the app:** **Runner** target → Signing & Capabilities → App
    Groups → `group.com.gcantieni.tuneTrove` (this writes the key into both
    `DebugProfile.entitlements` and `Release.entitlements`).
-2. **Create the extension:** File → New → Target… → **Share Extension** →
-   `ShareExtension`. Replace the generated files with the ones in
-   `macos/ShareExtension/`.
-3. **Extension capabilities:** the extension must keep **App Sandbox** on and add
+2. **Create the extension:** File → New → Target… → **macOS** tab → **Share
+   Extension** → Product Name `ShareExtension`. In the sheet set **Project =
+   Runner** and **Embed in Application = Runner**, language Swift. Finish; on
+   "Activate scheme?" click **Cancel** (keep the Runner scheme).
+3. **If it won't embed under Runner** (the "Embed in Application" picker is empty,
+   or the appex doesn't end up in `Runner.app/Contents/PlugIns/`): create the
+   target anyway, then embed manually —
+   - Select the **Runner** target → **Build Phases**.
+   - If there is no copy phase for extensions, click **+ → New Copy Files Phase**.
+     Set **Destination = "PlugIns and Foundation Extensions"** (older Xcode:
+     "PlugIns"), leave Subpath empty.
+   - Click **+** inside that phase → add **ShareExtension.appex**. (This also
+     makes Runner depend on the extension so it builds first.)
+   - Verify there is exactly **one** such phase containing the appex exactly once
+     — duplicates cause "Cycle inside Runner" at build time.
+4. **Replace the generated files** with the ones in `macos/ShareExtension/`
+   (`ShareViewController.swift`, `Info.plist`, `ShareExtension.entitlements`). If
+   Xcode made a `MainInterface.storyboard`, it's unused (we use
+   `NSExtensionPrincipalClass`) — delete it or ignore it.
+5. **Extension capabilities:** the extension must keep **App Sandbox** ON and add
    **App Groups** (`group.com.gcantieni.tuneTrove`). The provided
    `ShareExtension.entitlements` already lists sandbox + user-selected-read-only +
    the app group.
-4. Build & run. Voice Memos (macOS) → Share → Tune Trove. (Reminder: macOS Voice
+6. Build & run. Voice Memos (macOS) → Share → Tune Trove. (Reminder: macOS Voice
    Memos still cannot *drag* a recording out — the Share button is the path.)
 
 ## Notes

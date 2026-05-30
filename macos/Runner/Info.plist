@@ -3,6 +3,8 @@
     "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>NSAppleMusicUsageDescription</key>
 	<string
         >Tune Trove uses Apple Music to search for and play recordings of traditional folk tunes.</string>
