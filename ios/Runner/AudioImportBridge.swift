@@ -137,6 +137,13 @@ final class AudioImportBridge: NSObject {
     /// Dart (pushed if listening, otherwise buffered for the cold-launch pull).
     func handleIncomingURL(_ url: URL) {
         guard url.isFileURL, let payload = copyToTemp(url) else { return }
+        // A document opened into the app ("Copy to Tune Trove") lands in our own
+        // Documents/Inbox; remove it after copying so it doesn't accumulate.
+        // (Drag sources aren't ours to delete; App Group files are cleared by
+        // drainSharedImports.)
+        if url.path.contains("/Documents/Inbox/") {
+            try? FileManager.default.removeItem(at: url)
+        }
         if let sink = eventSink {
             sink(payload)
         } else {
