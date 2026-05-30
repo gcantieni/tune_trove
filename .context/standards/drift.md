@@ -19,8 +19,13 @@
 
 ## Migrations
 
+See [migrations.md](/.context/standards/migrations.md) for the full workflow and
+the **idempotency rule** for hand-written steps (interrupted migrations crash on
+re-run otherwise).
+
 - Increment `schemaVersion` in `database.dart` for every schema change.
-- Add migration logic in `stepByStep()` using the schema parameter for type safety.
+- Steps up to v9 use `stepByStep()` (schema-typed); later changes are
+  hand-written `if (from < N && to >= N)` blocks that must be idempotent.
 - Always test migrations with the generated schema versions in `test/drift/`.
 - After adding a migration, export and regenerate test schemas:
   ```bash

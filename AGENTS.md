@@ -85,6 +85,7 @@ make deps
 - [.context/standards/drift.md](/.context/standards/drift.md)
 - [.context/standards/flutter.md](/.context/standards/flutter.md)
 - [.context/standards/go-router.md](/.context/standards/go-router.md)
+- [.context/standards/migrations.md](/.context/standards/migrations.md) — Drift schema migrations: hand-written steps must be idempotent (interrupted-migration crashes), required test updates
 - [.context/standards/riverpod.md](/.context/standards/riverpod.md)
 
 ### Roadmap — planned features not yet implemented

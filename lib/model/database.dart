@@ -203,7 +203,18 @@ class AppDatabase extends _$AppDatabase {
       // v11 -> v12: add a position column to tune_sets so sets are user-orderable.
       // Defaults to 0; backfill stable positions by id so existing sets keep a
       // deterministic order instead of all tying at 0.
-      if (from < 12 && to >= 12) {
+      //
+      // Guarded with PRAGMA table_info because SQLite has no ADD COLUMN IF NOT
+      // EXISTS. Each DDL statement auto-commits immediately, but drift only
+      // bumps the schema version after the whole onUpgrade callback succeeds. If
+      // a later step (or an app kill) interrupts the migration after this ran,
+      // the next launch re-enters this branch and, without the guard, crashes
+      // with "duplicate column name: position". (createTable steps don't need
+      // this — drift emits CREATE TABLE IF NOT EXISTS.) See
+      // .context/standards/migrations.md.
+      if (from < 12 &&
+          to >= 12 &&
+          !await _columnExists('tune_sets', 'position')) {
         await m.addColumn(tuneSets, tuneSets.position);
         await customStatement(
           'UPDATE tune_sets SET position = '
@@ -214,6 +225,14 @@ class AppDatabase extends _$AppDatabase {
       if (from < 13 && to >= 13) await m.createTable(appSettings);
     },
   );
+
+  /// Whether [column] already exists on [table]. Lets hand-written `ADD COLUMN`
+  /// migration steps (see [migration]) be safe to re-run after an interrupted
+  /// migration — SQLite has no `ADD COLUMN IF NOT EXISTS`.
+  Future<bool> _columnExists(String table, String column) async {
+    final cols = await customSelect('PRAGMA table_info("$table")').get();
+    return cols.any((r) => r.read<String>('name') == column);
+  }
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
