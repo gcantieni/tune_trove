@@ -46,7 +46,13 @@ CustomTransitionPage<void> _directionalPage({
   );
 }
 
+/// Root navigator key. Lets non-widget owners (e.g. [AudioImportController])
+/// surface app-wide UI — like the prefilled add-recording dialog on a shared
+/// file — from any tab, via `rootNavigatorKey.currentContext`.
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final GoRouter router = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/tune_list',
   routes: [
     ShellRoute(

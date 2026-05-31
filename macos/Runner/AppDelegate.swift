@@ -16,8 +16,16 @@ class AppDelegate: FlutterAppDelegate {
   // super so FlutterAppDelegate still forwards openURLs to plugins.
   override func application(_ application: NSApplication, open urls: [URL]) {
     super.application(application, open: urls)
-    for url in urls where url.isFileURL {
-      AudioImportBridge.receive(url)
+    for url in urls {
+      // The Share Extension opens `tunetrove://import` after writing to the App
+      // Group, to bring us to the front; drain the inbox immediately.
+      if url.scheme == "tunetrove" {
+        AudioImportBridge.shared?.drainSharedImports()
+        continue
+      }
+      if url.isFileURL {
+        AudioImportBridge.receive(url)
+      }
     }
   }
 

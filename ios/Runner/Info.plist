@@ -18,6 +18,21 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>tune_trove</string>
+	<!-- Custom URL scheme the Share Extension opens after writing a file, to
+	     auto-foreground the app so it drains the App Group inbox immediately.
+	     Handled natively in SceneDelegate (NOT go_router — FlutterDeepLinkingEnabled
+	     is false), so it won't leak into routing. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.gcantieni.tuneTrove.import</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tunetrove</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

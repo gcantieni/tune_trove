@@ -124,6 +124,11 @@ class ShareViewController: NSViewController {
     }
 
     private func complete() {
+        // Foreground the host app so it drains the App Group inbox immediately,
+        // rather than waiting for the user to switch to it manually. macOS lets
+        // an extension open a URL via NSWorkspace; the scheme is registered in
+        // macos/Runner/Info.plist and handled in AppDelegate.application(_:open:).
+        NSWorkspace.shared.open(URL(string: "tunetrove://import")!)
         extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
     }
 }

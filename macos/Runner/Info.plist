@@ -20,6 +20,21 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
+	<!-- Custom URL scheme the Share Extension opens after writing a file, to
+	     bring the app to the front so it drains the App Group inbox immediately.
+	     Handled natively in AppDelegate (NOT go_router — FlutterDeepLinkingEnabled
+	     is false), so it won't leak into routing. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.gcantieni.tuneTrove.import</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tunetrove</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

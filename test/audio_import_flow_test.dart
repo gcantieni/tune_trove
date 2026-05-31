@@ -9,13 +9,14 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+import 'package:tune_trove/feat/audio_import/audio_import_controller.dart';
 import 'package:tune_trove/feat/audio_import/audio_import_models.dart';
 import 'package:tune_trove/feat/audio_import/audio_import_service.dart';
 import 'package:tune_trove/feat/audio_import/mock_audio_import_service.dart';
 import 'package:tune_trove/feat/recording_list/recording_form_widget.dart';
-import 'package:tune_trove/feat/recording_list/recording_list_page.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
+import 'package:tune_trove/routing/app_router.dart';
 
 class _FakePathProvider extends PathProviderPlatform
     with MockPlatformInterfaceMixin {
@@ -24,6 +25,18 @@ class _FakePathProvider extends PathProviderPlatform
 
   @override
   Future<String?> getApplicationDocumentsPath() async => docsPath;
+}
+
+/// App-root harness: the import flow is owned by `AudioImportController`
+/// (watched here, as in `main.dart`), driving the real `router`.
+class _Harness extends ConsumerWidget {
+  const _Harness();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(audioImportControllerProvider);
+    return MaterialApp.router(routerConfig: router);
+  }
 }
 
 void main() {
@@ -45,6 +58,9 @@ void main() {
       ),
     );
     importService = MockAudioImportService();
+    // The router is a global singleton retaining its location between tests;
+    // start on the dependency-light Recorder tab.
+    router.go('/recorder');
   });
 
   tearDown(() async {
@@ -65,7 +81,7 @@ void main() {
           databaseProvider.overrideWithValue(db),
           audioImportServiceProvider.overrideWithValue(importService),
         ],
-        child: const MaterialApp(home: RecordingListPage()),
+        child: const _Harness(),
       ),
     );
     await tester.pumpAndSettle();

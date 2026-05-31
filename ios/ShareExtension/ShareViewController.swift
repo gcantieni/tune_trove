@@ -134,6 +134,37 @@ class ShareViewController: UIViewController {
     }
 
     private func complete() {
+        // Foreground the host app so it drains the App Group inbox immediately.
+        // (Only useful once this extension actually writes a file — see the iOS
+        // share read fix; harmless before then.)
+        openHostApp()
         extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
+    }
+
+    /// ⚠️ UNOFFICIAL / GRAY-AREA — keep isolated and easy to rip out.
+    ///
+    /// There is NO public API for an iOS share extension to launch its host app:
+    /// `UIApplication.open(_:options:completionHandler:)` is annotated
+    /// `unavailable` in app extensions. The widely-used workaround walks the
+    /// responder chain to whatever object responds to the legacy `openURL:`
+    /// selector (the shared `UIApplication`) and invokes it dynamically, which
+    /// sidesteps the compile-time availability check.
+    ///
+    /// This works as of iOS 17/18 but is undocumented and Apple could break it in
+    /// any release. The import itself does NOT depend on it — without it the user
+    /// just foregrounds the app manually and the inbox drains on the next
+    /// `didBecomeActive`. The scheme is registered in ios/Runner/Info.plist and
+    /// handled in SceneDelegate.
+    private func openHostApp() {
+        guard let url = URL(string: "tunetrove://import") else { return }
+        let selector = NSSelectorFromString("openURL:")
+        var responder: UIResponder? = self
+        while let current = responder {
+            if current.responds(to: selector) {
+                current.perform(selector, with: url)
+                return
+            }
+            responder = current.next
+        }
     }
 }
