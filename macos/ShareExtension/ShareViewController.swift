@@ -6,10 +6,11 @@ import os
 /// `Imports/` folder; the main app drains it on launch/foreground
 /// (`AudioImportBridge.drainSharedImports()`). Auto-completes with no UI.
 ///
-/// Voice Memos shares its recording in a way a sandboxed extension can't open by
-/// URL (loadItem / loadFileRepresentation / loadInPlaceFileRepresentation all
-/// fail "no such file"), so we ask the *source app* to serialize the bytes via
-/// `loadDataRepresentation` (file path kept only as a fallback).
+/// Voice Memos vends the recording as a lazy, security-scoped in-place file that
+/// plain reads can't open ("no such file"). The working recipe (see
+/// SHARE_EXTENSION.md): `loadObject(ofClass: URL.self)` for the canonical URL →
+/// start its security scope → `NSFileCoordinator` read with `.forUploading`
+/// (which materializes the provider file) → copy the bytes into the App Group.
 ///
 /// Logs at `.notice` (visible in Console.app without "Include Info Messages");
 /// filter on "tuneTrove".
@@ -124,26 +125,6 @@ class ShareViewController: NSViewController {
             log.notice("wrote -> \(dest.path, privacy: .public)")
         } catch {
             log.error("write failed: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-
-    private func copyCoordinated(from url: URL, securityScoped: Bool, name: String) {
-        guard let dir = importsDir() else { return }
-        let scoped = securityScoped && url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-
-        var coordError: NSError?
-        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordError) { readURL in
-            let dest = unique(in: dir, name: name)
-            do {
-                try FileManager.default.copyItem(at: readURL, to: dest)
-                log.notice("copied -> \(dest.path, privacy: .public)")
-            } catch {
-                log.error("copy failed: \(error.localizedDescription, privacy: .public)")
-            }
-        }
-        if let coordError {
-            log.error("coordinate error: \(coordError.localizedDescription, privacy: .public)")
         }
     }
 
