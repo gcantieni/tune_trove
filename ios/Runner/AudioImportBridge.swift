@@ -3,6 +3,7 @@ import Foundation
 import Flutter
 import UIKit
 #elseif canImport(AppKit)
+import AppKit
 import FlutterMacOS
 #endif
 
@@ -11,9 +12,20 @@ enum AudioImportChannels {
     static let event  = "com.gcantieni.tuneTrove/audio_import_events"
 }
 
-/// Receives audio files shared or opened into the app: the iOS share sheet
-/// ("Copy to Tune Trove", e.g. from Voice Memos or Files) and macOS Finder
-/// "Open With" / drag-and-drop onto the window.
+/// App Group shared between the app and the Share Extensions. The extension
+/// drops shared audio into `<container>/Imports/`; the app drains it.
+/// Requires the `com.apple.security.application-groups` entitlement (added via
+/// Xcode → Signing & Capabilities → App Groups) on every target that uses it.
+enum AudioImportAppGroup {
+    static let id = "group.com.gcantieni.tuneTrove"
+    static let importsSubdir = "Imports"
+}
+
+/// Receives audio files shared or opened into the app via several routes:
+///   - Share Extension (iOS + macOS) — drops files in the App Group container,
+///     drained by `drainSharedImports()` on launch and foreground.
+///   - iOS document open ("Copy to Tune Trove") via the scene delegate.
+///   - macOS Finder "Open With" / drag-and-drop onto the window.
 ///
 /// The scene delegate forwards each incoming file URL here. Because the scene
 /// can connect before the implicit Flutter engine (and therefore this bridge)
@@ -48,6 +60,7 @@ final class AudioImportBridge: NSObject {
     private var methodChannel: FlutterMethodChannel?
     private var eventChannel: FlutterEventChannel?
     private var eventSink: FlutterEventSink?
+    private var didBecomeActiveObserver: NSObjectProtocol?
 
     /// A file received before Dart asked for it (cold launch). Consumed by
     /// `getInitialSharedFile`.
@@ -74,6 +87,39 @@ final class AudioImportBridge: NSObject {
         let buffered = AudioImportBridge.pendingURLs
         AudioImportBridge.pendingURLs = []
         for url in buffered { handleIncomingURL(url) }
+
+        // Pick up anything a Share Extension queued, now (cold launch) and each
+        // time the app returns to the foreground.
+        drainSharedImports()
+        #if canImport(UIKit)
+        let didBecomeActive = UIApplication.didBecomeActiveNotification
+        #elseif canImport(AppKit)
+        let didBecomeActive = NSApplication.didBecomeActiveNotification
+        #endif
+        didBecomeActiveObserver = NotificationCenter.default.addObserver(
+            forName: didBecomeActive, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.drainSharedImports() }
+        }
+    }
+
+    /// Moves any files a Share Extension left in the App Group container into the
+    /// normal import pipeline (temp copy + emit), then deletes the originals.
+    /// No-ops (containerURL is nil) until the App Group entitlement is present.
+    func drainSharedImports() {
+        let fm = FileManager.default
+        guard let container = fm.containerURL(
+            forSecurityApplicationGroupIdentifier: AudioImportAppGroup.id)
+        else { return }
+        let importsDir = container.appendingPathComponent(
+            AudioImportAppGroup.importsSubdir, isDirectory: true)
+        guard let entries = try? fm.contentsOfDirectory(
+            at: importsDir, includingPropertiesForKeys: nil)
+        else { return }
+        for url in entries where url.isFileURL {
+            handleIncomingURL(url)       // copies to our temp + emits/buffers
+            try? fm.removeItem(at: url)  // clear the group inbox
+        }
     }
 
     private func handleMethod(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -91,6 +137,13 @@ final class AudioImportBridge: NSObject {
     /// Dart (pushed if listening, otherwise buffered for the cold-launch pull).
     func handleIncomingURL(_ url: URL) {
         guard url.isFileURL, let payload = copyToTemp(url) else { return }
+        // A document opened into the app ("Copy to Tune Trove") lands in our own
+        // Documents/Inbox; remove it after copying so it doesn't accumulate.
+        // (Drag sources aren't ours to delete; App Group files are cleared by
+        // drainSharedImports.)
+        if url.path.contains("/Documents/Inbox/") {
+            try? FileManager.default.removeItem(at: url)
+        }
         if let sink = eventSink {
             sink(payload)
         } else {

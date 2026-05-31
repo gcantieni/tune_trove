@@ -23,6 +23,16 @@ int _drawerIndex(String location) {
   return 0;
 }
 
+// Pages that render their own bottom-right "add" FAB, on which we shift the
+// global play/pause FAB left so the two don't overlap. The list pages have one;
+// their detail sub-routes (/tune_list/$id, /recording_list/$id) do not — except
+// set detail (/set_list/$id), which does.
+bool _hasAddFab(String location) =>
+    location == '/tune_list' ||
+    location == '/recording_list' ||
+    location == '/set_list' ||
+    location.startsWith('/set_list/');
+
 class NavScaffold extends ConsumerWidget {
   final Widget child;
 
@@ -81,26 +91,31 @@ class NavScaffold extends ConsumerWidget {
           ),
         ],
       ),
+      // Shift the global play/pause FAB left so it sits beside (not on top
+      // of) each page's own bottom-right "add" FAB.
       floatingActionButton: showFab
-          ? GestureDetector(
-              onLongPress: () async {
-                final url = playerState.trackUri;
-                if (url == null) return;
-                final id = await ref
-                    .read(databaseProvider)
-                    .recordingDao
-                    .findIdByUrl(url);
-                if (id == null || !context.mounted) return;
-                context.go('/recording_list/$id');
-              },
-              child: FloatingActionButton(
-                heroTag: 'global_play_pause',
-                tooltip: playerState.isPlaying ? 'Pause' : 'Resume',
-                onPressed: playerState.isPlaying
-                    ? notifier.pause
-                    : notifier.resume,
-                child: Icon(
-                  playerState.isPlaying ? Icons.pause : Icons.play_arrow,
+          ? Padding(
+              padding: EdgeInsets.only(right: _hasAddFab(location) ? 72 : 0),
+              child: GestureDetector(
+                onLongPress: () async {
+                  final url = playerState.trackUri;
+                  if (url == null) return;
+                  final id = await ref
+                      .read(databaseProvider)
+                      .recordingDao
+                      .findIdByUrl(url);
+                  if (id == null || !context.mounted) return;
+                  context.go('/recording_list/$id');
+                },
+                child: FloatingActionButton(
+                  heroTag: 'global_play_pause',
+                  tooltip: playerState.isPlaying ? 'Pause' : 'Resume',
+                  onPressed: playerState.isPlaying
+                      ? notifier.pause
+                      : notifier.resume,
+                  child: Icon(
+                    playerState.isPlaying ? Icons.pause : Icons.play_arrow,
+                  ),
                 ),
               ),
             )
