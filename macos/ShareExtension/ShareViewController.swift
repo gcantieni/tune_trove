@@ -7,13 +7,10 @@ import os
 /// (`AudioImportBridge.drainSharedImports()`). Auto-completes with no UI.
 ///
 /// Voice Memos vends the recording as a lazy, security-scoped in-place file that
-/// plain reads can't open ("no such file"). The working recipe (see
-/// SHARE_EXTENSION.md): `loadObject(ofClass: URL.self)` for the canonical URL →
-/// start its security scope → `NSFileCoordinator` read with `.forUploading`
-/// (which materializes the provider file) → copy the bytes into the App Group.
-///
-/// Logs at `.notice` (visible in Console.app without "Include Info Messages");
-/// filter on "tuneTrove".
+/// the `load*Representation` APIs can't open ("no such file"). The working recipe
+/// (see SHARE_EXTENSION.md): `loadObject(ofClass: URL.self)` returns a URL to an
+/// already-materialized temp copy → start its security scope → `NSFileCoordinator`
+/// read (`.forUploading`) → write the bytes into the App Group.
 class ShareViewController: NSViewController {
     private let appGroupId = "group.com.gcantieni.tuneTrove"
     private let importsSubdir = "Imports"
@@ -30,26 +27,17 @@ class ShareViewController: NSViewController {
     }
 
     private func handleShare() {
-        let items = (extensionContext?.inputItems as? [NSExtensionItem]) ?? []
-        let providers = items.flatMap { $0.attachments ?? [] }
-        let audioUTI = UTType.audio.identifier
-        let audioProviders = providers.filter {
-            $0.hasItemConformingToTypeIdentifier(audioUTI)
-        }
-        log.notice("items=\(items.count) providers=\(providers.count) audio=\(audioProviders.count)")
+        let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
+            .flatMap { $0.attachments ?? [] }
+            .filter { $0.hasItemConformingToTypeIdentifier(UTType.audio.identifier) }
 
-        guard !audioProviders.isEmpty else {
-            log.error("no audio attachments; completing")
+        guard !providers.isEmpty else {
             complete()
             return
         }
 
-        for p in audioProviders {
-            log.notice("name=\(p.suggestedName ?? "nil", privacy: .public) data=[\(p.registeredTypeIdentifiers.joined(separator: ","), privacy: .public)] inPlace=[\(p.registeredTypeIdentifiers(fileOptions: .openInPlace).joined(separator: ","), privacy: .public)] canURL=\(p.canLoadObject(ofClass: URL.self))")
-        }
-
         let group = DispatchGroup()
-        for provider in audioProviders {
+        for provider in providers {
             group.enter()
             importAudio(provider) { group.leave() }
         }
@@ -61,12 +49,7 @@ class ShareViewController: NSViewController {
             UTType($0)?.conforms(to: .audio) == true
         } ?? UTType.audio.identifier
         let name = filename(for: provider, audioType: audioType)
-        log.notice("using type \(audioType, privacy: .public) name=\(name, privacy: .public)")
 
-        // Ask for the canonical URL Voice Memos vends (canURL=true) rather than
-        // the title-named staging path, then read it via a security scope +
-        // NSFileCoordinator `.forUploading` (which materializes provider files).
-        // Logs the REAL path so we can see whether it's the UUID-backed file.
         _ = provider.loadObject(ofClass: URL.self) { [weak self] url, error in
             guard let self else { done(); return }
             guard let url else {
@@ -76,13 +59,11 @@ class ShareViewController: NSViewController {
             }
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            self.log.notice("urlObject scoped=\(scoped) exists=\(FileManager.default.fileExists(atPath: url.path)) path=\(url.path, privacy: .public)")
 
             var coordError: NSError?
             NSFileCoordinator().coordinate(readingItemAt: url, options: .forUploading, error: &coordError) { readURL in
                 do {
                     let data = try Data(contentsOf: readURL)
-                    self.log.notice("read \(data.count) bytes")
                     self.write(data: data, name: name)
                 } catch {
                     self.log.error("read failed: \(error.localizedDescription, privacy: .public)")
@@ -122,7 +103,6 @@ class ShareViewController: NSViewController {
         let dest = unique(in: dir, name: name)
         do {
             try data.write(to: dest)
-            log.notice("wrote -> \(dest.path, privacy: .public)")
         } catch {
             log.error("write failed: \(error.localizedDescription, privacy: .public)")
         }
