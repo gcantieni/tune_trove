@@ -2,6 +2,8 @@
 
 clean:
 	rm -rf ~/Library/Developer/Xcode/DerivedData/Runner-*
+	rm -rf build/macos
+	rm -rf build/ios
 
 format:
 	dart format lib/
