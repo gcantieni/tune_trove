@@ -107,7 +107,6 @@ class ShareViewController: UIViewController {
         let audioType = provider.registeredTypeIdentifiers.first {
             UTType($0)?.conforms(to: .audio) == true
         } ?? UTType.audio.identifier
-        let name = filename(for: provider, audioType: audioType)
 
         _ = provider.loadObject(ofClass: URL.self) { [weak self] url, error in
             guard let self else { done(); return }
@@ -120,6 +119,12 @@ class ShareViewController: UIViewController {
             self.log.notice("urlObject \(url.path, privacy: .public) scoped=\(scoped, privacy: .public)")
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
+            // Derive the name only now that we have the materialized URL: iOS Voice
+            // Memos leaves `suggestedName` nil but the URL's last path component
+            // carries the recording's real title, so it's the better fallback.
+            let name = self.filename(
+                suggested: provider.suggestedName, url: url, audioType: audioType)
+
             var coordError: NSError?
             NSFileCoordinator().coordinate(readingItemAt: url, options: .forUploading, error: &coordError) { readURL in
                 self.copyToGroup(from: readURL, name: name)
@@ -131,11 +136,20 @@ class ShareViewController: UIViewController {
         }
     }
 
-    /// suggestedName from Voice Memos has no extension; append the type's.
-    private func filename(for provider: NSItemProvider, audioType: String) -> String {
-        var name = provider.suggestedName ?? "shared_audio"
+    /// Builds the destination filename. Prefers `suggestedName`; on iOS Voice
+    /// Memos that's nil, so it falls back to the materialized URL's filename
+    /// (which carries the recording title) before the generic `shared_audio`.
+    /// `suggestedName` has no extension, so append the type's when missing.
+    private func filename(suggested: String?, url: URL, audioType: String) -> String {
+        var name = suggested ?? ""
+        if name.isEmpty {
+            let fromURL = url.deletingPathExtension().lastPathComponent
+            name = fromURL.isEmpty ? "shared_audio" : fromURL
+        }
         if (name as NSString).pathExtension.isEmpty {
-            let ext = UTType(audioType)?.preferredFilenameExtension ?? "m4a"
+            let ext = url.pathExtension.isEmpty
+                ? (UTType(audioType)?.preferredFilenameExtension ?? "m4a")
+                : url.pathExtension
             name += ".\(ext)"
         }
         return name
