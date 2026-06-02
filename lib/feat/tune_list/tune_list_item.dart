@@ -161,42 +161,82 @@ class TuneListItem extends ConsumerWidget {
       subtitleString += "from ${tune.from}";
     }
 
-    return Card(
-      child: SizedBox(
-        width: double.infinity,
-        child: InkWell(
-          onTap: () => context.push('/tune_list/${tune.id}'),
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 12.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(tune.name, style: Theme.of(context).textTheme.titleMedium),
-                if (subtitleString.isNotEmpty || tune.status != null) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      if (subtitleString.isNotEmpty)
-                        Expanded(
-                          child: Text(
-                            subtitleString,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      TuneStatusQuickEdit(tune: tune),
-                    ],
+    return Dismissible(
+      key: ValueKey(tune.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmDelete(context),
+      onDismissed: (_) =>
+          ref.read(databaseProvider).tuneDao.deleteTune(tune.id),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        color: Theme.of(context).colorScheme.errorContainer,
+        child: Icon(
+          Icons.delete_outline,
+          color: Theme.of(context).colorScheme.onErrorContainer,
+        ),
+      ),
+      child: Card(
+        child: SizedBox(
+          width: double.infinity,
+          child: InkWell(
+            onTap: () => context.push('/tune_list/${tune.id}'),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 12.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    tune.name,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
+                  if (subtitleString.isNotEmpty || tune.status != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (subtitleString.isNotEmpty)
+                          Expanded(
+                            child: Text(
+                              subtitleString,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        TuneStatusQuickEdit(tune: tune),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete tune'),
+        content: Text('Delete "${tune.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 }
