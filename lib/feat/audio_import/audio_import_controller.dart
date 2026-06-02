@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -11,6 +12,8 @@ import 'package:tune_trove/feat/music_kit/music_kit_constants.dart';
 import 'package:tune_trove/feat/music_kit/music_kit_service.dart';
 import 'package:tune_trove/feat/recording_list/add_recording_dialog.dart';
 import 'package:tune_trove/feat/recording_list/recording_file_store.dart';
+import 'package:tune_trove/model/database.dart';
+import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/routing/app_router.dart';
 
 /// App-root owner of the shared-audio import flow. Lives for the whole app
@@ -25,7 +28,7 @@ import 'package:tune_trove/routing/app_router.dart';
 /// - copy the file into the audio store, then navigate to Recordings and open
 ///   the prefilled add-recording form.
 class AudioImportController with WidgetsBindingObserver {
-  AudioImportController(this._service, this._musicKit) {
+  AudioImportController(this._service, this._musicKit, this._db) {
     WidgetsBinding.instance.addObserver(this);
     _sub = _service.incomingFiles.listen(_handleSharedFile);
     // A file the app may have been cold-launched with.
@@ -34,6 +37,7 @@ class AudioImportController with WidgetsBindingObserver {
 
   final AudioImportService _service;
   final MusicKitService _musicKit;
+  final AppDatabase _db;
   StreamSubscription<SharedAudioFile>? _sub;
 
   /// Guards against double-handling. A cold-launch `takeInitialSharedFile`, a
@@ -76,6 +80,21 @@ class AudioImportController with WidgetsBindingObserver {
       url = 'file://$destPath';
     } catch (_) {
       _showError('Could not import the shared recording.');
+      _busy = false;
+      return;
+    }
+    // The iOS share-sheet form already collected name + performers, so insert
+    // the recording directly — no form, no app switch. (Other transports leave
+    // `autosave` false and fall through to the prefilled form below.)
+    if (item.autosave) {
+      await _db.recordingDao.insertRecording(
+        RecordingsCompanion.insert(
+          name: item.name,
+          url: url,
+          createdAt: DateTime.now(),
+          performers: Value(item.performers),
+        ),
+      );
       _busy = false;
       return;
     }
@@ -144,6 +163,7 @@ final audioImportControllerProvider = Provider<AudioImportController>((ref) {
   final controller = AudioImportController(
     ref.read(audioImportServiceProvider),
     ref.read(musicKitServiceProvider),
+    ref.read(databaseProvider),
   );
   ref.onDispose(controller.dispose);
   return controller;

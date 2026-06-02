@@ -117,13 +117,41 @@ final class AudioImportBridge: NSObject {
             at: importsDir, includingPropertiesForKeys: nil)
         else { return }
         for url in entries where url.isFileURL {
-            if url.pathExtension == "tunetroveurl" {
+            switch url.pathExtension {
+            case "tunetroveurl":
                 handleSharedUrlFile(url)  // a shared link (e.g. Apple Music)
-            } else {
-                handleIncomingURL(url)    // an audio file: copy to temp + emit
+                try? fm.removeItem(at: url)
+            case "tunetrovemeta":
+                continue  // consumed alongside its audio file (below)
+            default:
+                // An audio file. The iOS share-sheet form leaves a sidecar with
+                // the user's name + performers; when present we deliver those and
+                // flag the import for a silent insert (no add-recording form).
+                let metaURL = url.appendingPathExtension("tunetrovemeta")
+                let meta = fm.fileExists(atPath: metaURL.path)
+                    ? readImportMeta(at: metaURL) : nil
+                handleIncomingURL(url, meta: meta)  // copy to temp + emit
+                try? fm.removeItem(at: url)         // clear the group inbox
+                if meta != nil { try? fm.removeItem(at: metaURL) }
             }
-            try? fm.removeItem(at: url)   // clear the group inbox
         }
+    }
+
+    /// Metadata a Share Extension form attached to a shared audio file.
+    private struct ImportMeta {
+        let name: String?
+        let performers: String?
+    }
+
+    /// Reads a `.tunetrovemeta` JSON sidecar (`{ "name", "performers" }`).
+    private func readImportMeta(at url: URL) -> ImportMeta? {
+        guard let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data)
+                as? [String: Any]
+        else { return nil }
+        return ImportMeta(
+            name: obj["name"] as? String,
+            performers: obj["performers"] as? String)
     }
 
     /// Delivers a `.tunetroveurl` sidecar (written by the Share Extension for a
@@ -154,8 +182,8 @@ final class AudioImportBridge: NSObject {
 
     /// Copies the shared file into a temp location we own and delivers it to
     /// Dart (pushed if listening, otherwise buffered for the cold-launch pull).
-    func handleIncomingURL(_ url: URL) {
-        guard url.isFileURL, let payload = copyToTemp(url) else { return }
+    func handleIncomingURL(_ url: URL, meta: ImportMeta? = nil) {
+        guard url.isFileURL, let payload = copyToTemp(url, meta: meta) else { return }
         // A document opened into the app ("Copy to Tune Trove") lands in our own
         // Documents/Inbox; remove it after copying so it doesn't accumulate.
         // (Drag sources aren't ours to delete; App Group files are cleared by
@@ -170,7 +198,7 @@ final class AudioImportBridge: NSObject {
         }
     }
 
-    private func copyToTemp(_ url: URL) -> [String: Any]? {
+    private func copyToTemp(_ url: URL, meta: ImportMeta? = nil) -> [String: Any]? {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
@@ -185,7 +213,17 @@ final class AudioImportBridge: NSObject {
                 try fm.removeItem(at: dest)
             }
             try fm.copyItem(at: url, to: dest)
-            return ["path": dest.path, "name": dest.lastPathComponent]
+            var payload: [String: Any] = [
+                "path": dest.path, "name": dest.lastPathComponent,
+            ]
+            // A form sidecar overrides the display name and supplies performers;
+            // its presence tells Dart to insert silently (`autosave`).
+            if let meta {
+                if let n = meta.name, !n.isEmpty { payload["name"] = n }
+                if let p = meta.performers, !p.isEmpty { payload["performers"] = p }
+                payload["autosave"] = true
+            }
+            return payload
         } catch {
             print("[AudioImport] copy failed: \(error.localizedDescription)")
             return nil

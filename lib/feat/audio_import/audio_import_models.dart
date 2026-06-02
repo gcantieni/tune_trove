@@ -21,11 +21,25 @@ class SharedAudioFile {
   /// Suggested display name, typically the original filename or link title.
   final String name;
 
-  const SharedAudioFile({this.path, this.url, required this.name})
-    : assert(
-        path != null || url != null,
-        'a SharedAudioFile needs either a path or a url',
-      );
+  /// Performers/artist entered up front in the iOS share-sheet form; null for
+  /// every other transport (macOS, "Open With", URL shares).
+  final String? performers;
+
+  /// True when the item arrived fully described (name + optional performers)
+  /// from the iOS share-sheet form, so the app inserts it directly instead of
+  /// opening the add-recording form. Only ever set for the file transport.
+  final bool autosave;
+
+  const SharedAudioFile({
+    this.path,
+    this.url,
+    required this.name,
+    this.performers,
+    this.autosave = false,
+  }) : assert(
+         path != null || url != null,
+         'a SharedAudioFile needs either a path or a url',
+       );
 
   /// True when this is the URL transport (a shared link, not a file).
   bool get isUrl => url != null;
@@ -42,12 +56,20 @@ class SharedAudioFile {
     final path = map['path'];
     if (path is! String || path.isEmpty) return null;
     final name = map['name'];
+    final performers = map['performers'];
+    final autosave = map['autosave'];
     return SharedAudioFile(
       path: path,
       name: (name is String && name.isNotEmpty) ? name : path.split('/').last,
+      performers: (performers is String && performers.isNotEmpty)
+          ? performers
+          : null,
+      autosave: autosave is bool && autosave,
     );
   }
 
   @override
-  String toString() => 'SharedAudioFile(path: $path, url: $url, name: $name)';
+  String toString() =>
+      'SharedAudioFile(path: $path, url: $url, name: $name, '
+      'performers: $performers, autosave: $autosave)';
 }

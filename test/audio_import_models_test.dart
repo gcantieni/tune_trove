@@ -47,6 +47,44 @@ void main() {
       expect(file!.isUrl, isTrue);
     });
 
+    test('parses performers and autosave (share-sheet form)', () {
+      final file = SharedAudioFile.fromMap({
+        'path': '/tmp/a.m4a',
+        'name': 'Practice session',
+        'performers': 'The Band',
+        'autosave': true,
+      });
+      expect(file, isNotNull);
+      expect(file!.name, 'Practice session');
+      expect(file.performers, 'The Band');
+      expect(file.autosave, isTrue);
+    });
+
+    test('defaults performers null and autosave false when absent', () {
+      final file = SharedAudioFile.fromMap({'path': '/tmp/a.m4a'});
+      expect(file!.performers, isNull);
+      expect(file.autosave, isFalse);
+    });
+
+    test('ignores empty performers', () {
+      final file = SharedAudioFile.fromMap({
+        'path': '/tmp/a.m4a',
+        'performers': '',
+      });
+      expect(file!.performers, isNull);
+    });
+
+    test('url transport ignores performers/autosave', () {
+      final file = SharedAudioFile.fromMap({
+        'url': 'https://music.apple.com/us/song/x/9',
+        'performers': 'ignored',
+        'autosave': true,
+      });
+      expect(file!.isUrl, isTrue);
+      expect(file.performers, isNull);
+      expect(file.autosave, isFalse);
+    });
+
     test('returns null when neither path nor url present', () {
       expect(SharedAudioFile.fromMap({}), isNull);
       expect(SharedAudioFile.fromMap({'path': ''}), isNull);
