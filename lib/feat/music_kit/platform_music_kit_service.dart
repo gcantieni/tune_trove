@@ -50,6 +50,22 @@ class PlatformMusicKitService implements MusicKitService {
   }
 
   @override
+  Future<MusicKitSearchResult?> lookupSong(String catalogId) async {
+    try {
+      final raw = await _methodChannel.invokeMethod<Map<Object?, Object?>>(
+        'lookup',
+        {'catalogId': catalogId},
+      );
+      if (raw == null) return null;
+      return MusicKitSearchResult.fromMap(raw);
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  @override
   Future<void> play(MusicKitPlayParams params) =>
       _methodChannel.invokeMethod<void>('play', params.toMap());
 

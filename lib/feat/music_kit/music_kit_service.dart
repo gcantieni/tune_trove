@@ -15,6 +15,11 @@ abstract class MusicKitService {
     List<String> types = const ['songs', 'albums', 'artists'],
   });
 
+  /// Resolves a catalog *song* id to its display metadata, or null if the song
+  /// can't be resolved (MusicKit unavailable / unauthorized / not found). Used
+  /// to name a recording ingested from an Apple Music share link.
+  Future<MusicKitSearchResult?> lookupSong(String catalogId);
+
   Future<void> play(MusicKitPlayParams params);
   Future<void> pause();
   Future<void> resume();

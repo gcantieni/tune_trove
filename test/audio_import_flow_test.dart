@@ -13,6 +13,8 @@ import 'package:tune_trove/feat/audio_import/audio_import_controller.dart';
 import 'package:tune_trove/feat/audio_import/audio_import_models.dart';
 import 'package:tune_trove/feat/audio_import/audio_import_service.dart';
 import 'package:tune_trove/feat/audio_import/mock_audio_import_service.dart';
+import 'package:tune_trove/feat/music_kit/mock_music_kit_service.dart';
+import 'package:tune_trove/feat/music_kit/music_kit_service.dart';
 import 'package:tune_trove/feat/recording_list/recording_form_widget.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
@@ -46,6 +48,7 @@ void main() {
   late Directory sourceDir;
   late AppDatabase db;
   late MockAudioImportService importService;
+  late MockMusicKitService musicKit;
 
   setUp(() {
     tempDocs = Directory.systemTemp.createTempSync('vm_docs');
@@ -58,6 +61,7 @@ void main() {
       ),
     );
     importService = MockAudioImportService();
+    musicKit = MockMusicKitService();
     // The router is a global singleton retaining its location between tests;
     // start on the dependency-light Recorder tab.
     router.go('/recorder');
@@ -66,6 +70,7 @@ void main() {
   tearDown(() async {
     await db.close();
     importService.dispose();
+    musicKit.dispose();
     if (tempDocs.existsSync()) tempDocs.deleteSync(recursive: true);
     if (sourceDir.existsSync()) sourceDir.deleteSync(recursive: true);
   });
@@ -80,6 +85,7 @@ void main() {
         overrides: [
           databaseProvider.overrideWithValue(db),
           audioImportServiceProvider.overrideWithValue(importService),
+          musicKitServiceProvider.overrideWithValue(musicKit),
         ],
         child: const _Harness(),
       ),

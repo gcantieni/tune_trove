@@ -19,6 +19,7 @@
         $extensionItem.attachments,
         $attachment,
         ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.audio"
+        OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.url"
     ).@count &gt;= 1
 ).@count == 1</string>
 		</dict>

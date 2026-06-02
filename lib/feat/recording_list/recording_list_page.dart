@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:tune_trove/feat/audio_import/audio_import_controller.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_refresh_indicator.dart';
+import 'package:tune_trove/feat/music_kit/apple_music_link.dart';
 import 'package:tune_trove/feat/recording_list/add_recording_dialog.dart';
 import 'package:tune_trove/feat/recording_list/recording_list_item.dart';
 import 'package:tune_trove/model/database.dart';
@@ -24,6 +27,13 @@ class RecordingListPage extends ConsumerWidget {
           onPressed: () => navScaffoldKey.currentState?.openDrawer(),
         ),
         title: const Text('Recordings'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_link),
+            tooltip: 'Add from Apple Music link',
+            onPressed: () => _addFromClipboard(context, ref),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -43,6 +53,22 @@ class RecordingListPage extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  /// Reads the clipboard and, if it holds an Apple Music link, ingests it as a
+  /// `music-catalog:` recording (the inverse of in-app search) via the app-root
+  /// import controller — which resolves the name and opens the prefilled form.
+  Future<void> _addFromClipboard(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim() ?? '';
+    if (!isAppleMusicShareUrl(text)) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Copy an Apple Music link first.')),
+      );
+      return;
+    }
+    await ref.read(audioImportControllerProvider).ingestUrl(text);
   }
 }
 

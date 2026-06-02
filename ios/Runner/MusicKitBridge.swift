@@ -77,6 +77,14 @@ class MusicKitBridge: NSObject {
                     )
                     result(nil)
 
+                case "lookup":
+                    guard let args = call.arguments as? [String: Any],
+                          let catalogId = args["catalogId"] as? String else {
+                        result(FlutterError(code: "BAD_ARGS", message: "catalogId required", details: nil))
+                        return
+                    }
+                    result(try await lookupSong(catalogId: catalogId))
+
                 case "pause":
                     ApplicationMusicPlayer.shared.pause()
                     result(nil)
@@ -232,6 +240,27 @@ class MusicKitBridge: NSObject {
 
         if let start = startTime { player.playbackTime = start }
         player.state.playbackRate = Float(playbackRate)
+    }
+
+    // MARK: - Lookup
+
+    /// Resolves a catalog song id to a metadata map (the inverse of search), used
+    /// to name a recording ingested from an Apple Music share link. Returns nil
+    /// when the song can't be resolved.
+    private func lookupSong(catalogId: String) async throws -> [String: Any]? {
+        var request = MusicCatalogResourceRequest<Song>(matching: \.id, equalTo: MusicItemID(catalogId))
+        request.properties = []
+        let response = try await request.response()
+        guard let song = response.items.first else { return nil }
+        return [
+            "kind":       "song",
+            "id":         song.id.rawValue,
+            "title":      song.title,
+            "artistName": song.artistName,
+            "albumTitle": song.albumTitle ?? "",
+            "durationMs": Int((song.duration ?? 0) * 1000),
+            "artworkUrl": song.artwork.map { artworkUrl($0, size: 300) } ?? "",
+        ]
     }
 
     // MARK: - Observation

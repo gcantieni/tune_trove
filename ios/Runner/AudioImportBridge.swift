@@ -117,8 +117,27 @@ final class AudioImportBridge: NSObject {
             at: importsDir, includingPropertiesForKeys: nil)
         else { return }
         for url in entries where url.isFileURL {
-            handleIncomingURL(url)       // copies to our temp + emits/buffers
-            try? fm.removeItem(at: url)  // clear the group inbox
+            if url.pathExtension == "tunetroveurl" {
+                handleSharedUrlFile(url)  // a shared link (e.g. Apple Music)
+            } else {
+                handleIncomingURL(url)    // an audio file: copy to temp + emit
+            }
+            try? fm.removeItem(at: url)   // clear the group inbox
+        }
+    }
+
+    /// Delivers a `.tunetroveurl` sidecar (written by the Share Extension for a
+    /// shared link such as an Apple Music track) to Dart as a URL payload — the
+    /// link, not a file path. Dart resolves it to a `music-catalog:` recording.
+    private func handleSharedUrlFile(_ fileURL: URL) {
+        guard let contents = try? String(contentsOf: fileURL, encoding: .utf8) else { return }
+        let link = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !link.isEmpty else { return }
+        let payload: [String: Any] = ["url": link, "name": link]
+        if let sink = eventSink {
+            sink(payload)
+        } else {
+            pendingFile = payload
         }
     }
 

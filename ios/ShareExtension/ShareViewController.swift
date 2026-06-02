@@ -28,21 +28,69 @@ class ShareViewController: UIViewController {
     }
 
     private func handleShare() {
-        let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
+        let attachments = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
             .flatMap { $0.attachments ?? [] }
-            .filter { $0.hasItemConformingToTypeIdentifier(UTType.audio.identifier) }
+        let audioProviders = attachments.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.audio.identifier)
+        }
+        // Apple Music shares a web URL (public.url), not audio. Only consider URL
+        // items when there's no audio (a Voice Memo also vends a public.url alias).
+        let urlProviders = audioProviders.isEmpty
+            ? attachments.filter {
+                $0.hasItemConformingToTypeIdentifier(UTType.url.identifier)
+            }
+            : []
 
-        guard !providers.isEmpty else {
+        guard !audioProviders.isEmpty || !urlProviders.isEmpty else {
             complete()
             return
         }
 
         let group = DispatchGroup()
-        for provider in providers {
+        for provider in audioProviders {
             group.enter()
             importAudio(provider) { group.leave() }
         }
+        for provider in urlProviders {
+            group.enter()
+            importURL(provider) { group.leave() }
+        }
         group.notify(queue: .main) { [weak self] in self?.complete() }
+    }
+
+    /// Apple Music (and similar) share a web link as a `public.url` item. We only
+    /// ingest Apple Music links: the URL is written as a tiny sidecar file in the
+    /// App Group inbox, which the app resolves to a `music-catalog:` recording
+    /// (see `AudioImportBridge.drainSharedImports`).
+    private func importURL(_ provider: NSItemProvider, done: @escaping () -> Void) {
+        _ = provider.loadObject(ofClass: URL.self) { [weak self] url, error in
+            guard let self else { done(); return }
+            guard let url, url.host?.hasSuffix("music.apple.com") == true else {
+                if let error {
+                    self.log.error("loadObject(URL) err=\(error.localizedDescription, privacy: .public)")
+                }
+                done()
+                return
+            }
+            self.writeUrlSidecar(url)
+            done()
+        }
+    }
+
+    /// Writes the shared link into the App Group `Imports/` dir as a
+    /// `<name>.tunetroveurl` text file; the app recognizes the extension and
+    /// delivers the contents to Dart as a URL rather than a file.
+    private func writeUrlSidecar(_ url: URL) {
+        guard let dir = importsDir() else { return }
+        let title = url.deletingPathExtension().lastPathComponent
+        let base = title.isEmpty ? "shared_link" : title
+        let dest = unique(in: dir, name: "\(base).tunetroveurl")
+        do {
+            try url.absoluteString.write(to: dest, atomically: true, encoding: .utf8)
+            log.notice("wrote url -> \(dest.lastPathComponent, privacy: .public)")
+        } catch {
+            log.error("url sidecar write failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private func importAudio(_ provider: NSItemProvider, done: @escaping () -> Void) {

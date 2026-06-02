@@ -91,6 +91,24 @@ class MockMusicKitService implements MusicKitService {
   }
 
   @override
+  Future<MusicKitSearchResult?> lookupSong(String catalogId) async {
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    // Sentinel for exercising the not-found / unresolved path in tests.
+    if (catalogId == 'unknown') return null;
+    // Echo the requested id with deterministic metadata so ingest tests can
+    // assert a stable name without a real MusicKit backend.
+    return MusicKitSearchResult(
+      kind: 'song',
+      id: catalogId,
+      title: 'The Morning Dew',
+      artistName: 'Planxty',
+      albumTitle: 'Cold Blow and the Rainy Night',
+      durationMs: 214000,
+      artworkUrl: '',
+    );
+  }
+
+  @override
   Future<void> play(MusicKitPlayParams params) async {
     _requestedCatalogId = params.catalogId;
     _currentTrack = _fakeResults.firstWhere(
