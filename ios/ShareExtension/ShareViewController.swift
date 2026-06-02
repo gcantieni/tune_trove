@@ -87,23 +87,12 @@ class ShareViewController: UIViewController {
         let dest = unique(in: dir, name: "\(base).tunetroveurl")
         do {
             try url.absoluteString.write(to: dest, atomically: true, encoding: .utf8)
-            log.notice("wrote url -> \(dest.lastPathComponent, privacy: .public)")
         } catch {
             log.error("url sidecar write failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     private func importAudio(_ provider: NSItemProvider, done: @escaping () -> Void) {
-        // Verbose diagnostics for the first device test — iOS Voice Memos may vend
-        // differently than macOS, so confirm `canURL`/`data` from Console before
-        // trusting the loader. Strip to `.error` in a follow-up once it imports.
-        log.notice("""
-            name=\(provider.suggestedName ?? "nil", privacy: .public) \
-            data=[\(provider.registeredTypeIdentifiers.joined(separator: ","), privacy: .public)] \
-            inPlace=[\(provider.registeredTypeIdentifiers(fileOptions: .openInPlace).joined(separator: ","), privacy: .public)] \
-            canURL=\(provider.canLoadObject(ofClass: URL.self), privacy: .public)
-            """)
-
         let audioType = provider.registeredTypeIdentifiers.first {
             UTType($0)?.conforms(to: .audio) == true
         } ?? UTType.audio.identifier
@@ -116,7 +105,6 @@ class ShareViewController: UIViewController {
                 return
             }
             let scoped = url.startAccessingSecurityScopedResource()
-            self.log.notice("urlObject \(url.path, privacy: .public) scoped=\(scoped, privacy: .public)")
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
             // Derive the name only now that we have the materialized URL: iOS Voice
@@ -174,7 +162,6 @@ class ShareViewController: UIViewController {
         let dest = unique(in: dir, name: name)
         do {
             try FileManager.default.copyItem(at: readURL, to: dest)
-            log.notice("wrote -> \(dest.lastPathComponent, privacy: .public)")
         } catch {
             log.error("copy failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -197,10 +184,14 @@ class ShareViewController: UIViewController {
 
     private func complete() {
         // Foreground the host app so it drains the App Group inbox immediately.
-        // (Only useful once this extension actually writes a file — see the iOS
-        // share read fix; harmless before then.)
+        // Fire the open first, then finish the request on the next runloop turn:
+        // calling `completeRequest` synchronously tears the extension down before
+        // the system has dispatched the launch, so the app never comes forward.
         openHostApp()
-        extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
+        DispatchQueue.main.async {
+            self.extensionContext?.completeRequest(
+                returningItems: nil, completionHandler: nil)
+        }
     }
 
     /// ⚠️ UNOFFICIAL / GRAY-AREA — keep isolated and easy to rip out.
@@ -220,10 +211,15 @@ class ShareViewController: UIViewController {
     private func openHostApp() {
         guard let url = URL(string: "tunetrove://import") else { return }
         let selector = NSSelectorFromString("openURL:")
+        // Walk the responder chain for the actual `UIApplication` and invoke
+        // `openURL:` on *it*. Targeting "the first responder that responds to the
+        // selector" doesn't work — `UIViewController` and other responders answer
+        // `openURL:` too, and performing it on them silently no-ops, so the app
+        // never foregrounds.
         var responder: UIResponder? = self
         while let current = responder {
-            if current.responds(to: selector) {
-                current.perform(selector, with: url)
+            if let app = current as? UIApplication, app.responds(to: selector) {
+                app.perform(selector, with: url)
                 return
             }
             responder = current.next
