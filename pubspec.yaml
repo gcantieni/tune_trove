@@ -33,6 +33,10 @@ dependencies:
   cupertino_icons: ^1.0.8
   drift: ^2.27.0
   drift_flutter: ^0.3.0
+  # Pinned directly (pulled transitively by drift_flutter) so the bundled SQLite
+  # engine stays >= 3.53.1 — the 3.3.2 patch that fixes a native crash in the
+  # DB isolate (vdbeUnbind/sqlite3_bind_null SIGSEGV during sync).
+  sqlite3: ^3.3.2
   file_picker: ^11.0.2
   flutter:
     sdk: flutter
