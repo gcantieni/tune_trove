@@ -1,9 +1,3 @@
-class SyncStatusEvent {
-  final String status; // 'idle' | 'syncing' | 'error'
-  final String? message;
-  SyncStatusEvent(this.status, {this.message});
-}
-
 class SyncUpsertEvent {
   final String recordType;
   final Map<String, dynamic> fields;
@@ -68,9 +62,6 @@ abstract class CloudKitSyncService {
   /// Flushes all staged changes to CloudKit, returning a summary of how many
   /// records saved and how many terminally failed.
   Future<SendResult> sendChanges();
-
-  /// Status updates emitted by the engine ('idle' | 'syncing' | 'error').
-  Stream<SyncStatusEvent> get statusEvents;
 
   /// Fires when CloudKit reports (via silent push) that another device changed
   /// data, so the app can pull the latest.

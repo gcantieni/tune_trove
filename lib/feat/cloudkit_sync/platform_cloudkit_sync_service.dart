@@ -10,7 +10,6 @@ const _eventChannel = EventChannel(
 
 class PlatformCloudKitSyncService implements CloudKitSyncService {
   StreamSubscription<dynamic>? _sub;
-  final _statusController = StreamController<SyncStatusEvent>.broadcast();
   final _remoteChangesController = StreamController<void>.broadcast();
   final _localOverwriteController = StreamController<int>.broadcast();
 
@@ -19,19 +18,12 @@ class PlatformCloudKitSyncService implements CloudKitSyncService {
       if (raw is! Map) return;
       final map = raw.cast<String, dynamic>();
       switch (map['type']) {
-        case 'status':
-          _statusController.add(
-            SyncStatusEvent(
-              map['status'] as String? ?? 'idle',
-              message: map['message'] as String?,
-            ),
-          );
         case 'remoteChange':
           _remoteChangesController.add(null);
         case 'localOverwritten':
           _localOverwriteController.add((map['count'] as int?) ?? 1);
       }
-    }, onError: _statusController.addError);
+    }, onError: _remoteChangesController.addError);
   }
 
   @override
@@ -94,9 +86,6 @@ class PlatformCloudKitSyncService implements CloudKitSyncService {
   }
 
   @override
-  Stream<SyncStatusEvent> get statusEvents => _statusController.stream;
-
-  @override
   Stream<void> get remoteChanges => _remoteChangesController.stream;
 
   @override
@@ -105,7 +94,6 @@ class PlatformCloudKitSyncService implements CloudKitSyncService {
   @override
   void dispose() {
     _sub?.cancel();
-    _statusController.close();
     _remoteChangesController.close();
     _localOverwriteController.close();
   }

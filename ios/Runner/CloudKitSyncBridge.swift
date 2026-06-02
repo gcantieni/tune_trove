@@ -64,6 +64,18 @@ final class CloudKitSyncBridge: NSObject {
     /// abandoned that many local pushes and should warn the user + pull.
     private var serverWonCount = 0
 
+    /// True while a send is in flight, so a scheduled backoff resend doesn't
+    /// overlap (and clobber) the shared send accumulators.
+    private var isSending = false
+
+    /// Set when a send hit a transient error and a delayed resend is already
+    /// queued, so repeated transient failures coalesce into one retry.
+    private var backoffResendQueued = false
+
+    /// Largest `retryAfterSeconds` requested by transient failures in the
+    /// current send; drives the backoff delay. Reset per send.
+    private var transientRetryDelay: TimeInterval?
+
     func setup(binaryMessenger: FlutterBinaryMessenger) {
         let method = FlutterMethodChannel(
             name: CloudKitSyncChannels.method,
@@ -287,8 +299,6 @@ final class CloudKitSyncBridge: NSObject {
         let engine = try engineOrThrow()
         fetchedUpserts = []
         fetchedDeletions = []
-        emitStatus("syncing")
-        defer { emitStatus("idle") }
         try await engine.fetchChanges()
         return ["upserts": fetchedUpserts, "deletions": fetchedDeletions]
     }
@@ -298,8 +308,9 @@ final class CloudKitSyncBridge: NSObject {
         sentSavedCount = 0
         sentFailures = []
         serverWonCount = 0
-        emitStatus("syncing")
-        defer { emitStatus("idle") }
+        transientRetryDelay = nil
+        isSending = true
+        defer { isSending = false }
 
         // `sendChanges` throws a `.partialFailure` of `.serverRecordChanged` when
         // another device changed a record concurrently. By the time it throws,
@@ -324,11 +335,51 @@ final class CloudKitSyncBridge: NSObject {
             eventSink?(["type": "remoteChange"])
         }
 
+        // Transient failures (rate-limit, network, service down) kept their
+        // records staged; schedule one backoff resend so they recover without
+        // waiting for the next user-driven sync.
+        if let delay = transientRetryDelay {
+            scheduleBackoffResend(after: delay)
+        }
+
         return [
             "saved": sentSavedCount,
             "failedCount": sentFailures.count,
             "failures": Array(sentFailures.prefix(5)),
         ]
+    }
+
+    /// Classifies a terminal `CKError` as transient (worth an automatic backoff
+    /// retry) versus permanent (needs user/developer action — quota, schema,
+    /// permissions — so it's reported, not retried).
+    private func isTransientFailure(_ error: CKError) -> Bool {
+        switch error.code {
+        case .networkUnavailable, .networkFailure, .serviceUnavailable,
+             .requestRateLimited, .zoneBusy:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Queues a single coalesced resend after `delay` seconds (clamped), unless
+    /// one is already queued. Skips if a send is in flight when it fires — the
+    /// transient records stay staged and the running send picks them up.
+    private func scheduleBackoffResend(after delay: TimeInterval) {
+        guard !backoffResendQueued else { return }
+        backoffResendQueued = true
+        let clamped = min(max(delay, 1), 60)
+        print("[CKSync] transient send failure — resending in \(clamped)s")
+        // Created in a @MainActor context, so this task is main-actor isolated;
+        // property access below is safe without hopping actors.
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(clamped * 1_000_000_000))
+            guard let self else { return }
+            self.backoffResendQueued = false
+            // Skip if a send is already running; the staged records aren't lost.
+            guard !self.isSending else { return }
+            _ = try? await self.performSend()
+        }
     }
 
     private func stageRecords(_ records: [[String: Any]]) {
@@ -413,13 +464,12 @@ final class CloudKitSyncBridge: NSObject {
     private func handleAccountChange(_ event: CKSyncEngine.Event.AccountChange) {
         switch event.changeType {
         case .signIn:
-            emitStatus("idle")
+            break
         case .signOut, .switchAccounts:
             // Drop in-memory caches; the persisted engine state is reset by the
             // engine itself for the new account. Local user data is preserved.
             pendingRecordMaps.removeAll()
             serverRecordCache.removeAll()
-            emitStatus("idle")
         @unknown default:
             break
         }
@@ -471,10 +521,20 @@ final class CloudKitSyncBridge: NSObject {
                 // The record no longer exists server-side (delete race); benign.
                 pendingRecordMaps.removeValue(forKey: record.recordID.recordName)
             default:
-                // Terminal failure — surface it to the user.
-                let reason = describeError(error)
-                sentFailures.append("\(record.recordType) \(record.recordID.recordName): \(reason)")
-                print("[CKSync] save failed for \(record.recordID.recordName): \(reason)")
+                if isTransientFailure(error) {
+                    // Recoverable later (network/rate-limit/service down): keep
+                    // the record staged and let the backoff resend flush it.
+                    // Not counted as a failure since it isn't terminal.
+                    engine.state.add(pendingRecordZoneChanges: [.saveRecord(record.recordID)])
+                    let requested = error.retryAfterSeconds ?? 2
+                    transientRetryDelay = max(transientRetryDelay ?? 0, requested)
+                    print("[CKSync] transient save failure for \(record.recordID.recordName) (\(error.code)) — will retry")
+                } else {
+                    // Permanent failure (quota, schema, permissions) — surface it.
+                    let reason = describeError(error)
+                    sentFailures.append("\(record.recordType) \(record.recordID.recordName): \(reason)")
+                    print("[CKSync] save failed for \(record.recordID.recordName): \(reason)")
+                }
             }
         }
     }
@@ -521,12 +581,6 @@ final class CloudKitSyncBridge: NSObject {
                 break
             }
         }
-    }
-
-    // MARK: - EventChannel helpers
-
-    private func emitStatus(_ status: String) {
-        eventSink?(["type": "status", "status": status])
     }
 
     // MARK: - String conversion

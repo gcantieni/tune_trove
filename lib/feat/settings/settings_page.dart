@@ -69,20 +69,56 @@ class _SyncStatusTile extends ConsumerWidget {
           )
         : Icon(_iconFor(state.phase), color: statusColor);
 
+    final hasDetails = state.failures.isNotEmpty;
+
     return ListTile(
       isThreeLine: statusColor != null,
       leading: leading,
       title: const Text('iCloud Sync'),
       subtitle: Text(
-        _subtitleFor(state, syncing),
+        _subtitleFor(state, syncing, hasDetails),
         style: statusColor != null ? TextStyle(color: statusColor) : null,
       ),
+      // When some records couldn't upload, tap to read why.
+      onTap: hasDetails ? () => _showFailureDetails(context, state) : null,
       trailing: IconButton(
         icon: const Icon(Icons.sync),
         tooltip: 'Sync now',
         onPressed: syncing
             ? null
             : () => ref.read(syncProvider.notifier).syncNow(fullPush: true),
+      ),
+    );
+  }
+
+  void _showFailureDetails(BuildContext context, SyncState state) {
+    final n = state.failedCount;
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("$n item${n == 1 ? '' : 's'} couldn't upload"),
+        content: SingleChildScrollView(
+          child: ListBody(
+            children: [
+              const Text(
+                'These records will retry on the next sync. If the problem '
+                'persists, tap Sync now.',
+              ),
+              const SizedBox(height: 12),
+              for (final f in state.failures)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text('• $f', style: const TextStyle(fontSize: 12)),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -96,7 +132,7 @@ class _SyncStatusTile extends ConsumerWidget {
     SyncPhase.idle => Icons.cloud_outlined,
   };
 
-  String _subtitleFor(SyncState state, bool syncing) {
+  String _subtitleFor(SyncState state, bool syncing, bool hasDetails) {
     if (syncing) return 'Syncing…';
     switch (state.phase) {
       case SyncPhase.unavailable:
@@ -105,8 +141,9 @@ class _SyncStatusTile extends ConsumerWidget {
         return state.detail ?? 'Sync failed';
       case SyncPhase.partial:
         final last = state.lastSyncedAt;
-        final summary = state.detail ?? 'Some items could not upload';
-        return last == null ? summary : '$summary · synced ${_relative(last)}';
+        var summary = state.detail ?? 'Some items could not upload';
+        if (last != null) summary = '$summary · synced ${_relative(last)}';
+        return hasDetails ? '$summary · tap for details' : summary;
       case SyncPhase.idle:
       case SyncPhase.success:
       case SyncPhase.syncing:

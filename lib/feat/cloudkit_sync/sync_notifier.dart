@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_providers.dart';
+import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_service.dart';
 
 enum SyncPhase {
   /// Signed in and ready; not currently syncing.
@@ -36,11 +37,16 @@ class SyncState {
   /// Records that terminally failed to upload on the last sync.
   final int failedCount;
 
+  /// Sample of per-record failure reasons from the last sync (for the tile's
+  /// "details" affordance). Empty unless [phase] is [SyncPhase.partial].
+  final List<String> failures;
+
   const SyncState({
     this.phase = SyncPhase.idle,
     this.detail,
     this.lastSyncedAt,
     this.failedCount = 0,
+    this.failures = const [],
   });
 
   bool get isSyncing => phase == SyncPhase.syncing;
@@ -51,11 +57,13 @@ class SyncState {
     bool clearDetail = false,
     DateTime? lastSyncedAt,
     int? failedCount,
+    List<String>? failures,
   }) => SyncState(
     phase: phase ?? this.phase,
     detail: clearDetail ? null : (detail ?? this.detail),
     lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     failedCount: failedCount ?? this.failedCount,
+    failures: failures ?? this.failures,
   );
 }
 
@@ -99,21 +107,14 @@ class SyncNotifier extends AsyncNotifier<SyncState> {
           .syncNow(fullPush: fullPush);
       final now = DateTime.now();
       if (result.hasFailures) {
-        final n = result.failedCount;
-        state = AsyncData(
-          current.copyWith(
-            phase: SyncPhase.partial,
-            detail: "$n item${n == 1 ? '' : 's'} couldn't upload",
-            failedCount: n,
-            lastSyncedAt: now,
-          ),
-        );
+        state = AsyncData(_partialState(current, result, now));
       } else {
         state = AsyncData(
           current.copyWith(
             phase: SyncPhase.success,
             clearDetail: true,
             failedCount: 0,
+            failures: const [],
             lastSyncedAt: now,
           ),
         );
@@ -123,6 +124,49 @@ class SyncNotifier extends AsyncNotifier<SyncState> {
         current.copyWith(phase: SyncPhase.error, detail: _humanize(e)),
       );
     }
+  }
+
+  /// Folds the outcome of a background push (the debounced auto-push or a
+  /// push-triggered pull from [SyncStager]) into the visible status, so a
+  /// silent auto-push's failures surface on the tile instead of waiting for the
+  /// next manual sync. Successes only refresh the timestamp / clear a prior
+  /// problem — they never flip the phase to `success` from idle, so they don't
+  /// trigger the launch-style "Sync complete" snackbar while the user reads.
+  void reportBackgroundResult(SendResult result) {
+    final current = state.value;
+    if (current == null || current.isSyncing) return; // manual sync is authoritative
+    final now = DateTime.now();
+    if (result.hasFailures) {
+      state = AsyncData(_partialState(current, result, now));
+      return;
+    }
+    // Success: clear a previously-reported problem, else just bump the time.
+    final recovered =
+        current.phase == SyncPhase.partial || current.phase == SyncPhase.error;
+    state = AsyncData(
+      current.copyWith(
+        phase: recovered ? SyncPhase.success : current.phase,
+        clearDetail: recovered,
+        failedCount: 0,
+        failures: const [],
+        lastSyncedAt: now,
+      ),
+    );
+  }
+
+  static SyncState _partialState(
+    SyncState current,
+    SendResult result,
+    DateTime at,
+  ) {
+    final n = result.failedCount;
+    return current.copyWith(
+      phase: SyncPhase.partial,
+      detail: "$n item${n == 1 ? '' : 's'} couldn't upload",
+      failedCount: n,
+      failures: result.failures,
+      lastSyncedAt: at,
+    );
   }
 
   Future<SyncPhase> _phaseFromAvailability() async {

@@ -13,8 +13,32 @@ initialize → fetchChanges → reconcile (SyncReconciliationService) → stage 
 `SyncNotifier`/`SyncState` (`lib/feat/cloudkit_sync/sync_notifier.dart`) surfaces a
 single status to the settings tile (`idle | syncing | success | error | unavailable`).
 
-Both optimizations originally tracked here are now implemented (details below),
-each with a short list of remaining follow-ups.
+Both optimizations originally tracked here have landed (details below), and as
+of this revision **all follow-ups are complete** — see the closed checklist.
+
+## ✅ Completed follow-ups
+
+**Incremental staging (§1):**
+- [x] **Periodic reconciliation sweep.** `SyncStager` now runs a low-frequency
+  (30 min) silent `fullPush` sweep (`sweepInterval`), re-staging every row so a
+  mutation a hook missed converges without waiting for a manual "Sync Now".
+- [x] **Auto-push failures surface.** `SyncStager` forwards every background
+  push's `SendResult` via an `onResult` callback to
+  `SyncNotifier.reportBackgroundResult`, which flips the tile to `partial` on
+  failure (clean results only refresh the timestamp — no noisy success snackbar).
+
+**Partial-failure surfacing (§2):**
+- [x] **Per-failure reasons shown.** `SyncState.failures` now carries the sample;
+  the iCloud sync tile is tappable when records fail ("· tap for details") and
+  opens a dialog listing the reasons.
+- [x] **Retry policy for transient codes.** `CloudKitSyncBridge` classifies
+  transient terminal errors (network/rate-limit/serviceUnavailable/zoneBusy) and
+  re-stages them with a guarded, coalesced backoff resend
+  (`scheduleBackoffResend`, honoring `retryAfterSeconds`); only truly permanent
+  codes (quota/schema/permissions) are counted and reported.
+- [x] **Dead `statusEvents` removed.** The unused `status` EventChannel path
+  (`SyncStatusEvent`, `statusEvents`, `emitStatus`) was deleted from the Dart
+  interface, the platform service, and the native bridge.
 
 ---
 
@@ -46,12 +70,14 @@ re-push.
   Now" button passes `fullPush: true`, so it doubles as a force-full-resync /
   recovery path for any row a hook might have missed.
 
-### Remaining follow-ups
+### Follow-ups — DONE
 
-- No periodic reconciliation sweep yet; the manual full-push is the only recovery
-  if a mutation path is ever added without an `onRowChanged` call.
-- The debounced auto-push is silent (no `SyncNotifier` status); partial failures
-  on an auto-push only surface on the next manual sync.
+- **Periodic reconciliation sweep:** `SyncStager.sweepInterval` (30 min) runs a
+  silent `_outbound.syncNow(fullPush: true)`, re-staging every row to self-heal
+  any mutation a hook missed.
+- **Auto-push status:** `SyncStager` reports each background `SendResult` to
+  `SyncNotifier.reportBackgroundResult`, so a silent auto-push's failures now
+  surface on the tile immediately instead of waiting for the next manual sync.
 
 ---
 
@@ -67,13 +93,12 @@ flows `CloudKitSyncService.sendChanges` → `SendResult` →
 (amber `sync_problem` row, "N items couldn't upload · synced …") when
 `failedCount > 0`, distinct from a hard `error`.
 
-### Remaining follow-ups
+### Follow-ups — DONE
 
-- The per-failure reasons are carried in `SendResult.failures` (sample of 5) but
-  not yet shown anywhere — a details/expand affordance on the tile could surface
-  them.
-- Retry policy for terminal failure codes (quota, schema, etc.) is still
-  report-only; only conflict/zone cases are auto-retried.
-- The `statusEvents` EventChannel is emitted by the bridge but no longer consumed
-  since the notifier refactor — either repurpose it for richer progress events or
-  remove it.
+- **Per-failure reasons surfaced:** `SyncState.failures` carries the sample; the
+  sync tile shows "· tap for details" and opens a dialog listing the reasons.
+- **Retry policy for transient codes:** `CloudKitSyncBridge.isTransientFailure`
+  re-stages network/rate-limit/serviceUnavailable/zoneBusy failures and schedules
+  a guarded, coalesced backoff resend; permanent codes stay report-only.
+- **`statusEvents` removed:** the unused status EventChannel path was deleted
+  end-to-end (Dart interface, platform service, and native `emitStatus`).
