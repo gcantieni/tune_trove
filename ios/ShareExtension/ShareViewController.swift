@@ -10,8 +10,10 @@ import os
 ///   drains the inbox (`AudioImportBridge.drainSharedImports()`) and, seeing the
 ///   sidecar, inserts the recording silently — so the user stays in the source
 ///   app, no launch required.
-/// - **URL** (e.g. an Apple Music link): no form; writes a `.tunetroveurl`
-///   sidecar and foregrounds the host app, which resolves it via MusicKit.
+/// - **URL** (e.g. an Apple Music link): the same form (Name prefilled from the
+///   link's slug + Performers), and on Save a `.tunetroveurl` JSON sidecar
+///   (`{ url, name, performers, autosave }`). The app resolves the link to a
+///   `music-catalog:` recording and inserts it silently — like the audio flow.
 ///
 /// Voice Memos vends the recording as a lazy, security-scoped in-place file that
 /// the `load*Representation` APIs can't open ("no such file"). The working recipe
@@ -32,8 +34,13 @@ class ShareViewController: UIViewController {
     private let performersField = UITextField()
     private var saveItem: UIBarButtonItem?
     /// The audio file copied into the App Group, set once the background copy
-    /// finishes; the Save sidecar is keyed to it.
+    /// finishes; the Save sidecar is keyed to it. Mutually exclusive with
+    /// `sharedURL` — exactly one is set depending on the share type.
     private var copiedAudioURL: URL?
+    /// The shared Apple Music link, set once the URL item loads.
+    private var sharedURL: URL?
+    /// Name to fall back to if the user clears the Name field before saving.
+    private var fallbackName = "Shared Link"
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -49,15 +56,17 @@ class ShareViewController: UIViewController {
             startCopy(audio)
             return
         }
-        let urlProviders = attachments.filter {
+        if let urlProvider = attachments.first(where: {
             $0.hasItemConformingToTypeIdentifier(UTType.url.identifier)
+        }) {
+            setupForm()
+            startURL(urlProvider)
+            return
         }
-        guard !urlProviders.isEmpty else { cancel(); return }
-        view.backgroundColor = .clear
-        handleURLShare(urlProviders)
+        cancel()
     }
 
-    // MARK: - Audio form flow
+    // MARK: - Form
 
     private func setupForm() {
         view.backgroundColor = .systemBackground
@@ -69,7 +78,7 @@ class ShareViewController: UIViewController {
             barButtonSystemItem: .cancel, target: self, action: #selector(onCancel))
         let save = UIBarButtonItem(
             barButtonSystemItem: .save, target: self, action: #selector(onSave))
-        save.isEnabled = false  // until the background copy finishes
+        save.isEnabled = false  // until the audio copy / URL load finishes
         navItem.rightBarButtonItem = save
         saveItem = save
         navBar.setItems([navItem], animated: false)
@@ -168,19 +177,27 @@ class ShareViewController: UIViewController {
     }
 
     @objc private func onSave() {
-        guard let audioURL = copiedAudioURL else { return }
         let typedName = (nameField.text ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let performers = (performersField.text ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = typedName.isEmpty
-            ? audioURL.deletingPathExtension().lastPathComponent : typedName
-        writeMetaSidecar(forAudio: audioURL, name: name, performers: performers)
+
+        if let audioURL = copiedAudioURL {
+            let name = typedName.isEmpty
+                ? audioURL.deletingPathExtension().lastPathComponent : typedName
+            writeMetaSidecar(forAudio: audioURL, name: name, performers: performers)
+        } else if let sharedURL {
+            let name = typedName.isEmpty ? fallbackName : typedName
+            writeUrlSidecar(sharedURL, name: name, performers: performers)
+        } else {
+            return
+        }
         // Silent save: deliberately do NOT foreground the host app.
         extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
     }
 
     @objc private func onCancel() {
+        // Only the audio flow left a file behind; the URL flow has nothing to undo.
         if let audioURL = copiedAudioURL {
             try? FileManager.default.removeItem(at: audioURL)
         }
@@ -205,47 +222,75 @@ class ShareViewController: UIViewController {
 
     // MARK: - URL flow (Apple Music links)
 
-    private func handleURLShare(_ providers: [NSItemProvider]) {
-        let group = DispatchGroup()
-        for provider in providers {
-            group.enter()
-            importURL(provider) { group.leave() }
-        }
-        group.notify(queue: .main) { [weak self] in self?.completeAndOpenApp() }
-    }
-
-    /// Apple Music (and similar) share a web link as a `public.url` item. We only
-    /// ingest Apple Music links: the URL is written as a tiny sidecar file in the
-    /// App Group inbox, which the app resolves to a `music-catalog:` recording
-    /// (see `AudioImportBridge.drainSharedImports`).
-    private func importURL(_ provider: NSItemProvider, done: @escaping () -> Void) {
+    /// Loads the shared `public.url`. We only handle Apple Music links; anything
+    /// else gets a brief alert and dismisses. On success, prefills the Name field
+    /// from the link's slug and enables Save.
+    private func startURL(_ provider: NSItemProvider) {
         _ = provider.loadObject(ofClass: URL.self) { [weak self] url, error in
-            guard let self else { done(); return }
+            guard let self else { return }
             guard let url, url.host?.hasSuffix("music.apple.com") == true else {
                 if let error {
                     self.log.error("loadObject(URL) err=\(error.localizedDescription, privacy: .public)")
                 }
-                done()
+                DispatchQueue.main.async { self.unsupportedURL() }
                 return
             }
-            self.writeUrlSidecar(url)
-            done()
+            DispatchQueue.main.async { self.urlLoaded(url) }
         }
     }
 
-    /// Writes the shared link into the App Group `Imports/` dir as a
-    /// `<name>.tunetroveurl` text file; the app recognizes the extension and
-    /// delivers the contents to Dart as a URL rather than a file.
-    private func writeUrlSidecar(_ url: URL) {
+    private func urlLoaded(_ url: URL) {
+        sharedURL = url
+        if let slugName = appleMusicName(from: url) { fallbackName = slugName }
+        if nameField.text?.isEmpty ?? true { nameField.text = fallbackName }
+        saveItem?.isEnabled = true
+    }
+
+    private func unsupportedURL() {
+        let alert = UIAlertController(
+            title: "Unsupported link",
+            message: "Only Apple Music links can be added this way.",
+            preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) {
+            [weak self] _ in self?.cancel()
+        })
+        present(alert, animated: true)
+    }
+
+    /// Writes the shared link to the App Group `Imports/` dir as a
+    /// `.tunetroveurl` JSON sidecar (`{ url, name, performers, autosave }`); the
+    /// app resolves it to a `music-catalog:` recording and inserts it silently.
+    /// The filename is incidental (the app reads the contents), so it's fixed.
+    private func writeUrlSidecar(_ url: URL, name: String, performers: String) {
         guard let dir = importsDir() else { return }
-        let title = url.deletingPathExtension().lastPathComponent
-        let base = title.isEmpty ? "shared_link" : title
-        let dest = unique(in: dir, name: "\(base).tunetroveurl")
+        let dest = unique(in: dir, name: "shared_link.tunetroveurl")
+        var dict: [String: Any] = [
+            "url": url.absoluteString, "name": name, "autosave": true,
+        ]
+        if !performers.isEmpty { dict["performers"] = performers }
         do {
-            try url.absoluteString.write(to: dest, atomically: true, encoding: .utf8)
+            let data = try JSONSerialization.data(withJSONObject: dict)
+            try data.write(to: dest, options: .atomic)
         } catch {
             log.error("url sidecar write failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// Best-effort title from an Apple Music link's slug, mirroring the Dart
+    /// `appleMusicNameFromSlug`: `…/song/the-morning-dew/1` → "The Morning Dew".
+    private func appleMusicName(from url: URL) -> String? {
+        let segments = url.pathComponents.filter { $0 != "/" && !$0.isEmpty }
+        let lower = segments.map { $0.lowercased() }
+        for keyword in ["song", "album"] {
+            guard let i = lower.firstIndex(of: keyword), i + 1 < segments.count
+            else { continue }
+            let words = segments[i + 1].split(separator: "-").map {
+                $0.prefix(1).uppercased() + $0.dropFirst()
+            }
+            let name = words.joined(separator: " ")
+            if !name.isEmpty { return name }
+        }
+        return nil
     }
 
     // MARK: - Shared helpers
@@ -315,48 +360,5 @@ class ShareViewController: UIViewController {
         extensionContext?.cancelRequest(
             withError: NSError(
                 domain: "com.gcantieni.tuneTrove.ShareExtension", code: 0))
-    }
-
-    private func completeAndOpenApp() {
-        // Foreground the host app so it drains the App Group inbox immediately.
-        // Fire the open first, then finish the request on the next runloop turn:
-        // calling `completeRequest` synchronously tears the extension down before
-        // the system has dispatched the launch, so the app never comes forward.
-        openHostApp()
-        DispatchQueue.main.async {
-            self.extensionContext?.completeRequest(
-                returningItems: nil, completionHandler: nil)
-        }
-    }
-
-    /// ⚠️ UNOFFICIAL / GRAY-AREA — keep isolated and easy to rip out.
-    ///
-    /// There is NO public API for an iOS share extension to launch its host app:
-    /// `UIApplication.open(_:options:completionHandler:)` is annotated
-    /// `unavailable` in app extensions. The widely-used workaround walks the
-    /// responder chain to whatever object responds to the legacy `openURL:`
-    /// selector (the shared `UIApplication`) and invokes it dynamically, which
-    /// sidesteps the compile-time availability check. Only the URL flow needs it;
-    /// the audio flow saves silently and never foregrounds the app.
-    ///
-    /// This works as of iOS 17/18 but is undocumented and Apple could break it in
-    /// any release. The scheme is registered in ios/Runner/Info.plist and handled
-    /// in SceneDelegate.
-    private func openHostApp() {
-        guard let url = URL(string: "tunetrove://import") else { return }
-        let selector = NSSelectorFromString("openURL:")
-        // Walk the responder chain for the actual `UIApplication` and invoke
-        // `openURL:` on *it*. Targeting "the first responder that responds to the
-        // selector" doesn't work — `UIViewController` and other responders answer
-        // `openURL:` too, and performing it on them silently no-ops, so the app
-        // never foregrounds.
-        var responder: UIResponder? = self
-        while let current = responder {
-            if let app = current as? UIApplication, app.responds(to: selector) {
-                app.perform(selector, with: url)
-                return
-            }
-            responder = current.next
-        }
     }
 }

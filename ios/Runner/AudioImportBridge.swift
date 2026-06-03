@@ -161,9 +161,27 @@ final class AudioImportBridge: NSObject {
     /// link, not a file path. Dart resolves it to a `music-catalog:` recording.
     private func handleSharedUrlFile(_ fileURL: URL) {
         guard let contents = try? String(contentsOf: fileURL, encoding: .utf8) else { return }
-        let link = contents.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !link.isEmpty else { return }
-        let payload: [String: Any] = ["url": link, "name": link]
+        let trimmed = contents.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        var payload: [String: Any]
+        // The iOS share-sheet form writes a JSON sidecar with name/performers and
+        // an `autosave` flag; the macOS extension (and legacy) writes the bare
+        // URL as plain text. Parse JSON first, fall back to plain text.
+        if let data = trimmed.data(using: .utf8),
+           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let link = obj["url"] as? String, !link.isEmpty {
+            let name = obj["name"] as? String
+            payload = ["url": link, "name": (name?.isEmpty == false) ? name! : link]
+            if let p = obj["performers"] as? String, !p.isEmpty {
+                payload["performers"] = p
+            }
+            if let autosave = obj["autosave"] as? Bool {
+                payload["autosave"] = autosave
+            }
+        } else {
+            payload = ["url": trimmed, "name": trimmed]
+        }
         if let sink = eventSink {
             sink(payload)
         } else {

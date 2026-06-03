@@ -71,7 +71,12 @@ class AudioImportController with WidgetsBindingObserver {
     if (_busy) return;
     _busy = true;
     if (item.isUrl) {
-      await _handleSharedUrl(item.url!, item.name);
+      await _handleSharedUrl(
+        item.url!,
+        item.name,
+        performers: item.performers,
+        autosave: item.autosave,
+      );
       return;
     }
     final String url;
@@ -111,16 +116,58 @@ class AudioImportController with WidgetsBindingObserver {
   }
 
   /// Handles a shared link. An Apple Music song link becomes a `music-catalog:`
-  /// recording (the inverse of in-app MusicKit search), named from resolved
-  /// catalog metadata when available, else from the link's slug. Any other URL
-  /// falls back to a plain recording holding the raw link.
-  Future<void> _handleSharedUrl(String sharedUrl, String fallbackName) async {
+  /// recording (the inverse of in-app MusicKit search); any other URL falls back
+  /// to a plain recording holding the raw link.
+  ///
+  /// [autosave] (set by the iOS share-sheet form) inserts the recording directly
+  /// with the user-supplied [fallbackName] + [performers] — no form, no app
+  /// switch — and only consults MusicKit to fill performers the user left blank.
+  /// Without it, the name is resolved from catalog metadata (or the slug) and the
+  /// prefilled form is surfaced.
+  Future<void> _handleSharedUrl(
+    String sharedUrl,
+    String fallbackName, {
+    String? performers,
+    bool autosave = false,
+  }) async {
     final catalogId = appleMusicCatalogIdFromShareUrl(sharedUrl);
+    final recordingUrl = catalogId == null
+        ? sharedUrl
+        : '$kAppleMusicCatalogScheme:$catalogId';
+
+    if (autosave) {
+      var resolvedPerformers = performers;
+      if ((resolvedPerformers == null || resolvedPerformers.isEmpty) &&
+          catalogId != null) {
+        try {
+          final meta = await _musicKit.lookupSong(catalogId);
+          if (meta != null && meta.artistName.isNotEmpty) {
+            resolvedPerformers = meta.artistName;
+          }
+        } catch (_) {
+          // Leave performers unset on any lookup failure.
+        }
+      }
+      await _db.recordingDao.insertRecording(
+        RecordingsCompanion.insert(
+          name: fallbackName,
+          url: recordingUrl,
+          createdAt: DateTime.now(),
+          performers: Value(
+            (resolvedPerformers != null && resolvedPerformers.isNotEmpty)
+                ? resolvedPerformers
+                : null,
+          ),
+        ),
+      );
+      _busy = false;
+      return;
+    }
+
     if (catalogId == null) {
       _surfaceForm(url: sharedUrl, name: fallbackName);
       return;
     }
-    final recordingUrl = '$kAppleMusicCatalogScheme:$catalogId';
     var name = appleMusicNameFromSlug(sharedUrl) ?? fallbackName;
     try {
       final meta = await _musicKit.lookupSong(catalogId);

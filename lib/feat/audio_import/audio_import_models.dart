@@ -45,26 +45,31 @@ class SharedAudioFile {
   bool get isUrl => url != null;
 
   static SharedAudioFile? fromMap(Map<Object?, Object?> map) {
+    final performers = map['performers'];
+    final autosave = map['autosave'];
+    final parsedPerformers = (performers is String && performers.isNotEmpty)
+        ? performers
+        : null;
+    final parsedAutosave = autosave is bool && autosave;
+
     final url = map['url'];
     if (url is String && url.isNotEmpty) {
       final name = map['name'];
       return SharedAudioFile(
         url: url,
         name: (name is String && name.isNotEmpty) ? name : url,
+        performers: parsedPerformers,
+        autosave: parsedAutosave,
       );
     }
     final path = map['path'];
     if (path is! String || path.isEmpty) return null;
     final name = map['name'];
-    final performers = map['performers'];
-    final autosave = map['autosave'];
     return SharedAudioFile(
       path: path,
       name: (name is String && name.isNotEmpty) ? name : path.split('/').last,
-      performers: (performers is String && performers.isNotEmpty)
-          ? performers
-          : null,
-      autosave: autosave is bool && autosave,
+      performers: parsedPerformers,
+      autosave: parsedAutosave,
     );
   }
 

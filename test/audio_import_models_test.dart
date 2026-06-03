@@ -74,11 +74,22 @@ void main() {
       expect(file!.performers, isNull);
     });
 
-    test('url transport ignores performers/autosave', () {
+    test('url transport parses performers/autosave (share-sheet form)', () {
+      final file = SharedAudioFile.fromMap({
+        'url': 'music-catalog:12345',
+        'name': 'The Morning Dew',
+        'performers': 'Some Artist',
+        'autosave': true,
+      });
+      expect(file!.isUrl, isTrue);
+      expect(file.name, 'The Morning Dew');
+      expect(file.performers, 'Some Artist');
+      expect(file.autosave, isTrue);
+    });
+
+    test('url transport defaults performers null and autosave false', () {
       final file = SharedAudioFile.fromMap({
         'url': 'https://music.apple.com/us/song/x/9',
-        'performers': 'ignored',
-        'autosave': true,
       });
       expect(file!.isUrl, isTrue);
       expect(file.performers, isNull);
