@@ -39,4 +39,73 @@ void main() {
       }
     });
   });
+
+  group('compareSourcesForDisplay', () {
+    ContentSourceMeta meta(String name, String genre) => ContentSourceMeta(
+          id: name,
+          name: name,
+          genre: genre,
+          license: '',
+          attribution: '',
+          confirmationRequired: false,
+        );
+
+    List<String> ordered(List<ContentSourceMeta> input) {
+      final list = [...input]..sort(compareSourcesForDisplay);
+      return list.map((m) => m.name).toList();
+    }
+
+    test('orders by market-priority genre: Irish, Scottish, English', () {
+      expect(
+        ordered([
+          meta('e', 'English'),
+          meta('s', 'Scottish'),
+          meta('i', 'Irish'),
+        ]),
+        ['i', 's', 'e'],
+      );
+    });
+
+    test('non-priority genres follow, with ungenred sources last', () {
+      final result = ordered([
+        meta('ungenred', ''),
+        meta('newengland', 'New England'),
+        meta('irish', 'Irish'),
+      ]);
+      expect(result, ['irish', 'newengland', 'ungenred']);
+    });
+
+    test('breaks ties within a genre by name', () {
+      expect(
+        ordered([
+          meta('Beta', 'Irish'),
+          meta('Alpha', 'Irish'),
+        ]),
+        ['Alpha', 'Beta'],
+      );
+    });
+
+    test('on the real registry, all Irish sources precede all Scottish', () {
+      final sorted = [...allContentSources]..sort(compareSourcesForDisplay);
+      final lastIrish = sorted.lastIndexWhere((m) => m.genre == 'Irish');
+      final firstScottish = sorted.indexWhere((m) => m.genre == 'Scottish');
+      expect(lastIrish, lessThan(firstScottish));
+    });
+
+    test('thesession.org is pinned last even against another ungenred source',
+        () {
+      // 'zzz' would otherwise sort after 'thesession' by name; the pin wins.
+      final sorted = [
+        meta('thesession', ''),
+        meta('aaa', ''),
+        meta('zzz', ''),
+      ]..sort(compareSourcesForDisplay);
+      expect(sorted.last.id, 'thesession');
+    });
+
+    test('on the real registry, thesession.org sorts dead last', () {
+      final sorted = [...allContentSources]..sort(compareSourcesForDisplay);
+      expect(sorted.last.id, 'thesession');
+    });
+  });
 }

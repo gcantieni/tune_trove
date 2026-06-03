@@ -235,6 +235,38 @@ const List<ContentSourceMeta> allContentSources = [
 ///   - matches a registry source that is active → visible
 ///   - matches a registry source that is inactive → hidden
 ///   - matches nothing in the registry (user-typed free text) → always visible
+/// Genres shown first in the Content Library, in market-priority order.
+/// Anything outside this list sorts after, by genre name; ungenred sources
+/// sort last.
+const _genreDisplayPriority = ['Irish', 'Scottish', 'English'];
+
+int _genreRank(String genre) {
+  final i = _genreDisplayPriority.indexOf(genre);
+  if (i != -1) return i;
+  if (genre.isEmpty) return 1000; // ungenred sources go last
+  return 100; // other genres (e.g. New England) sit in between
+}
+
+/// thesession.org is the broad catch-all aggregator; it always sorts last so
+/// the curated, genre-specific collections surface first.
+const _alwaysLastSourceId = 'thesession';
+
+/// Orders content sources for display: by market-priority genre
+/// (Irish → Scottish → English), then remaining genres alphabetically, then
+/// ungenred sources, breaking ties by source name. thesession.org is always
+/// pinned last regardless of genre.
+int compareSourcesForDisplay(ContentSourceMeta a, ContentSourceMeta b) {
+  final aLast = a.id == _alwaysLastSourceId;
+  final bLast = b.id == _alwaysLastSourceId;
+  if (aLast != bLast) return aLast ? 1 : -1;
+
+  final rankDelta = _genreRank(a.genre).compareTo(_genreRank(b.genre));
+  if (rankDelta != 0) return rankDelta;
+  final genreDelta = a.genre.compareTo(b.genre);
+  if (genreDelta != 0) return genreDelta;
+  return a.name.compareTo(b.name);
+}
+
 bool isSourceNameVisible(String? sourceName, Set<String> activeSourceNames) {
   if (sourceName == null || sourceName.isEmpty) return true;
   final inRegistry = allContentSources.any((m) => m.name == sourceName);

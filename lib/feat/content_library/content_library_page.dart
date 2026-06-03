@@ -18,10 +18,10 @@ class ContentLibraryPage extends ConsumerWidget {
 
     final defaultSources =
         allContentSources.where((m) => m.isAlwaysActive && !m.hidden).toList()
-          ..sort((a, b) => a.name.compareTo(b.name));
+          ..sort(compareSourcesForDisplay);
     final optionalSources =
         allContentSources.where((m) => !m.isAlwaysActive && !m.hidden).toList()
-          ..sort((a, b) => a.name.compareTo(b.name));
+          ..sort(compareSourcesForDisplay);
 
     return Scaffold(
       appBar: AppBar(
