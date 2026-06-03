@@ -1,0 +1,18 @@
+GNU GPL.
+Courtesy of John Chambers.
+
+https://trillian.mit.edu/~jc/music/book/RobertBremner/CSRCD/
+
+"A Collection of Scots Reels or Country Dances", published by Robert Bremner in
+London in 1757. This collection has mostly Scottish Country Dance tunes, with
+very simple bass parts. The original is long out of copyright; these ABC
+transcriptions are by John Chambers.
+
+This information is free; you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.
+
+This work is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.

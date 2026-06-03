@@ -90,6 +90,7 @@ flutter:
     - assets/data/pete_mac_tunes.json
     - assets/data/aird_tunes.json
     - assets/data/athole_tunes.json
+    - assets/data/bremner_tunes.json
     - assets/data/neil_gow_tunes.json
     - assets/data/fraser_tunes.json
     - assets/data/erm_tunes.json

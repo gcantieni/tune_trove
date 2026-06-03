@@ -97,6 +97,17 @@ const List<ContentSourceMeta> allContentSources = [
     confirmationRequired: true,
   ),
   ContentSourceMeta(
+    id: 'bremner',
+    name: "Bremner's Scots Reels (1757)",
+    genre: 'Scottish',
+    license: 'GNU GPL',
+    licenseUrl: 'https://www.gnu.org/licenses/gpl-3.0.html',
+    attribution:
+        '"A Collection of Scots Reels or Country Dances", published by Robert '
+        'Bremner (London, 1757). ABC transcriptions by John Chambers.',
+    confirmationRequired: true,
+  ),
+  ContentSourceMeta(
     id: 'aird',
     name:
         'The James Aird Collection, Vol. 1-6: A Selection of Scotch, English, Irish and Foreign Airs',
@@ -324,6 +335,12 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
         name: meta.name,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/athole_tunes.json',
+      );
+    case 'bremner':
+      return StaticAssetTuneSource(
+        name: meta.name,
+        defaultGenre: meta.genre,
+        assetPath: 'assets/data/bremner_tunes.json',
       );
     case 'aird':
       return StaticAssetTuneSource(

@@ -108,4 +108,20 @@ void main() {
       expect(sorted.last.id, 'thesession');
     });
   });
+
+  group('Bremner Scots Reels source', () {
+    final bremner =
+        allContentSources.where((m) => m.id == 'bremner').toList();
+
+    test('is registered as a GPL Scottish source requiring confirmation', () {
+      expect(bremner, hasLength(1));
+      expect(bremner.single.genre, 'Scottish');
+      expect(bremner.single.license, 'GNU GPL');
+      expect(bremner.single.confirmationRequired, isTrue);
+    });
+
+    test('builds a static-asset source', () {
+      expect(buildTuneSource(bremner.single).name, bremner.single.name);
+    });
+  });
 }
