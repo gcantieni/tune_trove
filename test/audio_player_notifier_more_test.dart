@@ -1,0 +1,177 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tune_trove/feat/audio_player/audio_player_backend.dart';
+import 'package:tune_trove/feat/audio_player/audio_player_notifier.dart';
+import 'package:tune_trove/feat/audio_player/audio_player_state.dart';
+import 'package:tune_trove/feat/audio_player/local_file_backend.dart';
+
+/// Records every transport call so we can assert delegation and loop behaviour.
+class FakeBackend implements AudioPlayerBackend {
+  final _c = StreamController<AudioPlayerState>.broadcast();
+  final plays = <({String uri, double? start})>[];
+  final seeks = <double>[];
+  final rates = <double>[];
+  int pauses = 0;
+  int resumes = 0;
+  int stops = 0;
+
+  @override
+  Stream<AudioPlayerState> get stateStream => _c.stream;
+
+  @override
+  Future<void> play(String trackUri, {double? startTime}) async =>
+      plays.add((uri: trackUri, start: startTime));
+
+  @override
+  Future<void> pause() async => pauses++;
+  @override
+  Future<void> resume() async => resumes++;
+  @override
+  Future<void> stop() async => stops++;
+  @override
+  Future<void> seek(double positionSeconds) async => seeks.add(positionSeconds);
+  @override
+  Future<void> setPlaybackRate(double rate) async => rates.add(rate);
+
+  void emit(AudioPlayerState s) => _c.add(s);
+
+  @override
+  void dispose() => _c.close();
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late FakeBackend local;
+  late ProviderContainer container;
+
+  setUp(() {
+    local = FakeBackend();
+    container = ProviderContainer(
+      overrides: [localFileBackendProvider.overrideWithValue(local)],
+    );
+  });
+  tearDown(() {
+    container.dispose();
+    local.dispose();
+  });
+
+  AudioPlayerNotifier notifier() =>
+      container.read(audioPlayerProvider.notifier);
+  AudioPlayerState state() => container.read(audioPlayerProvider);
+
+  group('play + transport delegation', () {
+    test('play routes to the local backend with no startTime when not looping',
+        () async {
+      await notifier().play('app-data:a.mp3');
+      expect(local.plays.single.uri, 'app-data:a.mp3');
+      expect(local.plays.single.start, isNull);
+    });
+
+    test('transport calls before play are no-ops', () async {
+      // No active backend yet: these must resolve without throwing.
+      await notifier().pause();
+      await notifier().resume();
+      await notifier().stop();
+      await notifier().seek(5);
+      expect(local.pauses, 0);
+      expect(local.seeks, isEmpty);
+    });
+
+    test('pause/resume/stop/seek delegate to the active backend', () async {
+      final n = notifier();
+      await n.play('app-data:a.mp3');
+      await n.pause();
+      await n.resume();
+      await n.stop();
+      await n.seek(12.5);
+      expect(local.pauses, 1);
+      expect(local.resumes, 1);
+      expect(local.stops, 1);
+      expect(local.seeks, [12.5]);
+    });
+  });
+
+  group('playback rate', () {
+    test('updates state immediately and the backend after the debounce',
+        () async {
+      final n = notifier();
+      await n.play('app-data:a.mp3');
+      n.setPlaybackRate(0.75);
+      expect(state().playbackRate, 0.75); // immediate
+      expect(local.rates, isEmpty); // debounced
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(local.rates, [0.75]);
+    });
+  });
+
+  group('loop config', () {
+    test('toggleLoop falls back to a 60s loop end when duration is unknown',
+        () {
+      notifier().toggleLoop();
+      expect(state().isLooping, isTrue);
+      expect(state().loopEnd, 60.0);
+    });
+
+    test('toggleLoop uses the known duration for the loop end', () async {
+      final n = notifier();
+      await n.play('app-data:a.mp3');
+      local.emit(
+        const AudioPlayerState(
+          trackUri: 'app-data:a.mp3',
+          status: AudioPlaybackStatus.playing,
+          duration: 120,
+        ),
+      );
+      await pumpEventQueue();
+      n.toggleLoop();
+      expect(state().loopEnd, 120.0);
+    });
+
+    test('toggleLoop twice disables looping', () {
+      final n = notifier()..toggleLoop();
+      expect(state().isLooping, isTrue);
+      n.toggleLoop();
+      expect(state().isLooping, isFalse);
+    });
+
+    test('setLoopBounds updates the bounds', () {
+      notifier().setLoopBounds(3, 9);
+      expect(state().loopStart, 3);
+      expect(state().loopEnd, 9);
+    });
+  });
+
+  group('loop enforcement', () {
+    test('seeks back to loopStart when playback runs past loopEnd', () async {
+      final n = notifier();
+      await n.playWithBounds('app-data:a.mp3', start: 10, end: 20);
+      local.emit(
+        const AudioPlayerState(
+          trackUri: 'app-data:a.mp3',
+          status: AudioPlaybackStatus.playing,
+          position: 25, // past loopEnd
+          duration: 120,
+        ),
+      );
+      await pumpEventQueue();
+      expect(local.seeks, contains(10.0));
+    });
+
+    test('replays from loopStart when a looping track stops', () async {
+      final n = notifier();
+      await n.playWithBounds('app-data:a.mp3', start: 5, end: 15);
+      expect(local.plays, hasLength(1));
+      local.emit(
+        // Default status is stopped — the track has finished playing.
+        const AudioPlayerState(trackUri: 'app-data:a.mp3'),
+      );
+      await pumpEventQueue();
+      expect(local.plays, hasLength(2));
+      expect(local.plays.last.start, 5.0);
+    });
+  });
+
+}
