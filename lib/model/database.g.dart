@@ -516,6 +516,17 @@ class $TunesTable extends Tunes with TableInfo<$TunesTable, Tune> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _composerMeta = const VerificationMeta(
+    'composer',
+  );
+  @override
+  late final GeneratedColumn<String> composer = GeneratedColumn<String>(
+    'composer',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<TuneStatus?, String> status =
       GeneratedColumn<String>(
@@ -593,6 +604,7 @@ class $TunesTable extends Tunes with TableInfo<$TunesTable, Tune> {
     abcSvg,
     tsId,
     from,
+    composer,
     status,
     key,
     type,
@@ -646,6 +658,12 @@ class $TunesTable extends Tunes with TableInfo<$TunesTable, Tune> {
       context.handle(
         _fromMeta,
         from.isAcceptableOrUnknown(data['from']!, _fromMeta),
+      );
+    }
+    if (data.containsKey('composer')) {
+      context.handle(
+        _composerMeta,
+        composer.isAcceptableOrUnknown(data['composer']!, _composerMeta),
       );
     }
     if (data.containsKey('key')) {
@@ -713,6 +731,10 @@ class $TunesTable extends Tunes with TableInfo<$TunesTable, Tune> {
         DriftSqlType.string,
         data['${effectivePrefix}from'],
       ),
+      composer: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}composer'],
+      ),
       status: $TunesTable.$converterstatusn.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -770,6 +792,7 @@ class Tune extends DataClass implements Insertable<Tune> {
   final String? abcSvg;
   final int? tsId;
   final String? from;
+  final String? composer;
   final TuneStatus? status;
   final String? key;
   final TuneType? type;
@@ -784,6 +807,7 @@ class Tune extends DataClass implements Insertable<Tune> {
     this.abcSvg,
     this.tsId,
     this.from,
+    this.composer,
     this.status,
     this.key,
     this.type,
@@ -808,6 +832,9 @@ class Tune extends DataClass implements Insertable<Tune> {
     }
     if (!nullToAbsent || from != null) {
       map['from'] = Variable<String>(from);
+    }
+    if (!nullToAbsent || composer != null) {
+      map['composer'] = Variable<String>(composer);
     }
     if (!nullToAbsent || status != null) {
       map['status'] = Variable<String>(
@@ -843,6 +870,9 @@ class Tune extends DataClass implements Insertable<Tune> {
           : Value(abcSvg),
       tsId: tsId == null && nullToAbsent ? const Value.absent() : Value(tsId),
       from: from == null && nullToAbsent ? const Value.absent() : Value(from),
+      composer: composer == null && nullToAbsent
+          ? const Value.absent()
+          : Value(composer),
       status: status == null && nullToAbsent
           ? const Value.absent()
           : Value(status),
@@ -873,6 +903,7 @@ class Tune extends DataClass implements Insertable<Tune> {
       abcSvg: serializer.fromJson<String?>(json['abcSvg']),
       tsId: serializer.fromJson<int?>(json['tsId']),
       from: serializer.fromJson<String?>(json['from']),
+      composer: serializer.fromJson<String?>(json['composer']),
       status: $TunesTable.$converterstatusn.fromJson(
         serializer.fromJson<String?>(json['status']),
       ),
@@ -896,6 +927,7 @@ class Tune extends DataClass implements Insertable<Tune> {
       'abcSvg': serializer.toJson<String?>(abcSvg),
       'tsId': serializer.toJson<int?>(tsId),
       'from': serializer.toJson<String?>(from),
+      'composer': serializer.toJson<String?>(composer),
       'status': serializer.toJson<String?>(
         $TunesTable.$converterstatusn.toJson(status),
       ),
@@ -917,6 +949,7 @@ class Tune extends DataClass implements Insertable<Tune> {
     Value<String?> abcSvg = const Value.absent(),
     Value<int?> tsId = const Value.absent(),
     Value<String?> from = const Value.absent(),
+    Value<String?> composer = const Value.absent(),
     Value<TuneStatus?> status = const Value.absent(),
     Value<String?> key = const Value.absent(),
     Value<TuneType?> type = const Value.absent(),
@@ -931,6 +964,7 @@ class Tune extends DataClass implements Insertable<Tune> {
     abcSvg: abcSvg.present ? abcSvg.value : this.abcSvg,
     tsId: tsId.present ? tsId.value : this.tsId,
     from: from.present ? from.value : this.from,
+    composer: composer.present ? composer.value : this.composer,
     status: status.present ? status.value : this.status,
     key: key.present ? key.value : this.key,
     type: type.present ? type.value : this.type,
@@ -947,6 +981,7 @@ class Tune extends DataClass implements Insertable<Tune> {
       abcSvg: data.abcSvg.present ? data.abcSvg.value : this.abcSvg,
       tsId: data.tsId.present ? data.tsId.value : this.tsId,
       from: data.from.present ? data.from.value : this.from,
+      composer: data.composer.present ? data.composer.value : this.composer,
       status: data.status.present ? data.status.value : this.status,
       key: data.key.present ? data.key.value : this.key,
       type: data.type.present ? data.type.value : this.type,
@@ -968,6 +1003,7 @@ class Tune extends DataClass implements Insertable<Tune> {
           ..write('abcSvg: $abcSvg, ')
           ..write('tsId: $tsId, ')
           ..write('from: $from, ')
+          ..write('composer: $composer, ')
           ..write('status: $status, ')
           ..write('key: $key, ')
           ..write('type: $type, ')
@@ -987,6 +1023,7 @@ class Tune extends DataClass implements Insertable<Tune> {
     abcSvg,
     tsId,
     from,
+    composer,
     status,
     key,
     type,
@@ -1005,6 +1042,7 @@ class Tune extends DataClass implements Insertable<Tune> {
           other.abcSvg == this.abcSvg &&
           other.tsId == this.tsId &&
           other.from == this.from &&
+          other.composer == this.composer &&
           other.status == this.status &&
           other.key == this.key &&
           other.type == this.type &&
@@ -1021,6 +1059,7 @@ class TunesCompanion extends UpdateCompanion<Tune> {
   final Value<String?> abcSvg;
   final Value<int?> tsId;
   final Value<String?> from;
+  final Value<String?> composer;
   final Value<TuneStatus?> status;
   final Value<String?> key;
   final Value<TuneType?> type;
@@ -1035,6 +1074,7 @@ class TunesCompanion extends UpdateCompanion<Tune> {
     this.abcSvg = const Value.absent(),
     this.tsId = const Value.absent(),
     this.from = const Value.absent(),
+    this.composer = const Value.absent(),
     this.status = const Value.absent(),
     this.key = const Value.absent(),
     this.type = const Value.absent(),
@@ -1050,6 +1090,7 @@ class TunesCompanion extends UpdateCompanion<Tune> {
     this.abcSvg = const Value.absent(),
     this.tsId = const Value.absent(),
     this.from = const Value.absent(),
+    this.composer = const Value.absent(),
     this.status = const Value.absent(),
     this.key = const Value.absent(),
     this.type = const Value.absent(),
@@ -1066,6 +1107,7 @@ class TunesCompanion extends UpdateCompanion<Tune> {
     Expression<String>? abcSvg,
     Expression<int>? tsId,
     Expression<String>? from,
+    Expression<String>? composer,
     Expression<String>? status,
     Expression<String>? key,
     Expression<String>? type,
@@ -1081,6 +1123,7 @@ class TunesCompanion extends UpdateCompanion<Tune> {
       if (abcSvg != null) 'abc_svg': abcSvg,
       if (tsId != null) 'ts_id': tsId,
       if (from != null) 'from': from,
+      if (composer != null) 'composer': composer,
       if (status != null) 'status': status,
       if (key != null) 'key': key,
       if (type != null) 'type': type,
@@ -1098,6 +1141,7 @@ class TunesCompanion extends UpdateCompanion<Tune> {
     Value<String?>? abcSvg,
     Value<int?>? tsId,
     Value<String?>? from,
+    Value<String?>? composer,
     Value<TuneStatus?>? status,
     Value<String?>? key,
     Value<TuneType?>? type,
@@ -1113,6 +1157,7 @@ class TunesCompanion extends UpdateCompanion<Tune> {
       abcSvg: abcSvg ?? this.abcSvg,
       tsId: tsId ?? this.tsId,
       from: from ?? this.from,
+      composer: composer ?? this.composer,
       status: status ?? this.status,
       key: key ?? this.key,
       type: type ?? this.type,
@@ -1143,6 +1188,9 @@ class TunesCompanion extends UpdateCompanion<Tune> {
     }
     if (from.present) {
       map['from'] = Variable<String>(from.value);
+    }
+    if (composer.present) {
+      map['composer'] = Variable<String>(composer.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(
@@ -1181,6 +1229,7 @@ class TunesCompanion extends UpdateCompanion<Tune> {
           ..write('abcSvg: $abcSvg, ')
           ..write('tsId: $tsId, ')
           ..write('from: $from, ')
+          ..write('composer: $composer, ')
           ..write('status: $status, ')
           ..write('key: $key, ')
           ..write('type: $type, ')
@@ -3815,6 +3864,7 @@ typedef $$TunesTableCreateCompanionBuilder =
       Value<String?> abcSvg,
       Value<int?> tsId,
       Value<String?> from,
+      Value<String?> composer,
       Value<TuneStatus?> status,
       Value<String?> key,
       Value<TuneType?> type,
@@ -3831,6 +3881,7 @@ typedef $$TunesTableUpdateCompanionBuilder =
       Value<String?> abcSvg,
       Value<int?> tsId,
       Value<String?> from,
+      Value<String?> composer,
       Value<TuneStatus?> status,
       Value<String?> key,
       Value<TuneType?> type,
@@ -3898,6 +3949,11 @@ class $$TunesTableFilterComposer extends Composer<_$AppDatabase, $TunesTable> {
 
   ColumnFilters<String> get from => $composableBuilder(
     column: $table.from,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get composer => $composableBuilder(
+    column: $table.composer,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4003,6 +4059,11 @@ class $$TunesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get composer => $composableBuilder(
+    column: $table.composer,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -4065,6 +4126,9 @@ class $$TunesTableAnnotationComposer
 
   GeneratedColumn<String> get from =>
       $composableBuilder(column: $table.from, builder: (column) => column);
+
+  GeneratedColumn<String> get composer =>
+      $composableBuilder(column: $table.composer, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<TuneStatus?, String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -4149,6 +4213,7 @@ class $$TunesTableTableManager
                 Value<String?> abcSvg = const Value.absent(),
                 Value<int?> tsId = const Value.absent(),
                 Value<String?> from = const Value.absent(),
+                Value<String?> composer = const Value.absent(),
                 Value<TuneStatus?> status = const Value.absent(),
                 Value<String?> key = const Value.absent(),
                 Value<TuneType?> type = const Value.absent(),
@@ -4163,6 +4228,7 @@ class $$TunesTableTableManager
                 abcSvg: abcSvg,
                 tsId: tsId,
                 from: from,
+                composer: composer,
                 status: status,
                 key: key,
                 type: type,
@@ -4179,6 +4245,7 @@ class $$TunesTableTableManager
                 Value<String?> abcSvg = const Value.absent(),
                 Value<int?> tsId = const Value.absent(),
                 Value<String?> from = const Value.absent(),
+                Value<String?> composer = const Value.absent(),
                 Value<TuneStatus?> status = const Value.absent(),
                 Value<String?> key = const Value.absent(),
                 Value<TuneType?> type = const Value.absent(),
@@ -4193,6 +4260,7 @@ class $$TunesTableTableManager
                 abcSvg: abcSvg,
                 tsId: tsId,
                 from: from,
+                composer: composer,
                 status: status,
                 key: key,
                 type: type,

@@ -85,7 +85,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -223,6 +223,14 @@ class AppDatabase extends _$AppDatabase {
       }
       // v12 -> v13: add the synced app_settings key-value table (purely additive).
       if (from < 13 && to >= 13) await m.createTable(appSettings);
+      // v13 -> v14: add a nullable composer column to tunes ("who wrote it",
+      // distinct from `from` = "who I learned it from"). Guarded with
+      // _columnExists because SQLite has no ADD COLUMN IF NOT EXISTS and a
+      // mid-migration kill would otherwise re-run this and crash with
+      // "duplicate column name: composer". See .context/standards/migrations.md.
+      if (from < 14 && to >= 14 && !await _columnExists('tunes', 'composer')) {
+        await m.addColumn(tunes, tunes.composer);
+      }
     },
   );
 

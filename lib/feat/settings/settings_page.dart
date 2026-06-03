@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_notifier.dart';
 import 'package:tune_trove/feat/settings/settings_providers.dart';
@@ -22,7 +23,39 @@ class SettingsPage extends ConsumerWidget {
           _SyncStatusTile(),
           const Divider(height: 1),
           _InvertNotationTile(),
+          const SizedBox(height: 24),
+          _BuildInfoFooter(),
+          const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+}
+
+/// Small dimmed build identifier at the bottom of Settings, to help pin down
+/// exactly which build a bug report came from. Tap to copy.
+class _BuildInfoFooter extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final info = ref.watch(buildInfoProvider).value;
+    if (info == null) return const SizedBox.shrink();
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: Theme.of(context).colorScheme.outline,
+    );
+    return Center(
+      child: InkWell(
+        onTap: () async {
+          await Clipboard.setData(ClipboardData(text: info));
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Build info copied')),
+            );
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(info, style: style),
+        ),
       ),
     );
   }

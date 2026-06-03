@@ -11,6 +11,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v12.dart' as v12;
+import 'generated/schema_v13.dart' as v13;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v6.dart' as v6;
 
@@ -128,6 +129,33 @@ void main() {
         await app.customStatement('SELECT 1');
 
         expect(await userVersion(app), app.schemaVersion);
+        await app.close();
+      },
+    );
+
+    test(
+      'v13->v14 survives a half-applied v13->v14 (tunes.composer already added)',
+      () async {
+        final file = File('${tmpDir.path}/composer.sqlite');
+
+        // Build the real v13 schema, then simulate an interrupted v13->v14:
+        // the column was added but drift never committed v14, so user_version
+        // is still 13.
+        final old = v13.DatabaseAtV13(NativeDatabase(file));
+        await old.customStatement('SELECT 1'); // open + createAll @ v13
+        await old.customStatement(
+          'ALTER TABLE "tunes" ADD COLUMN "composer" TEXT NULL',
+        );
+        expect(await userVersion(old), 13);
+        await old.close();
+
+        // Opening the real database triggers onUpgrade(13 -> 14). Without the
+        // _columnExists guard this throws: duplicate column name: composer.
+        final app = AppDatabase(NativeDatabase(file));
+        await app.customStatement('SELECT 1');
+
+        expect(await userVersion(app), app.schemaVersion);
+        await app.customSelect('SELECT composer FROM tunes').get();
         await app.close();
       },
     );

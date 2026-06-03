@@ -90,3 +90,18 @@ table.
 - CloudKit sync layers on top of this schema. Dedupe keys (`ts_id`/`name`) and
   the `cloud_id` columns are migration-sensitive — never drop or rename them
   without a data-preserving `alterTable` step plus a data-integrity test.
+
+## Promoting a new column to the CloudKit Production schema
+
+Adding a synced column doesn't need a separate CloudKit migration: the Drift
+migration is idempotent and the column flows through the sync layer, which
+applies it to the CloudKit schema automatically (CKSyncEngine creates the field
+in the **Development** environment on first sync of a record carrying it). The
+manual step is promotion:
+
+> The migration is idempotent and applies the column to the CloudKit schema.
+> When you have tested and are satisfied, make sure to promote the Development
+> schema to Production on the iCloud.developer.apple.com portal.
+
+Do this before shipping a build that writes the new field to users' Production
+containers.

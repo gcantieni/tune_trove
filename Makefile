@@ -29,6 +29,12 @@ reregister-macos:
 	-killall sharingd pkd
 	@echo "✓ Re-registered. Relaunch the app (open \"$(MACOS_APP)\"), and quit/reopen the source app (e.g. Voice Memos) so it refreshes its share menu."
 
+# Short commit the build was made from, surfaced in the Settings footer for bug
+# reports. Passed through to Dart via --dart-define and read by
+# String.fromEnvironment('GIT_COMMIT'). Falls back to "nogit" outside a checkout.
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)
+DART_DEFINES := --dart-define=GIT_COMMIT=$(GIT_COMMIT)
+
 format:
 	dart format lib/
 
@@ -36,19 +42,19 @@ analyze:
 	flutter analyze
 
 run-macos:
-	flutter run -d macos --no-pub
+	flutter run -d macos --no-pub $(DART_DEFINES)
 
 run-ios:
-	flutter run -d $(if $(DEVICE),$(DEVICE),iPhone) --no-pub
+	flutter run -d $(if $(DEVICE),$(DEVICE),iPhone) --no-pub $(DART_DEFINES)
 
 build-macos:
-	flutter build macos
+	flutter build macos $(DART_DEFINES)
 
 build-ios:
-	flutter build ios
+	flutter build ios $(DART_DEFINES)
 
 build-android:
-	flutter build appbundle
+	flutter build appbundle $(DART_DEFINES)
 
 deps:
 	flutter pub get

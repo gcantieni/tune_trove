@@ -39,6 +39,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
   final _nameController = TextEditingController();
   String? _key;
   String? _genre;
+  final _composerController = TextEditingController();
   final _fromController = TextEditingController();
   final _abcController = TextEditingController();
   TuneType? _type;
@@ -47,6 +48,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _composerController.dispose();
     _fromController.dispose();
     _abcController.dispose();
     super.dispose();
@@ -65,6 +67,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     _nameController.text = tune.name;
     _key = tune.key != null ? normalizePickerKey(tune.key!) : null;
     _genre = (tune.genre?.isEmpty ?? true) ? null : tune.genre;
+    _composerController.text = tune.composer ?? '';
     _fromController.text = tune.from ?? '';
     _abcController.text = tune.abc ?? '';
     _type = tune.type;
@@ -105,6 +108,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final keyText = _key ?? '';
+    final composerText = _composerController.text.trim();
     final fromText = _fromController.text.trim();
     final abcText = _abcController.text.trim();
     final newAbc = abcText.isEmpty ? null : abcText;
@@ -117,6 +121,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         name: drift.Value(_nameController.text.trim()),
         key: drift.Value(keyText.isEmpty ? null : keyText),
         genre: drift.Value(_genre),
+        composer: drift.Value(composerText.isEmpty ? null : composerText),
         from: drift.Value(fromText.isEmpty ? null : fromText),
         abc: drift.Value(newAbc),
         // Invalidate the cached SVG when ABC changes; the renderer
@@ -226,6 +231,12 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
       children: [
         _readRow('Name', tune.name),
         _quickEditRow(
+          label: 'Composer',
+          value: tune.composer,
+          emptyHint: 'Set composer…',
+          onTap: () => _quickEditComposer(tune),
+        ),
+        _quickEditRow(
           label: 'Key',
           value: tune.key,
           emptyHint: 'Set key…',
@@ -250,7 +261,12 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
             child: TuneStatusQuickEdit(tune: tune, showLabel: true),
           ),
         ),
-        _readRow('From', (tune.from?.isEmpty ?? true) ? '—' : tune.from!),
+        _quickEditRow(
+          label: 'From',
+          value: tune.from,
+          emptyHint: 'Set source…',
+          onTap: () => _quickEditFrom(tune),
+        ),
         _SourceAttribution(sourceName: tune.from),
         const SizedBox(height: 16),
         const Text('ABC', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -427,6 +443,77 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     );
   }
 
+  /// Prompts for a single free-text value. Returns the entered string (which
+  /// may be empty, meaning an explicit clear) or null if the dialog was
+  /// dismissed/cancelled.
+  Future<String?> _promptText({
+    required String title,
+    required String label,
+    required String initial,
+  }) async {
+    final controller = TextEditingController(text: initial);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: label),
+          onSubmitted: (v) => Navigator.of(dialogContext).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _quickEditComposer(Tune tune) async {
+    final result = await _promptText(
+      title: 'Set composer',
+      label: 'Composer',
+      initial: tune.composer ?? '',
+    );
+    // null = dismissed/cancelled; empty string = explicit clear.
+    if (result == null || !mounted) return;
+    final trimmed = result.trim();
+    await _writeField(
+      tune.id,
+      TunesCompanion(
+        id: drift.Value(tune.id),
+        composer: drift.Value(trimmed.isEmpty ? null : trimmed),
+      ),
+    );
+  }
+
+  Future<void> _quickEditFrom(Tune tune) async {
+    final result = await _promptText(
+      title: 'Set source',
+      label: 'From',
+      initial: tune.from ?? '',
+    );
+    // null = dismissed/cancelled; empty string = explicit clear.
+    if (result == null || !mounted) return;
+    final trimmed = result.trim();
+    await _writeField(
+      tune.id,
+      TunesCompanion(
+        id: drift.Value(tune.id),
+        from: drift.Value(trimmed.isEmpty ? null : trimmed),
+      ),
+    );
+  }
+
   Widget _readRowChild(String label, Widget child) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -462,6 +549,11 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
             decoration: const InputDecoration(labelText: 'Name'),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Required' : null,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _composerController,
+            decoration: const InputDecoration(labelText: 'Composer'),
           ),
           const SizedBox(height: 12),
           InkWell(

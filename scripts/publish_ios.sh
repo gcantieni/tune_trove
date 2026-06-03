@@ -22,7 +22,11 @@ cp "$KEY_PATH" "$ALTOOL_KEYS_DIR/AuthKey_${ASC_KEY_ID}.p8"
 cd "$ROOT_DIR"
 
 echo "==> Building iOS release IPA..."
+# Surface the build's commit in the app's Settings footer (read by
+# String.fromEnvironment('GIT_COMMIT')) so TestFlight bug reports are traceable.
+GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo nogit)
 flutter build ipa --release \
+    --dart-define=GIT_COMMIT="$GIT_COMMIT" \
     --export-options-plist="scripts/ExportOptions-AppStore-iOS.plist"
 
 IPA_PATH=$(find build/ios/ipa -name '*.ipa' | head -1)

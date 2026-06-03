@@ -134,7 +134,8 @@ class SyncNotifier extends AsyncNotifier<SyncState> {
   /// trigger the launch-style "Sync complete" snackbar while the user reads.
   void reportBackgroundResult(SendResult result) {
     final current = state.value;
-    if (current == null || current.isSyncing) return; // manual sync is authoritative
+    if (current == null || current.isSyncing)
+      return; // manual sync is authoritative
     final now = DateTime.now();
     if (result.hasFailures) {
       state = AsyncData(_partialState(current, result, now));
