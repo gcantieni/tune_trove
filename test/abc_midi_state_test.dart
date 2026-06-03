@@ -19,7 +19,7 @@ void main() {
     });
 
     test('is inactive when idle or in error', () {
-      expect(const AbcMidiState(status: AbcMidiStatus.idle).isActive, isFalse);
+      expect(const AbcMidiState().isActive, isFalse); // defaults to idle
       expect(
         const AbcMidiState(status: AbcMidiStatus.error, message: 'boom')
             .isActive,

@@ -47,9 +47,9 @@ class _BuildInfoFooter extends ConsumerWidget {
         onTap: () async {
           await Clipboard.setData(ClipboardData(text: info));
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Build info copied')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Build info copied')));
           }
         },
         child: Padding(

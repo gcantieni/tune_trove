@@ -31,25 +31,28 @@ const _sessionModeSuffixMap = {
 /// Converts a TheSession-format key string to picker format.
 /// "Ador" → "ADor", "Amaj" → "A", "Amin" → "Am", "Gmix" → "GMix".
 /// Already-normalized strings are returned unchanged.
+/// Splits a leading accidental off the part of a key that follows the root
+/// letter, returning `(accidental, remainder)` where accidental is one of
+/// `'#'` (sharp), `'b'` (flat), or `''` (natural).
+///
+/// Standard: no mode suffix begins with `b` (the picker forms are `Dor`,
+/// `Phr`, `Lyd`, `Mix`, `m`, `Loc`, and TheSession's lowercase `maj`/`min`/…),
+/// so a `b` immediately after the root letter is *always* a flat — including
+/// in TheSession's lowercase forms like `Bbmaj` → flat + `maj`. This is the
+/// single rule used by every key-parsing path here.
+(String, String) _splitAccidental(String rest) {
+  if (rest.startsWith('#')) return ('#', rest.substring(1));
+  if (rest.startsWith('b')) return ('b', rest.substring(1));
+  return ('', rest);
+}
+
 String normalizePickerKey(String key) {
   if (key.length < 2) return key;
 
   final letter = key[0].toUpperCase();
-  var rest = key.substring(1);
+  final (acc, modeRest) = _splitAccidental(key.substring(1));
 
-  String acc = '';
-  if (rest.startsWith('#')) {
-    acc = '#';
-    rest = rest.substring(1);
-  } else if (rest.startsWith('b') &&
-      (rest.length == 1 || rest[1] != rest[1].toLowerCase())) {
-    acc = 'b';
-    rest = rest.substring(1);
-  }
-
-  final suffix =
-      _sessionModeSuffixMap[rest.toLowerCase()] ??
-      (_modeSuffixes.contains(rest) ? rest : rest);
+  final suffix = _sessionModeSuffixMap[modeRest.toLowerCase()] ?? modeRest;
   return '$letter$acc$suffix';
 }
 
@@ -70,17 +73,8 @@ String buildPickerKey(int letterIdx, int accIdx, int modeIdx) {
   final letterIdx = _letters.indexOf(key[0]);
   final safeLetterIdx = letterIdx == -1 ? _letters.indexOf('D') : letterIdx;
 
-  var rest = key.substring(1);
-
-  int accIdx = 1; // natural
-  if (rest.startsWith('#')) {
-    accIdx = 0;
-    rest = rest.substring(1);
-  } else if (rest.startsWith('b') &&
-      (rest.length == 1 || rest[1] != rest[1].toLowerCase())) {
-    accIdx = 2;
-    rest = rest.substring(1);
-  }
+  final (acc, rest) = _splitAccidental(key.substring(1));
+  final accIdx = _accidentalValues.indexOf(acc);
 
   var modeIdx = 0;
   for (var i = _modeSuffixes.length - 1; i >= 1; i--) {
