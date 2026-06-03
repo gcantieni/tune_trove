@@ -1,9 +1,24 @@
-.PHONY: format analyze test coverage lcov bump publish-ios publish-macos publish-android deps run-macos run-ios build-macos build-ios build-android icon
+.PHONY: format analyze test coverage lcov bump publish-ios publish-macos publish-android deps run-macos run-ios build-macos build-ios build-android icon reregister-macos
 
 clean:
 	rm -rf ~/Library/Developer/Xcode/DerivedData/Runner-*
 	rm -rf build/macos
 	rm -rf build/ios
+
+# Force macOS to use the freshly built Share Extension. macOS caches share
+# extensions via Launch Services / PlugInKit, so after rebuilding, a stale copy
+# (e.g. an old Release build) can shadow the new one in the share menu. This
+# re-registers the app, (re)adds its appex, and bounces the share daemons.
+# Defaults to the Debug build; pass RELEASE=1 for the Release build.
+LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+MACOS_APP  := build/macos/Build/Products/$(if $(RELEASE),Release,Debug)/tune_trove.app
+
+reregister-macos:
+	@echo "→ Re-registering macOS Share Extension ($(MACOS_APP))"
+	$(LSREGISTER) -f "$(MACOS_APP)"
+	pluginkit -a "$(MACOS_APP)/Contents/PlugIns/ShareExtension.appex"
+	-killall sharingd pkd
+	@echo "✓ Re-registered. Relaunch the app (open \"$(MACOS_APP)\") to activate."
 
 format:
 	dart format lib/
