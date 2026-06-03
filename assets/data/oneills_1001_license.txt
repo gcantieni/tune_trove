@@ -1,6 +1,8 @@
 GNU GPL.
 Courtesy of John Chambers.
 
+https://trillian.mit.edu/~jc/music/book/
+
 The original O'Neill's Music of Ireland has been out of copyright for many years now. This collection of ABC transcriptions is copyrighted 1997-2000 by the contributors to the O'Neill's Project. You are welcome to download anything here and use it, as long as you give credit to the transcribers, and take credit for any corrections or enhancements that you might make.
 
 This information is free; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.

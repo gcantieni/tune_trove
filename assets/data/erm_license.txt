@@ -1,2 +1,6 @@
 GNU GPL.
 Courtesy of John Chambers.
+
+This is three combined volumes, published in Edinburgh ca. 1818 The tunes are from all over the British Isles, plus a few from other countries. There are about 360 pages of music, with about 2 tunes per (small) page.
+
+The first two volumes of this collection, of about 430 tunes, was found online at the National Library of Scotland. The single-tune files here have names of the form VPPPN_Title.abc, where V is the volume (1,2), PPP is the 3-digit page number, and N is the tune number on the page (usually 1, sometimes 2, rarely 3). VPPPN is also used for the tune's index (X:) number.

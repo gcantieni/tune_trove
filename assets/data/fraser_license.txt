@@ -1,2 +1,8 @@
 GNU GPL.
 Courtesy of John Chambers.
+
+https://trillian.mit.edu/~jc/music/book/
+
+Yet another important Scottish collection, by Captain Simon Fraser, 1816.
+
+There is a different transcription of the Fraser Collection, by a musician who wishes to remain anonymous, so I removed the attributions. It is in the T sub-directory, one tune per file, with the tune title as the file name. The set of tunes (and titles) differs somewhat from this transcription, presumably because the original transcriber had a different edition of the collection. This is not an unusual result of separate transcriptions, partly because such differences are so seldom documented in the original publications, and transcribers see only their one printed version.

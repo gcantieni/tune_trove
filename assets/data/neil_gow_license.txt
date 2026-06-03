@@ -1,2 +1,4 @@
 GNU GPL.
 Courtesy of John Chambers.
+
+https://trillian.mit.edu/~jc/music/book/
