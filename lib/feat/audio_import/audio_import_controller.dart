@@ -76,7 +76,16 @@ class AudioImportController with WidgetsBindingObserver {
     }
     final String url;
     try {
-      final destPath = await copyIntoAudioStore(item.path!, item.name);
+      // Name the stored file after the display name but keep the source's audio
+      // extension: the share-sheet form supplies a title with no extension
+      // (e.g. "Kohler's Hornpipe"), and a file without `.m4a` won't play.
+      final srcExt = p.extension(item.path!);
+      final storeName =
+          srcExt.isEmpty ||
+              p.extension(item.name).toLowerCase() == srcExt.toLowerCase()
+          ? item.name
+          : '${item.name}$srcExt';
+      final destPath = await copyIntoAudioStore(item.path!, storeName);
       url = 'file://$destPath';
     } catch (_) {
       _showError('Could not import the shared recording.');

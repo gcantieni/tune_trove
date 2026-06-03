@@ -138,7 +138,9 @@ final class AudioImportBridge: NSObject {
     }
 
     /// Metadata a Share Extension form attached to a shared audio file.
-    private struct ImportMeta {
+    /// Internal (not `private`): it appears in the signature of the internal
+    /// `handleIncomingURL(_:meta:)`, so Swift requires matching access.
+    struct ImportMeta {
         let name: String?
         let performers: String?
     }
