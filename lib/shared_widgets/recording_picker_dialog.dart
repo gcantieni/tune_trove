@@ -1,8 +1,12 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
+import 'package:tune_trove/feat/recording_list/apple_music_search_delegate.dart';
+import 'package:tune_trove/feat/recording_list/recording_file_store.dart';
 import 'package:tune_trove/feat/recording_list/recording_form_widget.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/recordings_provider.dart';
@@ -36,7 +40,9 @@ class _RecordingPickerDialogState extends ConsumerState<RecordingPickerDialog> {
   Timer? _debounceTimer;
 
   bool _inCreateMode = false;
+  bool _pickingFile = false;
   String? _createUrl;
+  String? _pendingPerformers;
 
   @override
   void initState() {
@@ -88,7 +94,55 @@ class _RecordingPickerDialogState extends ConsumerState<RecordingPickerDialog> {
       _inCreateMode = false;
       _createUrl = null;
       _pendingName = null;
+      _pendingPerformers = null;
     });
+  }
+
+  Future<void> _searchAppleMusic() async {
+    final result = await showSearch(
+      context: context,
+      delegate: AppleMusicSearchDelegate(ref),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _inCreateMode = true;
+      _createUrl = result.toRecordingUrl();
+      _pendingName = '${result.title} – ${result.artistName}';
+      _pendingPerformers = result.artistName;
+    });
+  }
+
+  Future<void> _pickLocalFile() async {
+    setState(() => _pickingFile = true);
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.audio);
+      if (result == null || result.files.isEmpty) return;
+
+      final picked = result.files.first;
+      final sourcePath = picked.path;
+      if (sourcePath == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'File is not available locally — download it first.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      final destPath = await copyIntoAudioStore(sourcePath, picked.name);
+      if (!mounted) return;
+      setState(() {
+        _inCreateMode = true;
+        _createUrl = 'file://$destPath';
+        _pendingName = p.basenameWithoutExtension(destPath);
+      });
+    } finally {
+      if (mounted) setState(() => _pickingFile = false);
+    }
   }
 
   @override
@@ -124,6 +178,32 @@ class _RecordingPickerDialogState extends ConsumerState<RecordingPickerDialog> {
             labelText: 'Recording name or URL',
             hintText: 'Search, type a name, or paste a URL…',
           ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.library_music, size: 18),
+                label: const Text('Search Apple Music'),
+                onPressed: _searchAppleMusic,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: _pickingFile
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.audio_file_outlined, size: 18),
+                label: const Text('Local File'),
+                onPressed: _pickingFile ? null : _pickLocalFile,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Flexible(
@@ -195,6 +275,7 @@ class _RecordingPickerDialogState extends ConsumerState<RecordingPickerDialog> {
             key: ValueKey(_createUrl ?? _pendingName ?? ''),
             initialUrl: _createUrl,
             initialName: _pendingName,
+            initialPerformers: _pendingPerformers,
             submitLabel: 'Create and link',
             onCancel: _cancelCreate,
             onSave: (companion) async {

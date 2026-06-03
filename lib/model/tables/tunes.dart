@@ -30,7 +30,9 @@ class Tunes extends Table {
   TextColumn get abcSvg => text().nullable()();
   IntColumn get tsId =>
       integer().nullable()(); // ID of the tune on thesession.com
-  TextColumn get from => text().nullable()(); // Who or where a tune is from
+  TextColumn get from => text().nullable()(); // Who I learned the tune from
+  TextColumn get composer =>
+      text().nullable()(); // Who wrote the tune (royalty attribution)
   TextColumn get status =>
       textEnum<TuneStatus>().nullable()(); // How well is a tune known
   TextColumn get key => text().nullable()();

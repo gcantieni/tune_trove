@@ -70,6 +70,15 @@ When adding or changing packages in `pubspec.yaml`, run:
 make deps
 ```
 
+### Changelog
+
+Keep [CHANGELOG.md](/CHANGELOG.md) up to date. Whenever you bump the `version`
+field in `pubspec.yaml`, add a corresponding entry at the top of the changelog
+for the new version, dated and grouped under `### Added` / `### Changed` /
+`### Removed` headings as appropriate. Highlight new user-facing features
+explicitly; mention bug fixes and security fixes only broadly (e.g. "bug fixes"
+or "security fixes") without detailing the specifics.
+
 ## Context Files
 
 ### Playbooks — step-by-step guides for common development actions
@@ -85,7 +94,7 @@ make deps
 - [.context/standards/drift.md](/.context/standards/drift.md)
 - [.context/standards/flutter.md](/.context/standards/flutter.md)
 - [.context/standards/go-router.md](/.context/standards/go-router.md)
-- [.context/standards/migrations.md](/.context/standards/migrations.md) — Drift schema migrations: hand-written steps must be idempotent (interrupted-migration crashes), required test updates
+- [.context/standards/migrations.md](/.context/standards/migrations.md) — Drift schema migrations: hand-written steps must be idempotent (interrupted-migration crashes), required test updates. Promoting a synced column to CloudKit Production: the migration is idempotent and applies the column to the CloudKit schema; when you have tested and are satisfied, make sure to promote the Development schema to Production on the iCloud.developer.apple.com portal.
 - [.context/standards/riverpod.md](/.context/standards/riverpod.md)
 
 ### Roadmap — planned features not yet implemented

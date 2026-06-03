@@ -69,6 +69,9 @@ class RecordingFormWidget extends ConsumerStatefulWidget {
   /// Pre-fills the Name field on open.
   final String? initialName;
 
+  /// Pre-fills the Performers field on open.
+  final String? initialPerformers;
+
   /// Called after a successful default save (when [onSave] is null).
   final VoidCallback? onSubmitted;
 
@@ -79,6 +82,7 @@ class RecordingFormWidget extends ConsumerStatefulWidget {
     this.submitLabel = 'Save recording',
     this.initialUrl,
     this.initialName,
+    this.initialPerformers,
     this.onSubmitted,
   });
 
@@ -106,6 +110,9 @@ class _RecordingFormWidgetState extends ConsumerState<RecordingFormWidget> {
     if (widget.initialUrl != null) {
       _urlController.text = widget.initialUrl!;
       _maybeFetchTitle(widget.initialUrl!);
+    }
+    if (widget.initialPerformers != null) {
+      _performersController.text = widget.initialPerformers!;
     }
     _urlController.addListener(_onUrlChanged);
   }
