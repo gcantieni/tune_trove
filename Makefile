@@ -17,8 +17,17 @@ reregister-macos:
 	@echo "→ Re-registering macOS Share Extension ($(MACOS_APP))"
 	$(LSREGISTER) -f "$(MACOS_APP)"
 	pluginkit -a "$(MACOS_APP)/Contents/PlugIns/ShareExtension.appex"
+	@# Drop any *other* registration of the same extension that would shadow the
+	@# dev build in the share menu — e.g. the shipped iOS-on-Mac App Store build
+	@# at /Applications/Tune Trove.app/Wrapper/Runner.app, or a stale Release.
+	@target="$$(cd "$(MACOS_APP)/Contents/PlugIns/ShareExtension.appex" 2>/dev/null && pwd)"; \
+	pluginkit -mAv 2>/dev/null | awk -F'\t' '/com\.gcantieni\.tuneTrove\.ShareExtension/{print $$NF}' | while read -r p; do \
+	  if [ -n "$$target" ] && [ "$$p" != "$$target" ]; then \
+	    echo "  unregister shadow: $$p"; pluginkit -r "$$p" 2>/dev/null || true; \
+	  fi; \
+	done
 	-killall sharingd pkd
-	@echo "✓ Re-registered. Relaunch the app (open \"$(MACOS_APP)\") to activate."
+	@echo "✓ Re-registered. Relaunch the app (open \"$(MACOS_APP)\"), and quit/reopen the source app (e.g. Voice Memos) so it refreshes its share menu."
 
 format:
 	dart format lib/
