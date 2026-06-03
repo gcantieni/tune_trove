@@ -262,6 +262,13 @@ int _genreRank(String genre) {
 /// the curated, genre-specific collections surface first.
 const _alwaysLastSourceId = 'thesession';
 
+/// Sort key for a source name that ignores a leading "The " so, e.g., "The
+/// Athole Collection" alphabetizes under A rather than T.
+String _nameSortKey(String name) {
+  final match = RegExp(r'^the\s+', caseSensitive: false).firstMatch(name);
+  return (match == null ? name : name.substring(match.end)).trim();
+}
+
 /// Orders content sources for display: by market-priority genre
 /// (Irish → Scottish → English), then remaining genres alphabetically, then
 /// ungenred sources, breaking ties by source name. thesession.org is always
@@ -275,7 +282,7 @@ int compareSourcesForDisplay(ContentSourceMeta a, ContentSourceMeta b) {
   if (rankDelta != 0) return rankDelta;
   final genreDelta = a.genre.compareTo(b.genre);
   if (genreDelta != 0) return genreDelta;
-  return a.name.compareTo(b.name);
+  return _nameSortKey(a.name).compareTo(_nameSortKey(b.name));
 }
 
 bool isSourceNameVisible(String? sourceName, Set<String> activeSourceNames) {

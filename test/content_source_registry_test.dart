@@ -85,6 +85,26 @@ void main() {
       );
     });
 
+    test('ignores a leading "The" when alphabetizing within a genre', () {
+      // "The Apple…" sorts under A (so before "Banana"), and "The Zebra…"
+      // under Z (so last) — proving the leading "The" is dropped.
+      expect(
+        ordered([
+          meta('The Zebra Collection', 'Scottish'),
+          meta('Banana Reels', 'Scottish'),
+          meta('The Apple Collection', 'Scottish'),
+        ]),
+        ['The Apple Collection', 'Banana Reels', 'The Zebra Collection'],
+      );
+    });
+
+    test('on the real registry, The Athole Collection leads the Scottish '
+        'section', () {
+      final scottish = [...allContentSources.where((m) => m.genre == 'Scottish')]
+        ..sort(compareSourcesForDisplay);
+      expect(scottish.first.id, 'athole');
+    });
+
     test('on the real registry, all Irish sources precede all Scottish', () {
       final sorted = [...allContentSources]..sort(compareSourcesForDisplay);
       final lastIrish = sorted.lastIndexWhere((m) => m.genre == 'Irish');
