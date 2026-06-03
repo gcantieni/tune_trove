@@ -102,12 +102,6 @@ class ShareViewController: NSViewController {
 
         let attachments = (extensionContext?.inputItems as? [NSExtensionItem] ?? [])
             .flatMap { $0.attachments ?? [] }
-        // Temporary launch diagnostic — confirms the new extension is actually
-        // invoked and shows what each attachment vends. Strip once verified.
-        log.notice("""
-            share invoked: \
-            \(attachments.map { $0.registeredTypeIdentifiers.joined(separator: "|") }.joined(separator: " ; "), privacy: .public)
-            """)
         // A Voice Memo also vends a `public.url` alias, so audio wins when both
         // are present; only treat a share as a URL when there's no audio.
         if let audio = attachments.first(where: {
