@@ -237,7 +237,7 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
             TextButton.icon(
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Add tune'),
-              onPressed: () => _showAddTuneDialog(r.id),
+              onPressed: () => _showAddTuneDialog(r.id, r.name),
             ),
           ],
         ),
@@ -247,12 +247,13 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
     );
   }
 
-  void _showAddTuneDialog(int recordingId) {
+  void _showAddTuneDialog(int recordingId, String recordingName) {
     final dao = ref.read(databaseProvider).tuneRecordingDao;
     showDialog<void>(
       context: context,
       builder: (_) => TunePickerDialog(
         title: 'Add tune to recording',
+        initialQuery: recordingName,
         onLibraryTune: (tune) async {
           if (!mounted) return;
           final details =

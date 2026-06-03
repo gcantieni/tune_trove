@@ -47,6 +47,7 @@ void main() {
     WidgetTester tester, {
     Map<String, List<RemoteTune>> remoteResults = const {},
     Set<String> activeSourceNames = const {},
+    String? initialQuery,
   }) async {
     final library = <Tune>[];
     final remote = <TunesCompanion>[];
@@ -66,6 +67,7 @@ void main() {
                   context: context,
                   builder: (_) => TunePickerDialog(
                     title: 'Pick a tune',
+                    initialQuery: initialQuery,
                     onLibraryTune: library.add,
                     onRemoteTune: remote.add,
                     onCreateNew: created.add,
@@ -93,6 +95,18 @@ void main() {
   testWidgets('empty query shows the start-typing prompt', (tester) async {
     await pumpDialog(tester);
     expect(find.text('Start typing to find a tune.'), findsOneWidget);
+  });
+
+  testWidgets('initialQuery pre-fills the search and shows matches at once', (
+    tester,
+  ) async {
+    await seedTune("Cooley's Reel");
+    // No debounce advance: results should already be visible on first frame.
+    await pumpDialog(tester, initialQuery: "Cooley's Reel");
+
+    expect(find.widgetWithText(TextField, "Cooley's Reel"), findsOneWidget);
+    expect(find.text('In your library'), findsOneWidget);
+    expect(find.text("Cooley's Reel"), findsWidgets);
   });
 
   testWidgets('matching local tunes appear under the library section', (

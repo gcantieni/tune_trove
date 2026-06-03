@@ -19,6 +19,11 @@ const _debounceDelay = Duration(milliseconds: 350);
 /// itself before invoking the chosen callback.
 class TunePickerDialog extends ConsumerStatefulWidget {
   final String title;
+
+  /// Optional text to pre-fill the search box with (e.g. the title of the
+  /// recording a tune is being added to). Results are shown immediately.
+  final String? initialQuery;
+
   final void Function(Tune tune) onLibraryTune;
   final void Function(TunesCompanion tune) onRemoteTune;
   final void Function(String name) onCreateNew;
@@ -28,6 +33,7 @@ class TunePickerDialog extends ConsumerStatefulWidget {
     required this.onLibraryTune,
     required this.onRemoteTune,
     required this.onCreateNew,
+    this.initialQuery,
     super.key,
   });
 
@@ -36,7 +42,7 @@ class TunePickerDialog extends ConsumerStatefulWidget {
 }
 
 class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
   String _debouncedQuery = '';
   Timer? _debounceTimer;
   RemoteTune? _resolvingTune;
@@ -44,6 +50,10 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   @override
   void initState() {
     super.initState();
+    _controller = TextEditingController(text: widget.initialQuery ?? '');
+    // Seed the query so a pre-filled search shows matches without waiting for
+    // the debounce.
+    _debouncedQuery = normalizeForSearch(_controller.text.trim());
     _controller.addListener(_onTextChanged);
   }
 
