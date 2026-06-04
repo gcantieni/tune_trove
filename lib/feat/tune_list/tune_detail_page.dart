@@ -34,49 +34,20 @@ class TuneDetailPage extends ConsumerStatefulWidget {
 }
 
 class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
-  bool _editing = false;
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  String? _key;
-  String? _genre;
-  final _composerController = TextEditingController();
-  final _fromController = TextEditingController();
+  // Inline ABC editing state. The pencil below the ABC rendering toggles
+  // [_editingAbc]; while editing, the rendering above the field previews the
+  // controller's live text ([_liveSvg], re-rendered on a short debounce).
+  bool _editingAbc = false;
   final _abcController = TextEditingController();
-  TuneType? _type;
-  TuneStatus? _status;
+  String? _liveSvg;
+  Timer? _abcDebounce;
+  int _renderToken = 0;
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _composerController.dispose();
-    _fromController.dispose();
+    _abcDebounce?.cancel();
     _abcController.dispose();
     super.dispose();
-  }
-
-  // Canonical genres, plus the current value if it predates the list (e.g.
-  // synced from another device or imported with a legacy free-text genre) so
-  // the dropdown can render it without crashing and editing won't drop it.
-  List<String> get _genreOptions {
-    final current = _genre;
-    if (current == null || kTuneGenres.contains(current)) return kTuneGenres;
-    return [...kTuneGenres, current];
-  }
-
-  void _enterEdit(Tune tune) {
-    _nameController.text = tune.name;
-    _key = tune.key != null ? normalizePickerKey(tune.key!) : null;
-    _genre = (tune.genre?.isEmpty ?? true) ? null : tune.genre;
-    _composerController.text = tune.composer ?? '';
-    _fromController.text = tune.from ?? '';
-    _abcController.text = tune.abc ?? '';
-    _type = tune.type;
-    _status = tune.status;
-    setState(() => _editing = true);
-  }
-
-  void _cancelEdit() {
-    setState(() => _editing = false);
   }
 
   Future<void> _confirmDelete(Tune tune) async {
@@ -104,46 +75,6 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     context.pop();
   }
 
-  Future<void> _save(Tune tune) async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final keyText = _key ?? '';
-    final composerText = _composerController.text.trim();
-    final fromText = _fromController.text.trim();
-    final abcText = _abcController.text.trim();
-    final newAbc = abcText.isEmpty ? null : abcText;
-    final abcChanged = newAbc != tune.abc;
-
-    final dao = ref.read(databaseProvider).tuneDao;
-    await dao.updateTune(
-      TunesCompanion(
-        id: drift.Value(tune.id),
-        name: drift.Value(_nameController.text.trim()),
-        key: drift.Value(keyText.isEmpty ? null : keyText),
-        genre: drift.Value(_genre),
-        composer: drift.Value(composerText.isEmpty ? null : composerText),
-        from: drift.Value(fromText.isEmpty ? null : fromText),
-        abc: drift.Value(newAbc),
-        // Invalidate the cached SVG when ABC changes; the renderer
-        // call below will fill it in (or leave it null on failure).
-        abcSvg: abcChanged
-            ? const drift.Value<String?>(null)
-            : const drift.Value.absent(),
-        type: drift.Value(_type),
-        status: drift.Value(_status),
-        modifiedAt: drift.Value(DateTime.now()),
-      ),
-    );
-
-    if (!mounted) return;
-    setState(() => _editing = false);
-
-    // Fire-and-forget render. UI shows plaintext fallback meanwhile.
-    if (abcChanged && newAbc != null) {
-      unawaited(_renderAndCacheSvg(tune.id, newAbc));
-    }
-  }
-
   Future<void> _renderAndCacheSvg(int tuneId, String abc) async {
     final renderer = ref.read(abcRendererProvider);
     final svg = await renderer.render(abc);
@@ -154,6 +85,60 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         .updateTune(
           TunesCompanion(id: drift.Value(tuneId), abcSvg: drift.Value(svg)),
         );
+  }
+
+  void _enterAbcEdit(Tune tune) {
+    _abcController.text = tune.abc ?? '';
+    setState(() {
+      _editingAbc = true;
+      _liveSvg = tune.abcSvg;
+    });
+  }
+
+  void _cancelAbcEdit() {
+    _abcDebounce?.cancel();
+    setState(() => _editingAbc = false);
+  }
+
+  /// Re-render the live preview on a short debounce as the user types, so the
+  /// notation above the field tracks the ABC text. The plaintext fallback
+  /// updates immediately via setState; the SVG lags by [_renderToken]-guarded
+  /// renders to drop results from superseded keystrokes.
+  void _onAbcChanged(String value) {
+    setState(() {}); // reflect the new text in the preview/play button
+    _abcDebounce?.cancel();
+    final token = ++_renderToken;
+    _abcDebounce = Timer(const Duration(milliseconds: 400), () async {
+      final text = value.trim();
+      if (text.isEmpty) {
+        if (mounted && token == _renderToken) setState(() => _liveSvg = null);
+        return;
+      }
+      final svg = await ref.read(abcRendererProvider).render(text);
+      if (!mounted || token != _renderToken) return;
+      setState(() => _liveSvg = svg);
+    });
+  }
+
+  Future<void> _saveAbc(Tune tune) async {
+    _abcDebounce?.cancel();
+    final text = _abcController.text.trim();
+    final newAbc = text.isEmpty ? null : text;
+    // Render fresh so the cached SVG matches exactly what we persist, rather
+    // than trusting a possibly-stale debounced preview.
+    final svg = newAbc == null
+        ? null
+        : await ref.read(abcRendererProvider).render(newAbc);
+    await _writeField(
+      tune.id,
+      TunesCompanion(
+        id: drift.Value(tune.id),
+        abc: drift.Value(newAbc),
+        abcSvg: drift.Value(svg),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _editingAbc = false);
   }
 
   @override
@@ -169,30 +154,11 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         actions: tuneAsync.maybeWhen(
           data: (tune) {
             if (tune == null) return const <Widget>[];
-            if (_editing) {
-              return [
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Cancel',
-                  onPressed: _cancelEdit,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.check),
-                  tooltip: 'Save',
-                  onPressed: () => _save(tune),
-                ),
-              ];
-            }
             return [
               IconButton(
                 icon: const Icon(Icons.delete_outline),
                 tooltip: 'Delete tune',
                 onPressed: () => _confirmDelete(tune),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit),
-                tooltip: 'Edit',
-                onPressed: () => _enterEdit(tune),
               ),
             ];
           },
@@ -206,7 +172,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
           if (tune == null) {
             return const Center(child: Text('Tune not found'));
           }
-          return _editing ? _buildEditForm(tune) : _buildReadView(tune);
+          return _buildReadView(tune);
         },
       ),
     );
@@ -229,7 +195,12 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         16 + MediaQuery.of(context).size.width * 0.25,
       ),
       children: [
-        _readRow('Name', tune.name),
+        _quickEditRow(
+          label: 'Name',
+          value: tune.name,
+          emptyHint: 'Set name…',
+          onTap: () => _quickEditName(tune),
+        ),
         _quickEditRow(
           label: 'Composer',
           value: tune.composer,
@@ -271,9 +242,51 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         const SizedBox(height: 16),
         const Text('ABC', style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
-        AbcView(abc: tune.abc, svg: tune.abcSvg),
+        AbcView(
+          abc: _editingAbc ? _abcController.text : tune.abc,
+          svg: _editingAbc ? _liveSvg : tune.abcSvg,
+        ),
+        const SizedBox(height: 4),
+        if (!_editingAbc)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: 'Edit ABC',
+              onPressed: () => _enterAbcEdit(tune),
+            ),
+          )
+        else ...[
+          TextField(
+            controller: _abcController,
+            autofocus: true,
+            minLines: 4,
+            maxLines: 12,
+            decoration: const InputDecoration(
+              labelText: 'ABC',
+              alignLabelWithHint: true,
+            ),
+            style: const TextStyle(fontFamily: 'monospace'),
+            onChanged: _onAbcChanged,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: _cancelAbcEdit,
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () => _saveAbc(tune),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
-        AbcPlayButton(abc: tune.abc),
+        AbcPlayButton(abc: _editingAbc ? _abcController.text : tune.abc),
         const SizedBox(height: 24),
         const Divider(),
         const SizedBox(height: 8),
@@ -338,9 +351,6 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
       ),
     );
   }
-
-  Widget _readRow(String label, String value) =>
-      _readRowChild(label, Text(value));
 
   /// A read row whose value is tappable to quick-edit. Shows [value], or
   /// [emptyHint] (dimmed) when there's nothing set yet.
@@ -459,6 +469,8 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         content: TextField(
           controller: controller,
           autofocus: true,
+          // These fields hold names of people or tunes, so capitalize words.
+          textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(labelText: label),
           onSubmitted: (v) => Navigator.of(dialogContext).pop(v),
         ),
@@ -476,6 +488,23 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     );
     controller.dispose();
     return result;
+  }
+
+  Future<void> _quickEditName(Tune tune) async {
+    final result = await _promptText(
+      title: 'Set name',
+      label: 'Name',
+      initial: tune.name,
+    );
+    // null = dismissed/cancelled. Name is required, so ignore an empty value
+    // rather than clearing it.
+    if (result == null || !mounted) return;
+    final trimmed = result.trim();
+    if (trimmed.isEmpty) return;
+    await _writeField(
+      tune.id,
+      TunesCompanion(id: drift.Value(tune.id), name: drift.Value(trimmed)),
+    );
   }
 
   Future<void> _quickEditComposer(Tune tune) async {
@@ -533,107 +562,6 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     );
   }
 
-  Widget _buildEditForm(Tune tune) {
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          16 + MediaQuery.of(context).size.width * 0.25,
-        ),
-        children: [
-          TextFormField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Name'),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Required' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _composerController,
-            decoration: const InputDecoration(labelText: 'Composer'),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: () async {
-              final result = await showKeyPickerSheet(
-                context,
-                currentKey: _key,
-              );
-              if (result != null) {
-                setState(() => _key = result.isEmpty ? null : result);
-              }
-            },
-            child: InputDecorator(
-              decoration: const InputDecoration(labelText: 'Key'),
-              child: Text(
-                _key != null && _key!.isNotEmpty ? _key! : '—',
-                style: TextStyle(
-                  color: _key != null && _key!.isNotEmpty
-                      ? null
-                      : Theme.of(context).colorScheme.outline,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<TuneType?>(
-            initialValue: _type,
-            decoration: const InputDecoration(labelText: 'Type'),
-            items: [
-              const DropdownMenuItem<TuneType?>(child: Text('—')),
-              for (final t in TuneType.values)
-                DropdownMenuItem<TuneType?>(value: t, child: Text(t.name)),
-            ],
-            onChanged: (v) => setState(() => _type = v),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String?>(
-            initialValue: _genre,
-            decoration: const InputDecoration(labelText: 'Genre'),
-            items: [
-              const DropdownMenuItem<String?>(child: Text('—')),
-              for (final g in _genreOptions)
-                DropdownMenuItem<String?>(value: g, child: Text(g)),
-            ],
-            onChanged: (v) => setState(() => _genre = v),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<TuneStatus?>(
-            initialValue: _status,
-            decoration: const InputDecoration(labelText: 'Status'),
-            items: [
-              const DropdownMenuItem<TuneStatus?>(child: Text('—')),
-              for (final s in TuneStatus.values)
-                DropdownMenuItem<TuneStatus?>(
-                  value: s,
-                  child: Text(tuneStatusToString(s)),
-                ),
-            ],
-            onChanged: (v) => setState(() => _status = v),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _fromController,
-            decoration: const InputDecoration(labelText: 'From'),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _abcController,
-            decoration: const InputDecoration(
-              labelText: 'ABC',
-              alignLabelWithHint: true,
-            ),
-            minLines: 4,
-            maxLines: 12,
-            style: const TextStyle(fontFamily: 'monospace'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _LinkedSets extends ConsumerWidget {
