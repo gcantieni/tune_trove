@@ -6,6 +6,7 @@ import 'package:tune_trove/feat/audio_player/audio_player_backend.dart';
 import 'package:tune_trove/feat/audio_player/audio_player_notifier.dart';
 import 'package:tune_trove/feat/audio_player/audio_player_state.dart';
 import 'package:tune_trove/feat/audio_player/local_file_backend.dart';
+import 'package:tune_trove/feat/music_kit/music_kit_backend.dart';
 
 /// Records every transport call so we can assert delegation and loop behaviour.
 class FakeBackend implements AudioPlayerBackend {
@@ -37,6 +38,32 @@ class FakeBackend implements AudioPlayerBackend {
 
   void emit(AudioPlayerState s) => _c.add(s);
 
+  @override
+  void dispose() => _c.close();
+}
+
+/// A stand-in for the Apple Music backend. Implementing [MusicKitBackend] is
+/// enough here because only its public (AudioPlayerBackend) surface is used.
+class FakeMusicBackend implements MusicKitBackend {
+  final _c = StreamController<AudioPlayerState>.broadcast();
+  final plays = <String>[];
+  int stops = 0;
+
+  @override
+  Stream<AudioPlayerState> get stateStream => _c.stream;
+  @override
+  Future<void> play(String trackUri, {double? startTime}) async =>
+      plays.add(trackUri);
+  @override
+  Future<void> pause() async {}
+  @override
+  Future<void> resume() async {}
+  @override
+  Future<void> stop() async => stops++;
+  @override
+  Future<void> seek(double positionSeconds) async {}
+  @override
+  Future<void> setPlaybackRate(double rate) async {}
   @override
   void dispose() => _c.close();
 }
@@ -232,4 +259,90 @@ void main() {
     });
   });
 
+  group('per-recording memory', () {
+    // The real backend echoes the active track URI in its state stream; the
+    // fake doesn't, so simulate that ack so state.trackUri tracks switches.
+    Future<void> ack(String uri) async {
+      local.emit(
+        AudioPlayerState(
+          trackUri: uri,
+          status: AudioPlaybackStatus.playing,
+          duration: 120,
+        ),
+      );
+      await pumpEventQueue();
+    }
+
+    Future<void> playAndAck(AudioPlayerNotifier n, String uri) async {
+      await n.play(uri);
+      await ack(uri);
+    }
+
+    test('each recording keeps its own loop across navigation', () async {
+      final n = notifier();
+
+      // Recording A gets a 10–20s loop.
+      await n.playWithBounds('a.mp3', start: 10, end: 20);
+      await ack('a.mp3');
+
+      // Switch to B: starts fresh, no loop.
+      await playAndAck(n, 'b.mp3');
+      expect(state().isLooping, isFalse);
+
+      // Navigate back to A: its loop is restored.
+      await playAndAck(n, 'a.mp3');
+      expect(state().isLooping, isTrue);
+      expect(state().loopStart, 10);
+      expect(state().loopEnd, 20);
+    });
+
+    test('speed carries to a new recording but each remembers its own',
+        () async {
+      final n = notifier();
+      await playAndAck(n, 'a.mp3');
+      n.setPlaybackRate(0.5);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+
+      // A new recording inherits the current speed (sticky).
+      await playAndAck(n, 'b.mp3');
+      expect(state().playbackRate, 0.5);
+      n.setPlaybackRate(0.75);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+
+      // Back to A restores 0.5; forward to B restores 0.75.
+      await playAndAck(n, 'a.mp3');
+      expect(state().playbackRate, 0.5);
+      await playAndAck(n, 'b.mp3');
+      expect(state().playbackRate, 0.75);
+    });
+  });
+
+  group('cross-backend playback', () {
+    test('switching backends stops the previous one so they do not overlap',
+        () async {
+      final music = FakeMusicBackend();
+      final c = ProviderContainer(
+        overrides: [
+          localFileBackendProvider.overrideWithValue(local),
+          musicKitBackendProvider.overrideWithValue(music),
+        ],
+      );
+      addTearDown(c.dispose);
+      final n = c.read(audioPlayerProvider.notifier);
+
+      // Start an Apple Music track...
+      await n.play('music-catalog:123');
+      expect(music.plays, isNotEmpty);
+      expect(music.stops, 0);
+
+      // ...then play a local file: the music backend must be stopped.
+      await n.play('app-data:a.mp3');
+      expect(music.stops, 1);
+      expect(local.plays, isNotEmpty);
+
+      // Back to Apple Music: the local backend is stopped in turn.
+      await n.play('music-catalog:123');
+      expect(local.stops, 1);
+    });
+  });
 }

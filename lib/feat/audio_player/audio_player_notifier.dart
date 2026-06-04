@@ -13,6 +13,11 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   bool _seekPending = false;
   bool _playPending = false;
 
+  /// Per-recording loop/speed, remembered while the app runs so each recording
+  /// keeps its own settings as the user navigates between them. In-memory only
+  /// — intentionally not persisted across launches.
+  final Map<String, _TrackConfig> _configByTrack = {};
+
   @override
   AudioPlayerState build() {
     ref.onDispose(() {
@@ -31,6 +36,13 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
   void _subscribeTo(AudioPlayerBackend backend) {
     _backendSub?.cancel();
+    // Switching backends (e.g. local file <-> Apple Music): stop the previous
+    // one so the two don't play over each other. Same-backend switches replace
+    // their own source, so no stop is needed there.
+    final previous = _activeBackend;
+    if (previous != null && !identical(previous, backend)) {
+      previous.stop();
+    }
     _activeBackend = backend;
     _backendSub = backend.stateStream.listen((backendState) {
       // Merge backend-reported fields with notifier-owned loop/rate config.
@@ -86,17 +98,33 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   Future<void> _applyPlaybackRate(AudioPlayerBackend backend) =>
       backend.setPlaybackRate(state.playbackRate);
 
-  /// Clears any loop carried over from a previously-played track so its bounds
-  /// don't bleed onto a different recording.
-  void _clearLoopIfTrackChanged(String trackUri) {
-    if (state.trackUri != trackUri) {
-      state = state.copyWith(isLooping: false, loopStart: 0.0, loopEnd: 0.0);
+  /// On switching to a different track, stash the outgoing recording's
+  /// loop/speed and restore the incoming recording's. A not-yet-seen recording
+  /// starts with no loop (so bounds never bleed across recordings) but inherits
+  /// the current speed (so the chosen speed still carries over).
+  void _switchTrackConfig(String newTrackUri) {
+    final current = state.trackUri;
+    if (current == newTrackUri) return;
+    if (current != null && current.isNotEmpty) {
+      _configByTrack[current] = _TrackConfig(
+        isLooping: state.isLooping,
+        loopStart: state.loopStart,
+        loopEnd: state.loopEnd,
+        playbackRate: state.playbackRate,
+      );
     }
+    final cfg = _configByTrack[newTrackUri];
+    state = state.copyWith(
+      isLooping: cfg?.isLooping ?? false,
+      loopStart: cfg?.loopStart ?? 0.0,
+      loopEnd: cfg?.loopEnd ?? 0.0,
+      playbackRate: cfg?.playbackRate ?? state.playbackRate,
+    );
   }
 
   Future<void> play(String trackUri) async {
     final backend = _backendFor(trackUri);
-    _clearLoopIfTrackChanged(trackUri);
+    _switchTrackConfig(trackUri);
     _subscribeTo(backend);
     await backend.play(
       trackUri,
@@ -111,6 +139,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     required double? end,
   }) async {
     final backend = _backendFor(trackUri);
+    _switchTrackConfig(trackUri);
     _subscribeTo(backend);
     if (start != null && end != null) {
       state = AudioPlayerState(
@@ -125,11 +154,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         loopStart: start,
         loopEnd: end,
       );
-      await backend.play(trackUri, startTime: start);
-    } else {
-      _clearLoopIfTrackChanged(trackUri);
-      await backend.play(trackUri, startTime: start);
     }
+    await backend.play(trackUri, startTime: start);
     await _applyPlaybackRate(backend);
   }
 
@@ -178,6 +204,22 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   void setLoopBounds(double start, double end) {
     state = state.copyWith(loopStart: start, loopEnd: end);
   }
+}
+
+/// Snapshot of a recording's loop and speed, cached per track URI so it can be
+/// restored when the user navigates back to that recording.
+class _TrackConfig {
+  const _TrackConfig({
+    required this.isLooping,
+    required this.loopStart,
+    required this.loopEnd,
+    required this.playbackRate,
+  });
+
+  final bool isLooping;
+  final double loopStart;
+  final double loopEnd;
+  final double playbackRate;
 }
 
 final audioPlayerProvider =
