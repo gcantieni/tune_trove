@@ -293,6 +293,24 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
 
 enum _Thumb { start, end }
 
+/// New `(loopStart, loopEnd)` when a loop thumb is snapped to [position]
+/// (e.g. by double-tapping it to the current playback position). Clamps the
+/// snapped edge so the two thumbs can never cross.
+@visibleForTesting
+(double, double) loopBoundsAfterSnap({
+  required bool isStart,
+  required double position,
+  required double loopStart,
+  required double loopEnd,
+  required double duration,
+}) {
+  final pos = position.clamp(0.0, duration);
+  if (isStart) {
+    return (pos.clamp(0.0, loopEnd), loopEnd);
+  }
+  return (loopStart, pos.clamp(loopStart, duration));
+}
+
 class _ScrubbingRangeSlider extends ConsumerStatefulWidget {
   const _ScrubbingRangeSlider();
 
@@ -309,6 +327,10 @@ class _ScrubbingRangeSliderState extends ConsumerState<_ScrubbingRangeSlider> {
   double? _scrubValue;
   bool _isDragging = false;
   double _multiplier = 1.0;
+
+  // Local x (within the track area) of the most recent double-tap-down, used to
+  // pick which loop thumb a double-tap should snap to the playback position.
+  double? _doubleTapLocalX;
 
   static const _thumbDiameter = 20.0;
   static const _trackHeight = 4.0;
@@ -377,6 +399,32 @@ class _ScrubbingRangeSliderState extends ConsumerState<_ScrubbingRangeSlider> {
 
             return GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onDoubleTapDown: (details) {
+                _doubleTapLocalX = details.localPosition.dx - _horizontalMargin;
+              },
+              onDoubleTap: () {
+                final touchX = _doubleTapLocalX;
+                if (touchX == null) return;
+                // Move the double-tapped loop thumb to the current playback
+                // position — a quick way to set a loop edge precisely without
+                // fine-dragging. Clamp so the two thumbs can't cross.
+                final thumb = _nearestThumb(
+                  touchX,
+                  startThumbX + _thumbDiameter / 2,
+                  endThumbX + _thumbDiameter / 2,
+                );
+                final (newStart, newEnd) = loopBoundsAfterSnap(
+                  isStart: thumb == _Thumb.start,
+                  position: state.position,
+                  loopStart: loopStart,
+                  loopEnd: loopEnd,
+                  duration: duration,
+                );
+                ref
+                    .read(audioPlayerProvider.notifier)
+                    .setLoopBounds(newStart, newEnd);
+                setState(() => _lastThumb = thumb);
+              },
               onPanStart: (details) {
                 // Subtract horizontal margin to get position within track area.
                 final touchX = details.localPosition.dx - _horizontalMargin;
