@@ -72,19 +72,37 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   Future<void> _replayFromStart(String trackUri) async {
     _playPending = true;
     try {
-      await _backendFor(trackUri).play(trackUri, startTime: state.loopStart);
+      final backend = _backendFor(trackUri);
+      await backend.play(trackUri, startTime: state.loopStart);
+      await _applyPlaybackRate(backend);
     } finally {
       _playPending = false;
     }
   }
 
+  /// Re-applies the user's chosen speed to [backend]. Loading a track resets
+  /// the underlying player to 1x, so the rate must be pushed back after every
+  /// (re)start for the slider's value to be respected.
+  Future<void> _applyPlaybackRate(AudioPlayerBackend backend) =>
+      backend.setPlaybackRate(state.playbackRate);
+
+  /// Clears any loop carried over from a previously-played track so its bounds
+  /// don't bleed onto a different recording.
+  void _clearLoopIfTrackChanged(String trackUri) {
+    if (state.trackUri != trackUri) {
+      state = state.copyWith(isLooping: false, loopStart: 0.0, loopEnd: 0.0);
+    }
+  }
+
   Future<void> play(String trackUri) async {
     final backend = _backendFor(trackUri);
+    _clearLoopIfTrackChanged(trackUri);
     _subscribeTo(backend);
     await backend.play(
       trackUri,
       startTime: state.isLooping ? state.loopStart : null,
     );
+    await _applyPlaybackRate(backend);
   }
 
   Future<void> playWithBounds(
@@ -109,13 +127,20 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
       );
       await backend.play(trackUri, startTime: start);
     } else {
+      _clearLoopIfTrackChanged(trackUri);
       await backend.play(trackUri, startTime: start);
     }
+    await _applyPlaybackRate(backend);
   }
 
   Future<void> pause() => _activeBackend?.pause() ?? Future.value();
 
-  Future<void> resume() => _activeBackend?.resume() ?? Future.value();
+  Future<void> resume() async {
+    final backend = _activeBackend;
+    if (backend == null) return;
+    await backend.resume();
+    await _applyPlaybackRate(backend);
+  }
 
   Future<void> stop() => _activeBackend?.stop() ?? Future.value();
 

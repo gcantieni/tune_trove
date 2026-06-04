@@ -99,11 +99,69 @@ void main() {
         () async {
       final n = notifier();
       await n.play('app-data:a.mp3');
+      local.rates.clear(); // ignore the rate re-applied on play
       n.setPlaybackRate(0.75);
       expect(state().playbackRate, 0.75); // immediate
       expect(local.rates, isEmpty); // debounced
       await Future<void>.delayed(const Duration(milliseconds: 120));
       expect(local.rates, [0.75]);
+    });
+
+    test('play re-applies the chosen speed (a reload resets it to 1x)',
+        () async {
+      final n = notifier();
+      await n.play('app-data:a.mp3');
+      n.setPlaybackRate(0.5);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      local.rates.clear();
+
+      // Playing again (e.g. the big play button after stopping) must push the
+      // chosen speed back to the backend, which a reload would otherwise drop.
+      await n.play('app-data:a.mp3');
+      expect(local.rates, contains(0.5));
+    });
+
+    test('resume re-applies the chosen speed', () async {
+      final n = notifier();
+      await n.play('app-data:a.mp3');
+      n.setPlaybackRate(0.5);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      local.rates.clear();
+
+      await n.resume();
+      expect(local.rates, contains(0.5));
+    });
+  });
+
+  group('loop state across tracks', () {
+    test('switching to a different track clears the previous loop', () async {
+      final n = notifier();
+      await n.playWithBounds('app-data:a.mp3', start: 10, end: 20);
+      expect(state().isLooping, isTrue);
+
+      await n.play('app-data:b.mp3'); // different recording
+      expect(state().isLooping, isFalse);
+      expect(state().loopStart, 0);
+      expect(state().loopEnd, 0);
+    });
+
+    test('replaying the same track keeps its loop', () async {
+      final n = notifier();
+      await n.playWithBounds('app-data:a.mp3', start: 10, end: 20);
+      // Simulate the track being the current one (backend echoes the uri).
+      local.emit(
+        const AudioPlayerState(
+          trackUri: 'app-data:a.mp3',
+          status: AudioPlaybackStatus.playing,
+          duration: 120,
+        ),
+      );
+      await pumpEventQueue();
+
+      await n.play('app-data:a.mp3'); // same recording
+      expect(state().isLooping, isTrue);
+      expect(state().loopStart, 10);
+      expect(state().loopEnd, 20);
     });
   });
 
