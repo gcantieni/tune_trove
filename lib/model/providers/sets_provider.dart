@@ -26,16 +26,14 @@ final setTunesProvider = StreamProvider.family
 /// active. Rebuilds automatically when the user confirms or revokes a source.
 final visibleSetTunesProvider = StreamProvider.family
     .autoDispose<List<SetTuneEntry>, int>((ref, setId) {
-      final activeSourceNames = ref.watch(activeSourceNamesProvider);
+      final activeSourceIds = ref.watch(activeSourceIdsProvider);
       return ref
           .watch(databaseProvider)
           .setTuneDao
           .watchTunesInSet(setId)
           .map(
             (entries) => entries
-                .where(
-                  (e) => isSourceNameVisible(e.tune.from, activeSourceNames),
-                )
+                .where((e) => isSourceIdVisible(e.tune.source, activeSourceIds))
                 .toList(),
           );
     });

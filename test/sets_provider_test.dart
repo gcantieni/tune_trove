@@ -28,20 +28,19 @@ void main() {
     return ProviderContainer(
       overrides: [
         databaseProvider.overrideWithValue(db),
-        activeSourceNamesProvider.overrideWithValue(active),
+        activeSourceIdsProvider.overrideWithValue(active),
       ],
     );
   }
 
-
-  Future<int> seedTune(String name, {String? from}) => db.tuneDao.insertTune(
-        TunesCompanion(
-          name: drift.Value(name),
-          from: drift.Value(from),
-          genre: const drift.Value('irish'),
-          createdAt: drift.Value(DateTime(2024)),
-        ),
-      );
+  Future<int> seedTune(String name, {String? source}) => db.tuneDao.insertTune(
+    TunesCompanion(
+      name: drift.Value(name),
+      source: drift.Value(source),
+      genre: const drift.Value('irish'),
+      createdAt: drift.Value(DateTime(2024)),
+    ),
+  );
 
   test('allSetsProvider streams sets ordered by position', () async {
     await db.setDao.insertSet(
@@ -66,7 +65,7 @@ void main() {
       ),
     );
     final t1 = await seedTune('Open Tune');
-    final t2 = await seedTune('Gated Tune', from: 'thesession.org');
+    final t2 = await seedTune('Gated Tune', source: 'thesession');
     await db.setTuneDao.addTuneToSet(setId, t1);
     await db.setTuneDao.addTuneToSet(setId, t2);
 
@@ -83,24 +82,26 @@ void main() {
         createdAt: drift.Value(DateTime(2024)),
       ),
     );
-    final open = await seedTune('Open Tune'); // from == null -> always visible
-    final gated = await seedTune('Gated Tune', from: 'thesession.org');
+    final open = await seedTune(
+      'Open Tune',
+    ); // source == null -> always visible
+    final gated = await seedTune('Gated Tune', source: 'thesession');
     await db.setTuneDao.addTuneToSet(setId, open);
     await db.setTuneDao.addTuneToSet(setId, gated);
 
     // No active sources: the gated (registered-source) tune is filtered out.
     container = makeContainer();
     container.listen(visibleSetTunesProvider(setId), (_, _) {});
-    final visible =
-        await container.read(visibleSetTunesProvider(setId).future);
+    final visible = await container.read(visibleSetTunesProvider(setId).future);
     expect(visible.map((e) => e.tune.name), ['Open Tune']);
 
     // With thesession.org active, both are visible.
-    final container2 = makeContainer(active: {'thesession.org'});
+    final container2 = makeContainer(active: {'thesession'});
     addTearDown(container2.dispose);
     container2.listen(visibleSetTunesProvider(setId), (_, _) {});
-    final visible2 =
-        await container2.read(visibleSetTunesProvider(setId).future);
+    final visible2 = await container2.read(
+      visibleSetTunesProvider(setId).future,
+    );
     expect(visible2, hasLength(2));
   });
 }

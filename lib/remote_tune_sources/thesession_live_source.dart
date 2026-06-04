@@ -69,7 +69,9 @@ class TheSessionTuneSource implements TuneSource {
       abc: drift.Value(abc),
       key: drift.Value(key),
       type: drift.Value(tune.type),
-      from: const drift.Value('thesession.org'),
+      // Licensing provenance (registry id); `from` stays null until the user
+      // records who they learned it from.
+      source: const drift.Value('thesession'),
     );
   }
 

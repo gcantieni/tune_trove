@@ -33,8 +33,8 @@ Tune _tune({
 ProviderContainer _container(List<Tune> tunes) {
   return ProviderContainer(
     overrides: [
-      // No confirmed sources in tests; tunes with null `from` are always visible.
-      activeSourceNamesProvider.overrideWithValue(const {}),
+      // No confirmed sources in tests; tunes with null source are always visible.
+      activeSourceIdsProvider.overrideWithValue(const {}),
       allTunesProvider.overrideWith((ref) => Stream.value(tunes)),
     ],
   );
@@ -45,13 +45,12 @@ ProviderContainer _container(List<Tune> tunes) {
 Future<List<Tune>> _awaitFilteredTunes(ProviderContainer container) {
   final completer = Completer<List<Tune>>();
   ProviderSubscription<AsyncValue<List<Tune>>>? sub;
-  sub = container.listen<AsyncValue<List<Tune>>>(
-    filteredTunesProvider,
-    (_, next) {
-      if (!completer.isCompleted) next.whenData(completer.complete);
-    },
-    fireImmediately: true,
-  );
+  sub = container.listen<AsyncValue<List<Tune>>>(filteredTunesProvider, (
+    _,
+    next,
+  ) {
+    if (!completer.isCompleted) next.whenData(completer.complete);
+  }, fireImmediately: true);
   return completer.future.whenComplete(() => sub?.close());
 }
 
@@ -60,13 +59,9 @@ Future<List<Tune>> _awaitFilteredTunes(ProviderContainer container) {
 Future<List<String>> _awaitAvailableKeys(ProviderContainer container) async {
   final completer = Completer<void>();
   ProviderSubscription<AsyncValue<List<Tune>>>? sub;
-  sub = container.listen<AsyncValue<List<Tune>>>(
-    allTunesProvider,
-    (_, next) {
-      if (!completer.isCompleted) next.whenData((_) => completer.complete());
-    },
-    fireImmediately: true,
-  );
+  sub = container.listen<AsyncValue<List<Tune>>>(allTunesProvider, (_, next) {
+    if (!completer.isCompleted) next.whenData((_) => completer.complete());
+  }, fireImmediately: true);
   await completer.future;
   final keys = container.read(availableKeysProvider);
   sub.close();
@@ -78,13 +73,9 @@ Future<List<String>> _awaitAvailableKeys(ProviderContainer container) async {
 Future<List<String>> _awaitAvailableGenres(ProviderContainer container) async {
   final completer = Completer<void>();
   ProviderSubscription<AsyncValue<List<Tune>>>? sub;
-  sub = container.listen<AsyncValue<List<Tune>>>(
-    allTunesProvider,
-    (_, next) {
-      if (!completer.isCompleted) next.whenData((_) => completer.complete());
-    },
-    fireImmediately: true,
-  );
+  sub = container.listen<AsyncValue<List<Tune>>>(allTunesProvider, (_, next) {
+    if (!completer.isCompleted) next.whenData((_) => completer.complete());
+  }, fireImmediately: true);
   await completer.future;
   final genres = container.read(availableGenresProvider);
   sub.close();
@@ -103,8 +94,18 @@ void main() {
 
   test('filteredTunesProvider filters by type', () async {
     final tunes = [
-      _tune(id: 1, name: "Cooley's", type: TuneType.reel, createdAt: DateTime(2024)),
-      _tune(id: 2, name: 'Lark in the Morning', type: TuneType.jig, createdAt: DateTime(2024, 1, 2)),
+      _tune(
+        id: 1,
+        name: "Cooley's",
+        type: TuneType.reel,
+        createdAt: DateTime(2024),
+      ),
+      _tune(
+        id: 2,
+        name: 'Lark in the Morning',
+        type: TuneType.jig,
+        createdAt: DateTime(2024, 1, 2),
+      ),
     ];
     final container = _container(tunes);
     addTearDown(container.dispose);
@@ -117,8 +118,20 @@ void main() {
 
   test('filteredTunesProvider filters by key', () async {
     final tunes = [
-      _tune(id: 1, name: "Cooley's", key: 'Em', type: TuneType.reel, createdAt: DateTime(2024)),
-      _tune(id: 2, name: 'Lark in the Morning', key: 'D', type: TuneType.jig, createdAt: DateTime(2024, 1, 2)),
+      _tune(
+        id: 1,
+        name: "Cooley's",
+        key: 'Em',
+        type: TuneType.reel,
+        createdAt: DateTime(2024),
+      ),
+      _tune(
+        id: 2,
+        name: 'Lark in the Morning',
+        key: 'D',
+        type: TuneType.jig,
+        createdAt: DateTime(2024, 1, 2),
+      ),
     ];
     final container = _container(tunes);
     addTearDown(container.dispose);
@@ -131,8 +144,20 @@ void main() {
 
   test('filteredTunesProvider filters by genre', () async {
     final tunes = [
-      _tune(id: 1, name: "Cooley's", genre: 'Irish', type: TuneType.reel, createdAt: DateTime(2024)),
-      _tune(id: 2, name: "Soldier's Joy", genre: 'Old-time', type: TuneType.reel, createdAt: DateTime(2024, 1, 2)),
+      _tune(
+        id: 1,
+        name: "Cooley's",
+        genre: 'Irish',
+        type: TuneType.reel,
+        createdAt: DateTime(2024),
+      ),
+      _tune(
+        id: 2,
+        name: "Soldier's Joy",
+        genre: 'Old-time',
+        type: TuneType.reel,
+        createdAt: DateTime(2024, 1, 2),
+      ),
     ];
     final container = _container(tunes);
     addTearDown(container.dispose);
@@ -143,25 +168,48 @@ void main() {
     expect(list.first.genre, 'Irish');
   });
 
-  test('filteredTunesProvider matches curly apostrophe against straight apostrophe', () async {
-    final tunes = [
-      _tune(id: 1, name: "Cooley's", type: TuneType.reel, createdAt: DateTime(2024)),
-      _tune(id: 2, name: 'Lark in the Morning', type: TuneType.jig, createdAt: DateTime(2024, 1, 2)),
-    ];
-    final container = _container(tunes);
-    addTearDown(container.dispose);
-    // U+2019 right single quotation mark (curly apostrophe) — common on iOS/macOS
-    container.read(tuneFiltersProvider.notifier).setNameQuery('cooley’s');
+  test(
+    'filteredTunesProvider matches curly apostrophe against straight apostrophe',
+    () async {
+      final tunes = [
+        _tune(
+          id: 1,
+          name: "Cooley's",
+          type: TuneType.reel,
+          createdAt: DateTime(2024),
+        ),
+        _tune(
+          id: 2,
+          name: 'Lark in the Morning',
+          type: TuneType.jig,
+          createdAt: DateTime(2024, 1, 2),
+        ),
+      ];
+      final container = _container(tunes);
+      addTearDown(container.dispose);
+      // U+2019 right single quotation mark (curly apostrophe) — common on iOS/macOS
+      container.read(tuneFiltersProvider.notifier).setNameQuery('cooley’s');
 
-    final list = await _awaitFilteredTunes(container);
-    expect(list, hasLength(1));
-    expect(list.first.name, "Cooley's");
-  });
+      final list = await _awaitFilteredTunes(container);
+      expect(list, hasLength(1));
+      expect(list.first.name, "Cooley's");
+    },
+  );
 
   test('filteredTunesProvider filters by name case-insensitively', () async {
     final tunes = [
-      _tune(id: 1, name: "Cooley's", type: TuneType.reel, createdAt: DateTime(2024)),
-      _tune(id: 2, name: 'Lark in the Morning', type: TuneType.jig, createdAt: DateTime(2024, 1, 2)),
+      _tune(
+        id: 1,
+        name: "Cooley's",
+        type: TuneType.reel,
+        createdAt: DateTime(2024),
+      ),
+      _tune(
+        id: 2,
+        name: 'Lark in the Morning',
+        type: TuneType.jig,
+        createdAt: DateTime(2024, 1, 2),
+      ),
     ];
     final container = _container(tunes);
     addTearDown(container.dispose);
@@ -182,7 +230,9 @@ void main() {
     addTearDown(container.dispose);
     container.read(tuneFiltersProvider.notifier).setSort(TuneSort.nameAZ);
 
-    final names = (await _awaitFilteredTunes(container)).map((t) => t.name).toList();
+    final names = (await _awaitFilteredTunes(
+      container,
+    )).map((t) => t.name).toList();
     expect(names, ['Apple Reel', 'Mango Hornpipe', 'Zebra Jig']);
   });
 
@@ -196,7 +246,9 @@ void main() {
     addTearDown(container.dispose);
     container.read(tuneFiltersProvider.notifier).setSort(TuneSort.nameZA);
 
-    final names = (await _awaitFilteredTunes(container)).map((t) => t.name).toList();
+    final names = (await _awaitFilteredTunes(
+      container,
+    )).map((t) => t.name).toList();
     expect(names, ['Zebra Jig', 'Mango Hornpipe', 'Apple Reel']);
   });
 
@@ -210,15 +262,27 @@ void main() {
     addTearDown(container.dispose);
     container.read(tuneFiltersProvider.notifier).setSort(TuneSort.oldestFirst);
 
-    final names = (await _awaitFilteredTunes(container)).map((t) => t.name).toList();
+    final names = (await _awaitFilteredTunes(
+      container,
+    )).map((t) => t.name).toList();
     expect(names, ['Oldest', 'Middle', 'Newest']);
   });
 
   test('availableKeysProvider returns sorted distinct keys', () async {
     final tunes = [
       _tune(id: 1, name: "Cooley's", key: 'Em', createdAt: DateTime(2024)),
-      _tune(id: 2, name: 'Lark in the Morning', key: 'D', createdAt: DateTime(2024, 1, 2)),
-      _tune(id: 3, name: 'The Morning Dew', key: 'Em', createdAt: DateTime(2024, 1, 3)),
+      _tune(
+        id: 2,
+        name: 'Lark in the Morning',
+        key: 'D',
+        createdAt: DateTime(2024, 1, 2),
+      ),
+      _tune(
+        id: 3,
+        name: 'The Morning Dew',
+        key: 'Em',
+        createdAt: DateTime(2024, 1, 3),
+      ),
     ];
     final container = _container(tunes);
     addTearDown(container.dispose);
@@ -230,8 +294,18 @@ void main() {
   test('availableGenresProvider returns sorted distinct genres', () async {
     final tunes = [
       _tune(id: 1, name: "Cooley's", genre: 'Irish', createdAt: DateTime(2024)),
-      _tune(id: 2, name: "Soldier's Joy", genre: 'Old-time', createdAt: DateTime(2024, 1, 2)),
-      _tune(id: 3, name: 'The Morning Dew', genre: 'Irish', createdAt: DateTime(2024, 1, 3)),
+      _tune(
+        id: 2,
+        name: "Soldier's Joy",
+        genre: 'Old-time',
+        createdAt: DateTime(2024, 1, 2),
+      ),
+      _tune(
+        id: 3,
+        name: 'The Morning Dew',
+        genre: 'Irish',
+        createdAt: DateTime(2024, 1, 3),
+      ),
     ];
     final container = _container(tunes);
     addTearDown(container.dispose);
@@ -279,9 +353,9 @@ void main() {
     test('status filter keeps only matching tunes', () async {
       final container = _container(tunes);
       addTearDown(container.dispose);
-      container.read(tuneFiltersProvider.notifier).setStatus(
-            TuneStatus.mastered,
-          );
+      container
+          .read(tuneFiltersProvider.notifier)
+          .setStatus(TuneStatus.mastered);
 
       final result = await _awaitFilteredTunes(container);
       expect(result.map((t) => t.name), ['Bravo']);
@@ -297,9 +371,9 @@ void main() {
     test('statusTodoFirst orders least-learned (incl. unset) first', () async {
       final container = _container(tunes);
       addTearDown(container.dispose);
-      container.read(tuneFiltersProvider.notifier).setSort(
-            TuneSort.statusTodoFirst,
-          );
+      container
+          .read(tuneFiltersProvider.notifier)
+          .setSort(TuneSort.statusTodoFirst);
 
       final result = await _awaitFilteredTunes(container);
       // unset (Delta, rank 0) → todo (Alpha) → canStart (Charlie) → mastered.
@@ -309,9 +383,9 @@ void main() {
     test('statusMasteredFirst orders most-learned first', () async {
       final container = _container(tunes);
       addTearDown(container.dispose);
-      container.read(tuneFiltersProvider.notifier).setSort(
-            TuneSort.statusMasteredFirst,
-          );
+      container
+          .read(tuneFiltersProvider.notifier)
+          .setSort(TuneSort.statusMasteredFirst);
 
       final result = await _awaitFilteredTunes(container);
       expect(result.map((t) => t.name), ['Bravo', 'Charlie', 'Alpha', 'Delta']);
@@ -334,9 +408,9 @@ void main() {
       ];
       final container = _container(sameStatus);
       addTearDown(container.dispose);
-      container.read(tuneFiltersProvider.notifier).setSort(
-            TuneSort.statusTodoFirst,
-          );
+      container
+          .read(tuneFiltersProvider.notifier)
+          .setSort(TuneSort.statusTodoFirst);
 
       final result = await _awaitFilteredTunes(container);
       expect(result.map((t) => t.name), ['Apple', 'Zulu']);

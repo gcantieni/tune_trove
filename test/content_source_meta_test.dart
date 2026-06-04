@@ -68,4 +68,23 @@ void main() {
       expect(metaBySourceName(registry, 'alpha'), isNull);
     });
   });
+
+  group('metaBySourceId', () {
+    final registry = [
+      _meta(id: 'a', name: 'Alpha'),
+      _meta(id: 'b', name: 'Beta'),
+    ];
+
+    test('finds a source by exact id', () {
+      expect(metaBySourceId(registry, 'b')?.name, equals('Beta'));
+    });
+
+    test('returns null for an unknown id', () {
+      expect(metaBySourceId(registry, 'c'), isNull);
+    });
+
+    test('returns null for a null id', () {
+      expect(metaBySourceId(registry, null), isNull);
+    });
+  });
 }

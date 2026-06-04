@@ -238,14 +238,6 @@ const List<ContentSourceMeta> allContentSources = [
   ),
 ];
 
-/// Returns true when a tune whose [Tune.from] equals [sourceName] is permitted
-/// to display given the currently [activeSourceNames].
-///
-/// Rules:
-///   - null / empty → always visible (user-created tune with no source)
-///   - matches a registry source that is active → visible
-///   - matches a registry source that is inactive → hidden
-///   - matches nothing in the registry (user-typed free text) → always visible
 /// Genres shown first in the Content Library, in market-priority order.
 /// Anything outside this list sorts after, by genre name; ungenred sources
 /// sort last.
@@ -285,11 +277,20 @@ int compareSourcesForDisplay(ContentSourceMeta a, ContentSourceMeta b) {
   return _nameSortKey(a.name).compareTo(_nameSortKey(b.name));
 }
 
-bool isSourceNameVisible(String? sourceName, Set<String> activeSourceNames) {
-  if (sourceName == null || sourceName.isEmpty) return true;
-  final inRegistry = allContentSources.any((m) => m.name == sourceName);
+/// Returns true when a tune whose [Tune.source] equals [sourceId] is permitted
+/// to display given the currently [activeSourceIds].
+///
+/// Rules:
+///   - null / empty → always visible (user-created tune with no source)
+///   - matches a registry source that is active → visible
+///   - matches a registry source that is inactive → hidden
+///   - matches nothing in the registry (e.g. content synced from a newer app
+///     version) → always visible, so we never hide a tune we can't classify
+bool isSourceIdVisible(String? sourceId, Set<String> activeSourceIds) {
+  if (sourceId == null || sourceId.isEmpty) return true;
+  final inRegistry = allContentSources.any((m) => m.id == sourceId);
   if (!inRegistry) return true;
-  return activeSourceNames.contains(sourceName);
+  return activeSourceIds.contains(sourceId);
 }
 
 /// Instantiates the [TuneSource] implementation for the given [meta].
@@ -298,120 +299,140 @@ TuneSource buildTuneSource(ContentSourceMeta meta) {
     case 'thesession':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/thesession_tunes.json',
       );
     case 'oneills_1001':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/oneills_1001_tunes.json',
       );
     case 'oneills_1850':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/oneills_1850_tunes.json',
       );
     case 'norbeck':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/norbeck_tunes.json',
       );
     case 'williamclarke':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/williamclarke_tunes.json',
       );
     case 'paulhardy':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/paulhardy_tunes.json',
       );
     case 'pete_mac':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/pete_mac_tunes.json',
       );
     case 'athole':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/athole_tunes.json',
       );
     case 'bremner':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/bremner_tunes.json',
       );
     case 'aird':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/aird_tunes.json',
       );
     case 'neil_gow':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/neil_gow_tunes.json',
       );
     case 'fraser':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/fraser_tunes.json',
       );
     case 'erm':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/erm_tunes.json',
       );
     case 'nefr':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/nefr_tunes.json',
       );
     case 'kidson':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/kidson_tunes.json',
       );
     case 'nelson':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/nelson_tunes.json',
       );
     case 'meikle':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/meikle_tunes.json',
       );
     case 'mulhollan':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/mulhollan_tunes.json',
       );
     case 'ryans_mammoth':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/ryans_mammoth_tunes.json',
       );
     case 'pringle':
       return StaticAssetTuneSource(
         name: meta.name,
+        sourceId: meta.id,
         defaultGenre: meta.genre,
         assetPath: 'assets/data/pringle_tunes.json',
       );

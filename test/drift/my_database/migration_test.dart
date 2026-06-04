@@ -2,7 +2,7 @@
 // ignore_for_file: unused_local_variable, unused_import
 import 'dart:io';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +12,7 @@ import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v12.dart' as v12;
 import 'generated/schema_v13.dart' as v13;
+import 'generated/schema_v14.dart' as v14;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v6.dart' as v6;
 
@@ -80,9 +81,7 @@ void main() {
         // Build the real v11 schema, then simulate an interrupted v11->v12:
         // the column was added but drift never committed v12, so user_version
         // is still 11.
-        final old = v11.DatabaseAtV11(
-          NativeDatabase(file),
-        );
+        final old = v11.DatabaseAtV11(NativeDatabase(file));
         await old.customStatement('SELECT 1'); // open + createAll @ v11
         await old.customStatement(
           'ALTER TABLE "tune_sets" '
@@ -159,6 +158,96 @@ void main() {
         await app.close();
       },
     );
+
+    test(
+      'v14->v15 survives a half-applied v14->v15 (tunes.source already added)',
+      () async {
+        final file = File('${tmpDir.path}/source.sqlite');
+
+        // Build the real v14 schema, then simulate an interrupted v14->v15:
+        // the column was added but drift never committed v15, so user_version
+        // is still 14.
+        final old = v14.DatabaseAtV14(NativeDatabase(file));
+        await old.customStatement('SELECT 1'); // open + createAll @ v14
+        await old.customStatement(
+          'ALTER TABLE "tunes" ADD COLUMN "source" TEXT NULL',
+        );
+        expect(await userVersion(old), 14);
+        await old.close();
+
+        // Opening the real database triggers onUpgrade(14 -> 15). Without the
+        // _columnExists guard this throws: duplicate column name: source.
+        final app = AppDatabase(NativeDatabase(file));
+        await app.customStatement('SELECT 1');
+
+        expect(await userVersion(app), app.schemaVersion);
+        await app.customSelect('SELECT source FROM tunes').get();
+        await app.close();
+      },
+    );
+  });
+
+  // Data-integrity test for the v14->v15 backfill: pre-v15, a tune's ABC
+  // provenance lived in the editable `from` column. The migration copies it
+  // into the new immutable `source` column — mapping the stored source *name*
+  // to its registry *id* — but only when `from` matches a known content
+  // source, so user-typed free text and null are left as a null source.
+  group('v14->v15 backfills source from from', () {
+    late Directory tmpDir;
+
+    setUp(() async {
+      tmpDir = await Directory.systemTemp.createTemp('tune_trove_backfill');
+    });
+
+    tearDown(() async {
+      if (tmpDir.existsSync()) await tmpDir.delete(recursive: true);
+    });
+
+    test('maps known source names to ids and leaves free text null', () async {
+      final file = File('${tmpDir.path}/backfill.sqlite');
+
+      final old = v14.DatabaseAtV14(NativeDatabase(file));
+      await old.customStatement('SELECT 1'); // open + createAll @ v14
+      // A tune imported from a known source (name stored in `from`)...
+      await old.customStatement(
+        'INSERT INTO tunes (name, "from", created_at) '
+        "VALUES ('Imported', 'Paul Hardy Session Tunebook', 0)",
+      );
+      // ...one whose `from` is user-typed free text (not a source name)...
+      await old.customStatement(
+        'INSERT INTO tunes (name, "from", created_at) '
+        "VALUES ('Learned', 'my teacher Mary', 0)",
+      );
+      // ...and one with no `from` at all.
+      await old.customStatement(
+        "INSERT INTO tunes (name, created_at) VALUES ('Original', 0)",
+      );
+      await old.close();
+
+      final app = AppDatabase(NativeDatabase(file));
+      final rows = await app
+          .customSelect('SELECT name, "from", source FROM tunes ORDER BY name')
+          .get();
+      final bySource = {
+        for (final r in rows)
+          r.read<String>('name'): r.readNullable<String>('source'),
+      };
+      final byFrom = {
+        for (final r in rows)
+          r.read<String>('name'): r.readNullable<String>('from'),
+      };
+
+      // Provenance copied into source as the registry id.
+      expect(bySource['Imported'], 'paulhardy');
+      // Free text and null are not provenance — source stays null.
+      expect(bySource['Learned'], isNull);
+      expect(bySource['Original'], isNull);
+      // `from` is left untouched by the migration.
+      expect(byFrom['Imported'], 'Paul Hardy Session Tunebook');
+      expect(byFrom['Learned'], 'my teacher Mary');
+
+      await app.close();
+    });
   });
 
   // The following template shows how to write tests ensuring your migrations

@@ -113,7 +113,7 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   @override
   Widget build(BuildContext context) {
     final query = _debouncedQuery;
-    final activeSourceNames = ref.watch(activeSourceNamesProvider);
+    final activeSourceIds = ref.watch(activeSourceIdsProvider);
     final localTunesAsync = ref.watch(allTunesProvider);
     final remoteResultsAsync = ref.watch(tuneSearchProvider(query));
 
@@ -160,9 +160,9 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
                           final matchingLocal = localTunes
                               .where(
                                 (t) =>
-                                    isSourceNameVisible(
-                                      t.from,
-                                      activeSourceNames,
+                                    isSourceIdVisible(
+                                      t.source,
+                                      activeSourceIds,
                                     ) &&
                                     normalizeForSearch(t.name).contains(query),
                               )

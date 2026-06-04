@@ -41,6 +41,10 @@ class StaticAssetTuneSource implements TuneSource {
   @override
   final String name;
 
+  /// Registry id (e.g. 'paulhardy') stamped onto imported tunes as their
+  /// licensing provenance ([Tune.source]). Comes from [ContentSourceMeta.id].
+  final String sourceId;
+
   /// Genre applied to imported tunes that don't carry their own genre, so a
   /// repository's tunes are categorized by its cultural/geographic genre
   /// (e.g. 'Irish', 'Scottish') unless the source data overrides it.
@@ -51,6 +55,7 @@ class StaticAssetTuneSource implements TuneSource {
 
   StaticAssetTuneSource({
     required this.name,
+    required this.sourceId,
     required String assetPath,
     this.defaultGenre,
   }) : _assetPath = assetPath;
@@ -91,7 +96,9 @@ class StaticAssetTuneSource implements TuneSource {
       key: drift.Value(tune.key),
       genre: drift.Value(genre),
       type: drift.Value(tune.type),
-      from: drift.Value(name),
+      // Provenance for licensing. `from` ("learned from") is left null — the
+      // user fills that in if and when they learn the tune from someone.
+      source: drift.Value(sourceId),
       tsId: drift.Value(tsId),
     );
   }

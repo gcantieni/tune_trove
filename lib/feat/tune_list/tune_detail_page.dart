@@ -235,10 +235,12 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         _quickEditRow(
           label: 'From',
           value: tune.from,
-          emptyHint: 'Set source…',
+          emptyHint: 'Set who you learned it from…',
           onTap: () => _quickEditFrom(tune),
         ),
-        _SourceAttribution(sourceName: tune.from),
+        if (tune.source != null && tune.source!.isNotEmpty)
+          _readRowChild('Source', _SourceValue(sourceId: tune.source)),
+        _SourceAttribution(sourceId: tune.source),
         const SizedBox(height: 16),
         const Text('ABC', style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
@@ -561,7 +563,6 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
       ),
     );
   }
-
 }
 
 class _LinkedSets extends ConsumerWidget {
@@ -864,12 +865,12 @@ class _LinkedRecordingRow extends ConsumerWidget {
 /// screen. Required by license terms — must be visible on the same screen as
 /// the content.
 class _SourceAttribution extends StatelessWidget {
-  final String? sourceName;
-  const _SourceAttribution({required this.sourceName});
+  final String? sourceId;
+  const _SourceAttribution({required this.sourceId});
 
   @override
   Widget build(BuildContext context) {
-    final meta = metaBySourceName(allContentSources, sourceName);
+    final meta = metaBySourceId(allContentSources, sourceId);
     if (meta == null || meta.isAlwaysActive) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -881,6 +882,20 @@ class _SourceAttribution extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Read-only display of a tune's ABC provenance: the registry source's display
+/// name (falling back to the raw id for content from an unknown/newer source).
+/// Not editable — provenance is set at import and must not be user-overwritten.
+class _SourceValue extends StatelessWidget {
+  final String? sourceId;
+  const _SourceValue({required this.sourceId});
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = metaBySourceId(allContentSources, sourceId);
+    return Text(meta?.name ?? sourceId ?? '');
   }
 }
 

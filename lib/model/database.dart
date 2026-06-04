@@ -23,6 +23,7 @@ import 'package:tune_trove/model/tables/source_confirmations.dart';
 import 'package:tune_trove/model/tables/source_rankings.dart';
 import 'package:tune_trove/model/tables/tune_recording.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 
 // generated code
 part 'database.g.dart';
@@ -85,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -230,6 +231,28 @@ class AppDatabase extends _$AppDatabase {
       // "duplicate column name: composer". See .context/standards/migrations.md.
       if (from < 14 && to >= 14 && !await _columnExists('tunes', 'composer')) {
         await m.addColumn(tunes, tunes.composer);
+      }
+      // v14 -> v15: add a nullable `source` column to tunes recording where the
+      // ABC notation came from (a content source *id*), distinct from the
+      // user-editable `from`. Provenance had been overloaded onto `from`, which
+      // users overwrite ("learned it from X" ≠ "whose notation this is"), so we
+      // split it out. Column add is guarded (_columnExists) for interrupted-
+      // migration safety. The backfill runs unconditionally within the branch
+      // but is idempotent (only fills rows still missing a source), so a crash
+      // after a partial backfill is recovered on the next launch. Existing
+      // imports stored the source *name* in `from`; map name -> id via the
+      // registry, the single source of truth for ids. See
+      // .context/standards/migrations.md.
+      if (from < 15 && to >= 15) {
+        if (!await _columnExists('tunes', 'source')) {
+          await m.addColumn(tunes, tunes.source);
+        }
+        for (final meta in allContentSources) {
+          await customStatement(
+            'UPDATE tunes SET source = ? WHERE source IS NULL AND "from" = ?',
+            [meta.id, meta.name],
+          );
+        }
       }
     },
   );

@@ -2,50 +2,50 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 
 void main() {
-  // Active names for tests: always-active sources + confirmed sources.
-  const activeNames = {
-    'Pete Mac Tunebook', // always-active (CC0)
-    'William Clarke of Feltwell', // always-active (public domain)
-    "O'Neill's 1001", // confirmed
-    'thesession.org', // confirmed
+  // Active ids for tests: always-active sources + confirmed sources.
+  const activeIds = {
+    'pete_mac', // always-active (CC0)
+    'williamclarke', // always-active (public domain)
+    'oneills_1001', // confirmed
+    'thesession', // confirmed
   };
 
-  group('isSourceNameVisible', () {
-    test('null from → always visible (user-created tune)', () {
-      expect(isSourceNameVisible(null, activeNames), isTrue);
+  group('isSourceIdVisible', () {
+    test('null source → always visible (user-created tune)', () {
+      expect(isSourceIdVisible(null, activeIds), isTrue);
     });
 
-    test('empty string from → always visible', () {
-      expect(isSourceNameVisible('', activeNames), isTrue);
+    test('empty string source → always visible', () {
+      expect(isSourceIdVisible('', activeIds), isTrue);
     });
 
-    test('unknown/user-typed from → always visible', () {
-      expect(isSourceNameVisible('My Own Book', activeNames), isTrue);
+    test('unknown source id → always visible (e.g. newer app version)', () {
+      expect(isSourceIdVisible('some_future_source', activeIds), isTrue);
     });
 
     test('always-active source → visible without confirmation', () {
-      expect(isSourceNameVisible('Pete Mac Tunebook', activeNames), isTrue);
-      expect(isSourceNameVisible('William Clarke of Feltwell', activeNames), isTrue);
+      expect(isSourceIdVisible('pete_mac', activeIds), isTrue);
+      expect(isSourceIdVisible('williamclarke', activeIds), isTrue);
     });
 
     test('confirmed source → visible', () {
-      expect(isSourceNameVisible("O'Neill's 1001", activeNames), isTrue);
-      expect(isSourceNameVisible('thesession.org', activeNames), isTrue);
+      expect(isSourceIdVisible('oneills_1001', activeIds), isTrue);
+      expect(isSourceIdVisible('thesession', activeIds), isTrue);
     });
 
     test('unconfirmed source → not visible', () {
-      expect(isSourceNameVisible('Norbeck', activeNames), isFalse);
-      expect(isSourceNameVisible('Paul Hardy Session Tunebook', activeNames), isFalse);
-      expect(isSourceNameVisible('The Athole Collection (1884)', activeNames), isFalse);
+      expect(isSourceIdVisible('norbeck', activeIds), isFalse);
+      expect(isSourceIdVisible('paulhardy', activeIds), isFalse);
+      expect(isSourceIdVisible('athole', activeIds), isFalse);
     });
 
     test('unconfirmed source not visible even with empty active set', () {
-      expect(isSourceNameVisible('Norbeck', {}), isFalse);
+      expect(isSourceIdVisible('norbeck', {}), isFalse);
     });
 
     test('source becomes visible when added to active set', () {
-      final extended = {...activeNames, 'Norbeck'};
-      expect(isSourceNameVisible('Norbeck', extended), isTrue);
+      final extended = {...activeIds, 'norbeck'};
+      expect(isSourceIdVisible('norbeck', extended), isTrue);
     });
   });
 }

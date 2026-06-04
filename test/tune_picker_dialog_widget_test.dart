@@ -28,13 +28,13 @@ void main() {
     await db.close();
   });
 
-  Future<void> seedTune(String name, {int? tsId, String? from}) {
+  Future<void> seedTune(String name, {int? tsId, String? source}) {
     return db.tuneDao.insertTune(
       TunesCompanion(
         name: drift.Value(name),
         genre: const drift.Value('irish'),
         tsId: drift.Value(tsId),
-        from: drift.Value(from),
+        source: drift.Value(source),
         createdAt: drift.Value(DateTime.now()),
       ),
     );
@@ -42,11 +42,13 @@ void main() {
 
   // Pumps the dialog with a fixed remote-search result (no network) and the
   // given active source names. Returns the collected callback invocations.
-  Future<({List<Tune> library, List<TunesCompanion> remote, List<String> created})>
+  Future<
+    ({List<Tune> library, List<TunesCompanion> remote, List<String> created})
+  >
   pumpDialog(
     WidgetTester tester, {
     Map<String, List<RemoteTune>> remoteResults = const {},
-    Set<String> activeSourceNames = const {},
+    Set<String> activeSourceIds = const {},
     String? initialQuery,
   }) async {
     final library = <Tune>[];
@@ -56,7 +58,7 @@ void main() {
       ProviderScope(
         overrides: [
           databaseProvider.overrideWithValue(db),
-          activeSourceNamesProvider.overrideWithValue(activeSourceNames),
+          activeSourceIdsProvider.overrideWithValue(activeSourceIds),
           tuneSearchProvider.overrideWith((ref, query) => remoteResults),
         ],
         child: MaterialApp(
@@ -189,9 +191,9 @@ void main() {
   });
 
   testWidgets('library tunes from inactive sources are hidden', (tester) async {
-    // 'thesession.org' is a registered source name; with no active sources it
+    // 'thesession' is a registered source id; with no active sources it
     // is not visible, so the tune is filtered out.
-    await seedTune('Hidden Tune', from: 'thesession.org');
+    await seedTune('Hidden Tune', source: 'thesession');
     await pumpDialog(tester);
     await search(tester, 'hidden');
 

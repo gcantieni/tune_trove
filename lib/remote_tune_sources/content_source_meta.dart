@@ -39,8 +39,7 @@ class ContentSourceMeta {
 }
 
 /// Returns the [ContentSourceMeta] whose [ContentSourceMeta.name] matches
-/// [sourceName], or `null` if not found. Used to look up attribution from
-/// the name stored in the `from` column of the Tunes table.
+/// [sourceName], or `null` if not found.
 ContentSourceMeta? metaBySourceName(
   List<ContentSourceMeta> registry,
   String? sourceName,
@@ -48,6 +47,21 @@ ContentSourceMeta? metaBySourceName(
   if (sourceName == null) return null;
   try {
     return registry.firstWhere((m) => m.name == sourceName);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Returns the [ContentSourceMeta] whose [ContentSourceMeta.id] matches
+/// [sourceId], or `null` if not found. Used to look up attribution from the
+/// id stored in the `source` column of the Tunes table.
+ContentSourceMeta? metaBySourceId(
+  List<ContentSourceMeta> registry,
+  String? sourceId,
+) {
+  if (sourceId == null) return null;
+  try {
+    return registry.firstWhere((m) => m.id == sourceId);
   } catch (_) {
     return null;
   }

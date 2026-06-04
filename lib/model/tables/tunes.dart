@@ -44,6 +44,14 @@ class Tunes extends Table {
   IntColumn get tsId =>
       integer().nullable()(); // ID of the tune on thesession.com
   TextColumn get from => text().nullable()(); // Who I learned the tune from
+  // Where the ABC notation came from, for license attribution and content
+  // gating. Stores a content source *id* from the registry (see
+  // ContentSourceMeta.id, e.g. 'paulhardy'), set once at import and never
+  // user-editable. Distinct from `from`: a user may relearn a tune from
+  // someone else while still using a given source's notation, so provenance
+  // must not be inferred from the editable `from` field. Null = user-created
+  // (no external source, no attribution needed).
+  TextColumn get source => text().nullable()();
   TextColumn get composer =>
       text().nullable()(); // Who wrote the tune (royalty attribution)
   TextColumn get status =>

@@ -88,12 +88,12 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
   ref,
 ) {
   final filters = ref.watch(tuneFiltersProvider);
-  final activeSourceNames = ref.watch(activeSourceNamesProvider);
+  final activeSourceIds = ref.watch(activeSourceIdsProvider);
   final allAsync = ref.watch(allTunesProvider);
   return allAsync.whenData((all) {
     final query = normalizeForSearch(filters.nameQuery.trim());
     final filtered = all.where((t) {
-      if (!isSourceNameVisible(t.from, activeSourceNames)) return false;
+      if (!isSourceIdVisible(t.source, activeSourceIds)) return false;
       if (filters.genre != null &&
           filters.genre!.isNotEmpty &&
           t.genre != filters.genre) {
@@ -147,13 +147,13 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
 /// for stable dropdown ordering. Reads from `allTunesProvider` so it
 /// reacts to inserts/deletes.
 final availableKeysProvider = Provider.autoDispose<List<String>>((ref) {
-  final activeSourceNames = ref.watch(activeSourceNamesProvider);
+  final activeSourceIds = ref.watch(activeSourceIdsProvider);
   final allAsync = ref.watch(allTunesProvider);
   return allAsync.maybeWhen(
     data: (tunes) {
       final keys = <String>{
         for (final t in tunes)
-          if (isSourceNameVisible(t.from, activeSourceNames) &&
+          if (isSourceIdVisible(t.source, activeSourceIds) &&
               t.key != null &&
               t.key!.trim().isNotEmpty)
             t.key!.trim(),
@@ -169,13 +169,13 @@ final availableKeysProvider = Provider.autoDispose<List<String>>((ref) {
 /// for stable dropdown ordering. Reads from `allTunesProvider` so it
 /// reacts to inserts/deletes.
 final availableGenresProvider = Provider.autoDispose<List<String>>((ref) {
-  final activeSourceNames = ref.watch(activeSourceNamesProvider);
+  final activeSourceIds = ref.watch(activeSourceIdsProvider);
   final allAsync = ref.watch(allTunesProvider);
   return allAsync.maybeWhen(
     data: (tunes) {
       final genres = <String>{
         for (final t in tunes)
-          if (isSourceNameVisible(t.from, activeSourceNames) &&
+          if (isSourceIdVisible(t.source, activeSourceIds) &&
               t.genre != null &&
               t.genre!.trim().isNotEmpty)
             t.genre!.trim(),

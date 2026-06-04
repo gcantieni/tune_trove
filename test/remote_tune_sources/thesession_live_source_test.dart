@@ -24,15 +24,18 @@ class _FakeClient extends http.BaseClient {
   }
 }
 
-const _searchResponse = '{"tunes":[{"id":1,"name":"Cooley\'s","type":"reel"},{"id":2,"name":"Cooley\'s Minor","type":"reel"}]}';
+const _searchResponse =
+    '{"tunes":[{"id":1,"name":"Cooley\'s","type":"reel"},{"id":2,"name":"Cooley\'s Minor","type":"reel"}]}';
 
-const _tuneResponse = '{"id":1,"name":"Cooley\'s","type":"reel","settings":[{"id":1,"abc":"K:Edor\\n|:D2|EBBA","key":"Edor"}]}';
+const _tuneResponse =
+    '{"id":1,"name":"Cooley\'s","type":"reel","settings":[{"id":1,"abc":"K:Edor\\n|:D2|EBBA","key":"Edor"}]}';
 
 void main() {
   group('TheSessionTuneSource.search', () {
     test('returns RemoteTunes from API response', () async {
       final client = _FakeClient({
-        'https://thesession.org/tunes/search?q=cooley&format=json': _searchResponse,
+        'https://thesession.org/tunes/search?q=cooley&format=json':
+            _searchResponse,
       });
       final source = TheSessionTuneSource(client: client);
 
@@ -90,7 +93,9 @@ void main() {
       expect(companion.tsId.value, 1);
       expect(companion.abc.value, contains('Edor'));
       expect(companion.key.value, 'Edor');
-      expect(companion.from.value, 'thesession.org');
+      // Provenance recorded as the registry id; `from` left for the user.
+      expect(companion.source.value, 'thesession');
+      expect(companion.from.value, isNull);
     });
 
     test('throws on non-200 settings response', () {
