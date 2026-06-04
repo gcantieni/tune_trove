@@ -12,16 +12,35 @@ import 'package:url_launcher/url_launcher.dart';
 class ContentLibraryPage extends ConsumerWidget {
   const ContentLibraryPage({super.key});
 
+  /// Section label for a genre; ungenred sources are grouped as "Multi-genre".
+  static String _genreLabel(String genre) =>
+      genre.isEmpty ? 'Multi-genre' : genre;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final confirmedIds = ref.watch(confirmedSourcesProvider);
 
-    final defaultSources =
-        allContentSources.where((m) => m.isAlwaysActive && !m.hidden).toList()
-          ..sort(compareSourcesForDisplay);
-    final optionalSources =
-        allContentSources.where((m) => !m.isAlwaysActive && !m.hidden).toList()
-          ..sort(compareSourcesForDisplay);
+    // Sorted so same-genre sources are consecutive (Irish → Scottish →
+    // English → other genres → Multi-genre, thesession.org last).
+    final sources = allContentSources.where((m) => !m.hidden).toList()
+      ..sort(compareSourcesForDisplay);
+
+    final sourceWidgets = <Widget>[];
+    String? currentGenre;
+    for (final meta in sources) {
+      if (meta.genre != currentGenre) {
+        currentGenre = meta.genre;
+        sourceWidgets.add(_SectionHeader(_genreLabel(meta.genre)));
+      }
+      sourceWidgets.add(
+        _SourceTile(
+          meta: meta,
+          isActive: confirmedIds.contains(meta.id),
+          onToggle: (isActive) =>
+              _toggleSource(context, ref, meta, isActive: isActive),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -47,42 +66,34 @@ class ContentLibraryPage extends ConsumerWidget {
               onTap: () => context.push('/content_library/search_order'),
             ),
             const Divider(height: 1),
-            const _SectionHeader('Public domain sources'),
-            const _SectionDescription(
-              'These collections are included by default. '
-              'Toggle any off to exclude them from search.',
-            ),
-            for (final meta in defaultSources)
-              _SourceTile(
-                meta: meta,
-                isActive: confirmedIds.contains(meta.id),
-                onToggle: (isCurrentlyActive) => isCurrentlyActive
-                    ? ref
-                          .read(confirmedSourcesProvider.notifier)
-                          .revoke(meta.id)
-                    : ref
-                          .read(confirmedSourcesProvider.notifier)
-                          .confirm(meta.id, meta.license),
-              ),
-            const SizedBox(height: 8),
-            const _SectionHeader('Additional sources'),
-            const _SectionDescription(
-              'These sources are licensed for personal, non-commercial use. '
-              'Tap a source to review its license terms and activate it.',
-            ),
-            for (final meta in optionalSources)
-              _SourceTile(
-                meta: meta,
-                isActive: confirmedIds.contains(meta.id),
-                onToggle: (isCurrentlyActive) => isCurrentlyActive
-                    ? _deactivate(context, ref, meta)
-                    : _activate(context, ref, meta),
-              ),
+            ...sourceWidgets,
             const _CopyrightFooter(),
           ],
         ),
       ),
     );
+  }
+
+  void _toggleSource(
+    BuildContext context,
+    WidgetRef ref,
+    ContentSourceMeta meta, {
+    required bool isActive,
+  }) {
+    // Public-domain sources toggle directly; licensed sources go through the
+    // confirmation / removal dialogs.
+    if (meta.isAlwaysActive) {
+      final notifier = ref.read(confirmedSourcesProvider.notifier);
+      if (isActive) {
+        notifier.revoke(meta.id);
+      } else {
+        notifier.confirm(meta.id, meta.license);
+      }
+    } else if (isActive) {
+      _deactivate(context, ref, meta);
+    } else {
+      _activate(context, ref, meta);
+    }
   }
 
   Future<void> _activate(
@@ -143,24 +154,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _SectionDescription extends StatelessWidget {
-  final String text;
-  const _SectionDescription(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-}
-
 class _SourceTile extends StatelessWidget {
   final ContentSourceMeta meta;
   final bool isActive;
@@ -181,13 +174,7 @@ class _SourceTile extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _GenreChip(meta.genre),
-              const SizedBox(width: 6),
-              Text(meta.license, style: theme.textTheme.bodySmall),
-            ],
-          ),
+          Text(meta.license, style: theme.textTheme.bodySmall),
           if (isActive && !meta.isAlwaysActive)
             Padding(
               padding: const EdgeInsets.only(top: 2),
@@ -238,29 +225,6 @@ class _CopyrightFooter extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GenreChip extends StatelessWidget {
-  final String genre;
-  const _GenreChip(this.genre);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        genre,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );

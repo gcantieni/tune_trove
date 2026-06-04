@@ -25,22 +25,7 @@ String tuneStatusToString(TuneStatus? status) {
   }
 }
 
-int _statusDotCount(TuneStatus? status) {
-  switch (status) {
-    case null:
-      return 0;
-    case TuneStatus.todo:
-      return 1;
-    case TuneStatus.canPlay:
-      return 2;
-    case TuneStatus.canStart:
-      return 3;
-    case TuneStatus.inSet:
-      return 4;
-    case TuneStatus.mastered:
-      return 5;
-  }
-}
+int _statusDotCount(TuneStatus? status) => status?.progressionRank ?? 0;
 
 Widget _buildDotRow(int filled, Color primary) {
   return Row(

@@ -7,12 +7,20 @@ import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 import 'package:tune_trove/util/search_normalize.dart';
 
-enum TuneSort { newestFirst, oldestFirst, nameAZ, nameZA }
+enum TuneSort {
+  newestFirst,
+  oldestFirst,
+  nameAZ,
+  nameZA,
+  statusTodoFirst,
+  statusMasteredFirst,
+}
 
 class TuneFilters {
   final String? genre;
   final TuneType? type;
   final String? key;
+  final TuneStatus? status;
   final String nameQuery;
   final TuneSort sort;
 
@@ -20,6 +28,7 @@ class TuneFilters {
     this.genre,
     this.type,
     this.key,
+    this.status,
     this.nameQuery = '',
     this.sort = TuneSort.newestFirst,
   });
@@ -28,6 +37,7 @@ class TuneFilters {
       (genre != null && genre!.isNotEmpty) ||
       type != null ||
       (key != null && key!.isNotEmpty) ||
+      status != null ||
       nameQuery.isNotEmpty ||
       sort != TuneSort.newestFirst;
 
@@ -35,6 +45,7 @@ class TuneFilters {
     Object? genre = _sentinel,
     Object? type = _sentinel,
     Object? key = _sentinel,
+    Object? status = _sentinel,
     String? nameQuery,
     TuneSort? sort,
   }) {
@@ -42,6 +53,9 @@ class TuneFilters {
       genre: identical(genre, _sentinel) ? this.genre : genre as String?,
       type: identical(type, _sentinel) ? this.type : type as TuneType?,
       key: identical(key, _sentinel) ? this.key : key as String?,
+      status: identical(status, _sentinel)
+          ? this.status
+          : status as TuneStatus?,
       nameQuery: nameQuery ?? this.nameQuery,
       sort: sort ?? this.sort,
     );
@@ -57,6 +71,7 @@ class TuneFiltersNotifier extends Notifier<TuneFilters> {
   void setGenre(String? genre) => state = state.copyWith(genre: genre);
   void setType(TuneType? type) => state = state.copyWith(type: type);
   void setKey(String? key) => state = state.copyWith(key: key);
+  void setStatus(TuneStatus? status) => state = state.copyWith(status: status);
   void setNameQuery(String query) => state = state.copyWith(nameQuery: query);
   void setSort(TuneSort sort) => state = state.copyWith(sort: sort);
   void clear() => state = const TuneFilters();
@@ -85,6 +100,7 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
         return false;
       }
       if (filters.type != null && t.type != filters.type) return false;
+      if (filters.status != null && t.status != filters.status) return false;
       if (filters.key != null &&
           filters.key!.isNotEmpty &&
           t.key != filters.key) {
@@ -108,6 +124,18 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
           return a.name.toLowerCase().compareTo(b.name.toLowerCase());
         case TuneSort.nameZA:
           return b.name.toLowerCase().compareTo(a.name.toLowerCase());
+        case TuneSort.statusTodoFirst:
+        case TuneSort.statusMasteredFirst:
+          // Unset status counts as the least-learned (rank 0). Break ties by
+          // name so the order within a status group is stable.
+          final ra = a.status?.progressionRank ?? 0;
+          final rb = b.status?.progressionRank ?? 0;
+          if (ra != rb) {
+            return filters.sort == TuneSort.statusTodoFirst
+                ? ra.compareTo(rb)
+                : rb.compareTo(ra);
+          }
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       }
     });
 

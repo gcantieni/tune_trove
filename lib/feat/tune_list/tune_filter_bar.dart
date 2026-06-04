@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:tune_trove/feat/tune_list/tune_filters.dart';
+import 'package:tune_trove/feat/tune_list/tune_list_item.dart'
+    show tuneStatusToString;
 import 'package:tune_trove/model/tables/tunes.dart';
 
 class TuneFilterBar extends ConsumerStatefulWidget {
@@ -118,6 +120,21 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
             onChanged: notifier.setType,
             onClear: () => notifier.setType(null),
           ),
+          _FilterChipMenu<TuneStatus?>(
+            label: 'Status',
+            value: filters.status,
+            displayValue: (s) => s == null ? null : tuneStatusToString(s),
+            options: [
+              const _FilterOption<TuneStatus?>(value: null, label: 'Any'),
+              for (final s in TuneStatus.values)
+                _FilterOption<TuneStatus?>(
+                  value: s,
+                  label: tuneStatusToString(s),
+                ),
+            ],
+            onChanged: notifier.setStatus,
+            onClear: () => notifier.setStatus(null),
+          ),
           _FilterChipMenu<String?>(
             label: 'Key',
             value: filters.key,
@@ -139,6 +156,8 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
               TuneSort.oldestFirst => 'Oldest',
               TuneSort.nameAZ => 'A–Z',
               TuneSort.nameZA => 'Z–A',
+              TuneSort.statusTodoFirst => 'To-do first',
+              TuneSort.statusMasteredFirst => 'Mastered first',
             },
             isDefault: filters.sort == TuneSort.newestFirst,
             options: const [
@@ -146,6 +165,14 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
               _FilterOption(value: TuneSort.oldestFirst, label: 'Oldest first'),
               _FilterOption(value: TuneSort.nameAZ, label: 'Name A–Z'),
               _FilterOption(value: TuneSort.nameZA, label: 'Name Z–A'),
+              _FilterOption(
+                value: TuneSort.statusTodoFirst,
+                label: 'Status: to-do → mastered',
+              ),
+              _FilterOption(
+                value: TuneSort.statusMasteredFirst,
+                label: 'Status: mastered → to-do',
+              ),
             ],
             onChanged: notifier.setSort,
           ),

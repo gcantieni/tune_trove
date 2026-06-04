@@ -2,6 +2,19 @@ import 'package:drift/drift.dart';
 
 enum TuneStatus { todo, canPlay, canStart, inSet, mastered }
 
+extension TuneStatusProgression on TuneStatus {
+  /// Learning-progression rank (higher = more learned). Matches the dot
+  /// count shown in the tune list, and is the single source of truth for
+  /// ordering tunes by learning status.
+  int get progressionRank => switch (this) {
+    TuneStatus.todo => 1,
+    TuneStatus.canPlay => 2,
+    TuneStatus.canStart => 3,
+    TuneStatus.inSet => 4,
+    TuneStatus.mastered => 5,
+  };
+}
+
 // TODO: expand
 enum TuneType {
   reel,

@@ -14,6 +14,7 @@ Tune _tune({
   TuneType? type,
   String? key,
   String? genre,
+  TuneStatus? status,
   required DateTime createdAt,
   DateTime? modifiedAt,
 }) {
@@ -23,6 +24,7 @@ Tune _tune({
     key: key,
     genre: genre,
     type: type,
+    status: status,
     createdAt: createdAt,
     modifiedAt: modifiedAt,
   );
@@ -249,5 +251,95 @@ void main() {
 
     notifier.clear();
     expect(container.read(tuneFiltersProvider), equals(const TuneFilters()));
+  });
+
+  group('learning status', () {
+    final tunes = [
+      _tune(
+        id: 1,
+        name: 'Bravo',
+        status: TuneStatus.mastered,
+        createdAt: DateTime(2024),
+      ),
+      _tune(
+        id: 2,
+        name: 'Alpha',
+        status: TuneStatus.todo,
+        createdAt: DateTime(2024),
+      ),
+      _tune(
+        id: 3,
+        name: 'Charlie',
+        status: TuneStatus.canStart,
+        createdAt: DateTime(2024),
+      ),
+      _tune(id: 4, name: 'Delta', createdAt: DateTime(2024)), // unset status
+    ];
+
+    test('status filter keeps only matching tunes', () async {
+      final container = _container(tunes);
+      addTearDown(container.dispose);
+      container.read(tuneFiltersProvider.notifier).setStatus(
+            TuneStatus.mastered,
+          );
+
+      final result = await _awaitFilteredTunes(container);
+      expect(result.map((t) => t.name), ['Bravo']);
+    });
+
+    test('setting a status marks the filters active', () {
+      final container = _container([]);
+      addTearDown(container.dispose);
+      container.read(tuneFiltersProvider.notifier).setStatus(TuneStatus.todo);
+      expect(container.read(tuneFiltersProvider).isActive, isTrue);
+    });
+
+    test('statusTodoFirst orders least-learned (incl. unset) first', () async {
+      final container = _container(tunes);
+      addTearDown(container.dispose);
+      container.read(tuneFiltersProvider.notifier).setSort(
+            TuneSort.statusTodoFirst,
+          );
+
+      final result = await _awaitFilteredTunes(container);
+      // unset (Delta, rank 0) → todo (Alpha) → canStart (Charlie) → mastered.
+      expect(result.map((t) => t.name), ['Delta', 'Alpha', 'Charlie', 'Bravo']);
+    });
+
+    test('statusMasteredFirst orders most-learned first', () async {
+      final container = _container(tunes);
+      addTearDown(container.dispose);
+      container.read(tuneFiltersProvider.notifier).setSort(
+            TuneSort.statusMasteredFirst,
+          );
+
+      final result = await _awaitFilteredTunes(container);
+      expect(result.map((t) => t.name), ['Bravo', 'Charlie', 'Alpha', 'Delta']);
+    });
+
+    test('status sort breaks ties by name', () async {
+      final sameStatus = [
+        _tune(
+          id: 1,
+          name: 'Zulu',
+          status: TuneStatus.todo,
+          createdAt: DateTime(2024),
+        ),
+        _tune(
+          id: 2,
+          name: 'Apple',
+          status: TuneStatus.todo,
+          createdAt: DateTime(2024),
+        ),
+      ];
+      final container = _container(sameStatus);
+      addTearDown(container.dispose);
+      container.read(tuneFiltersProvider.notifier).setSort(
+            TuneSort.statusTodoFirst,
+          );
+
+      final result = await _awaitFilteredTunes(container);
+      expect(result.map((t) => t.name), ['Apple', 'Zulu']);
+    });
   });
 }
