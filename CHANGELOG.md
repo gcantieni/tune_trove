@@ -3,6 +3,16 @@
 All notable changes to Tune Trove are documented here. Versions correspond to
 the `version` field in `pubspec.yaml`. The newest release is listed first.
 
+## 1.0.27 — 2026-06-04
+
+### Added
+
+- Tune search now lets you browse and audition every available match before
+  importing: results from all sources appear in one list as expandable cards
+  with rendered notation, a play button, and a tempo slider. For thesession.org,
+  each alternate setting is shown separately, sorted oldest-first with a
+  publishing-age hint, so you can pick the version you like best.
+
 ## 1.0.24 — 2026-06-01
 
 - Voice memo imports on iOS now keep the original recording's filename.

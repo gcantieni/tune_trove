@@ -70,6 +70,44 @@ void main() {
       );
       expect(tunes[0].genre, isNull);
     });
+
+    test('parses per-setting fields (setting_id, date, by) when present', () {
+      final data = [
+        {
+          'id': 1,
+          'setting_id': 42,
+          'name': "Cooley's",
+          'type': 'reel',
+          'key': 'Edor',
+          'abc': '...',
+          'date': '2003-05-17',
+          'by': 'Jeremy',
+        },
+      ];
+      final tunes = parseStaticJson(data, 'thesession.org');
+      expect(tunes[0].sourceId, '1');
+      expect(tunes[0].settingId, 42);
+      expect(tunes[0].date, DateTime(2003, 5, 17));
+      expect(tunes[0].contributor, 'Jeremy');
+    });
+
+    test('leaves per-setting fields null when absent (other sources)', () {
+      final tunes = parseStaticJson(
+        _sampleData.cast<Map<String, dynamic>>(),
+        'Test',
+      );
+      expect(tunes[0].settingId, isNull);
+      expect(tunes[0].date, isNull);
+      expect(tunes[0].contributor, isNull);
+    });
+
+    test('tolerates an unparseable date', () {
+      final data = [
+        {'name': 'Bad Date', 'abc': '', 'date': 'not-a-date'},
+      ];
+      final tunes = parseStaticJson(data, 'Test');
+      expect(tunes[0].date, isNull);
+    });
   });
 
   group('resolve', () {

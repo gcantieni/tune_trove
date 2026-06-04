@@ -3,12 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:tune_trove/feat/abc_midi/abc_play_button.dart';
+import 'package:tune_trove/feat/abc_render/abc_renderer.dart';
+import 'package:tune_trove/feat/abc_render/abc_view.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
+import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
+import 'package:tune_trove/util/relative_time.dart';
 import 'package:tune_trove/util/search_normalize.dart';
 
 const _debounceDelay = Duration(milliseconds: 350);
@@ -46,6 +51,15 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   String _debouncedQuery = '';
   Timer? _debounceTimer;
   RemoteTune? _resolvingTune;
+
+  /// Key of the single expanded result card, if any. Keeping just one open at
+  /// a time means only one [AbcPlayButton] is ever mounted, matching the
+  /// single shared playback WebView.
+  String? _expandedKey;
+
+  /// Stable identity for a result card: source + tune + setting.
+  String _cardKey(RemoteTune t) =>
+      '${t.sourceName}|${t.sourceId}|${t.settingId}';
 
   @override
   void initState() {
@@ -210,6 +224,7 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
     Map<String, List<RemoteTune>> remoteResults, {
     bool loading = false,
   }) {
+    final orderedSources = _orderedSources(remoteResults.keys);
     return ListView(
       shrinkWrap: true,
       children: [
@@ -218,19 +233,22 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
           for (final t in matchingLocal)
             _LibraryTuneTile(tune: t, onTap: () => _pickLibrary(t)),
         ],
-        for (final entry in remoteResults.entries) ...[
-          if (matchingLocal.isNotEmpty || entry.key != remoteResults.keys.first)
+        for (final source in orderedSources) ...[
+          if (matchingLocal.isNotEmpty || source != orderedSources.first)
             const SizedBox(height: 8),
-          _SectionHeader('From ${entry.key}'),
-          for (final tune in _dedupedResults(
-            entry.value,
-            entry.key,
+          _SectionHeader('From $source'),
+          for (final tune in _sortedResults(
+            remoteResults[source]!,
+            source,
             localTsIds,
           ))
-            _RemoteTuneTile(
+            _RemoteResultCard(
+              key: ValueKey(_cardKey(tune)),
               tune: tune,
+              expanded: _expandedKey == _cardKey(tune),
               resolving: _resolvingTune == tune,
-              onTap: () => _pickRemote(tune),
+              onToggle: () => _toggleExpanded(tune),
+              onUse: () => _pickRemote(tune),
             ),
         ],
         if (loading && remoteResults.isEmpty)
@@ -247,22 +265,56 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
     );
   }
 
-  List<RemoteTune> _dedupedResults(
+  void _toggleExpanded(RemoteTune tune) {
+    final key = _cardKey(tune);
+    setState(() => _expandedKey = _expandedKey == key ? null : key);
+  }
+
+  /// Orders source names by the same priority used in the Content Library
+  /// (genre-first, thesession.org last), so the unified result list groups
+  /// the curated collections ahead of the broad aggregator.
+  List<String> _orderedSources(Iterable<String> names) {
+    ContentSourceMeta? metaFor(String name) {
+      for (final m in allContentSources) {
+        if (m.name == name) return m;
+      }
+      return null;
+    }
+
+    return names.toList()..sort((a, b) {
+      final ma = metaFor(a);
+      final mb = metaFor(b);
+      if (ma != null && mb != null) return compareSourcesForDisplay(ma, mb);
+      if (ma == null && mb == null) return a.compareTo(b);
+      return ma == null ? 1 : -1;
+    });
+  }
+
+  /// Within one source: drop tunes already in the library (by thesession tune
+  /// id) and sort by publishing date ascending so older, more-established
+  /// settings surface first. Undated results keep a stable order, after dated
+  /// ones, broken by name.
+  List<RemoteTune> _sortedResults(
     List<RemoteTune> results,
     String sourceName,
     Set<int> localTsIds,
   ) {
-    if (sourceName == 'thesession.org') {
-      return results
-          .where(
+    final filtered = sourceName == 'thesession.org'
+        ? results.where(
             (t) =>
                 t.sourceId == null ||
                 !localTsIds.contains(int.tryParse(t.sourceId!)),
           )
-          .take(20)
-          .toList();
-    }
-    return results.take(20).toList();
+        : results;
+    final list = filtered.toList()
+      ..sort((a, b) {
+        final da = a.date;
+        final db = b.date;
+        if (da != null && db != null) return da.compareTo(db);
+        if (da == null && db == null) return a.name.compareTo(b.name);
+        return da == null ? 1 : -1;
+      });
+    return list;
   }
 }
 
@@ -315,42 +367,128 @@ class _LibraryTuneTile extends StatelessWidget {
   }
 }
 
-class _RemoteTuneTile extends StatelessWidget {
+/// An expandable result card. Collapsed it shows the tune's metadata; expanded
+/// it renders the ABC, mounts the shared play button (with its tempo slider),
+/// and offers a "Use this setting" action. Only one card is expanded at a time
+/// (see [_TunePickerDialogState._expandedKey]).
+class _RemoteResultCard extends ConsumerStatefulWidget {
   final RemoteTune tune;
+  final bool expanded;
   final bool resolving;
-  final VoidCallback onTap;
-  const _RemoteTuneTile({
+  final VoidCallback onToggle;
+  final VoidCallback onUse;
+
+  const _RemoteResultCard({
     required this.tune,
+    required this.expanded,
     required this.resolving,
-    required this.onTap,
+    required this.onToggle,
+    required this.onUse,
+    super.key,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final type = tune.type?.name;
-    final key = tune.key;
-    final subtitle = [
-      if (type != null) type,
-      if (key != null && key.isNotEmpty) key,
+  ConsumerState<_RemoteResultCard> createState() => _RemoteResultCardState();
+}
+
+class _RemoteResultCardState extends ConsumerState<_RemoteResultCard> {
+  String? _svg;
+  String? _renderedAbc;
+  bool _rendering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.expanded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRender());
+    }
+  }
+
+  @override
+  void didUpdateWidget(_RemoteResultCard old) {
+    super.didUpdateWidget(old);
+    if (widget.expanded && !old.expanded) _maybeRender();
+  }
+
+  Future<void> _maybeRender() async {
+    final abc = widget.tune.abc;
+    if (abc == null || abc.trim().isEmpty) return;
+    if (_renderedAbc == abc && _svg != null) return;
+    setState(() => _rendering = true);
+    final svg = await ref.read(abcRendererProvider).render(abc);
+    if (!mounted) return;
+    setState(() {
+      _svg = svg;
+      _renderedAbc = abc;
+      _rendering = false;
+    });
+  }
+
+  String _subtitle() {
+    final t = widget.tune;
+    return [
+      if (t.type != null) t.type!.name,
+      if (t.key != null && t.key!.isNotEmpty) t.key!,
+      if (t.date != null) relativeAge(t.date!),
+      if (t.contributor != null && t.contributor!.isNotEmpty)
+        'by ${t.contributor}',
     ].join(' · ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tune = widget.tune;
+    final subtitle = _subtitle();
+    final abc = tune.abc;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 2),
-      child: ListTile(
-        leading: const Icon(Icons.public, color: Colors.blueGrey),
-        title: Text(tune.name),
-        subtitle: subtitle.isEmpty ? null : Text(subtitle),
-        trailing: resolving
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Text(
-                tune.sourceName,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.public, color: Colors.blueGrey),
+            title: Text(tune.name),
+            subtitle: subtitle.isEmpty ? null : Text(subtitle),
+            trailing: Icon(
+              widget.expanded ? Icons.expand_less : Icons.expand_more,
+            ),
+            onTap: widget.onToggle,
+          ),
+          if (widget.expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_rendering)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else
+                    AbcView(abc: abc, svg: _svg),
+                  const SizedBox(height: 8),
+                  AbcPlayButton(abc: abc),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      icon: widget.resolving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check, size: 18),
+                      label: const Text('Use this setting'),
+                      onPressed: widget.resolving ? null : widget.onUse,
+                    ),
+                  ),
+                ],
               ),
-        onTap: resolving ? null : onTap,
+            ),
+        ],
       ),
     );
   }

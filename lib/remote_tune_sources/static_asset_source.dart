@@ -16,6 +16,8 @@ List<RemoteTune> parseStaticJson(
 ) {
   return data.map((e) {
     final id = e['id'];
+    final settingId = e['setting_id'];
+    final rawDate = e['date'] as String?;
     return RemoteTune(
       name: e['name'] as String,
       type: _safeType(e['type'] as String?),
@@ -24,6 +26,9 @@ List<RemoteTune> parseStaticJson(
       abc: e['abc'] as String?,
       sourceName: sourceName,
       sourceId: id != null ? '$id' : null,
+      settingId: settingId is int ? settingId : int.tryParse('$settingId'),
+      date: rawDate != null ? DateTime.tryParse(rawDate) : null,
+      contributor: e['by'] as String?,
     );
   }).toList();
 }
@@ -68,6 +73,11 @@ class StaticAssetTuneSource implements TuneSource {
     return _cache!;
   }
 
+  /// Maximum number of distinct tunes returned per search. A tune may carry
+  /// several settings (e.g. thesession.org), all of which are kept — so the
+  /// cap counts tunes, not rows, to avoid chopping a tune's settings in half.
+  static const _maxTunes = 20;
+
   @override
   Future<List<RemoteTune>> search(
     String query, {
@@ -76,10 +86,20 @@ class StaticAssetTuneSource implements TuneSource {
   }) async {
     final all = await _load();
     final q = normalizeForSearch(query);
-    return all
-        .where((t) => normalizeForSearch(t.name).contains(q))
-        .take(20)
-        .toList();
+    final matches = all.where((t) => normalizeForSearch(t.name).contains(q));
+    final seenTunes = <String>{};
+    final result = <RemoteTune>[];
+    for (final t in matches) {
+      // Group settings by their tune. `sourceId` is the tune id; results that
+      // lack one (single-version sources) each count as their own tune.
+      final tuneKey = t.sourceId ?? 'noid:${t.name}:${result.length}';
+      if (!seenTunes.contains(tuneKey)) {
+        if (seenTunes.length >= _maxTunes) break;
+        seenTunes.add(tuneKey);
+      }
+      result.add(t);
+    }
+    return result;
   }
 
   @override

@@ -169,6 +169,82 @@ void main() {
     expect(find.text('Cooley dupe'), findsNothing);
   });
 
+  testWidgets('settings within a source sort by date ascending', (
+    tester,
+  ) async {
+    await pumpDialog(
+      tester,
+      remoteResults: {
+        'thesession.org': [
+          RemoteTune(
+            name: 'Setting Newer',
+            sourceName: 'thesession.org',
+            sourceId: '1',
+            settingId: 2,
+            date: DateTime(2015, 3, 4),
+          ),
+          RemoteTune(
+            name: 'Setting Older',
+            sourceName: 'thesession.org',
+            sourceId: '1',
+            settingId: 1,
+            date: DateTime(2005, 3, 4),
+          ),
+        ],
+      },
+    );
+    await search(tester, 'setting');
+
+    final olderY = tester.getTopLeft(find.text('Setting Older')).dy;
+    final newerY = tester.getTopLeft(find.text('Setting Newer')).dy;
+    expect(olderY, lessThan(newerY));
+  });
+
+  testWidgets('publishing age and contributor show in the subtitle', (
+    tester,
+  ) async {
+    await pumpDialog(
+      tester,
+      remoteResults: {
+        'thesession.org': [
+          RemoteTune(
+            name: 'Dated Tune',
+            sourceName: 'thesession.org',
+            sourceId: '1',
+            key: 'Edor',
+            date: DateTime(2010, 3, 4),
+            contributor: 'Jeremy',
+          ),
+        ],
+      },
+    );
+    await search(tester, 'dated');
+
+    expect(find.textContaining('years ago'), findsOneWidget);
+    expect(find.textContaining('by Jeremy'), findsOneWidget);
+  });
+
+  testWidgets('thesession.org section sorts after curated sources', (
+    tester,
+  ) async {
+    await pumpDialog(
+      tester,
+      remoteResults: {
+        'thesession.org': const [
+          RemoteTune(name: 'Aggregator Tune', sourceName: 'thesession.org'),
+        ],
+        'Pete Mac Tunebook': const [
+          RemoteTune(name: 'Curated Tune', sourceName: 'Pete Mac Tunebook'),
+        ],
+      },
+    );
+    await search(tester, 'tune');
+
+    final curatedY = tester.getTopLeft(find.text('From Pete Mac Tunebook')).dy;
+    final aggregatorY = tester.getTopLeft(find.text('From thesession.org')).dy;
+    expect(curatedY, lessThan(aggregatorY));
+  });
+
   testWidgets('create-new tile appears with typed text', (tester) async {
     await pumpDialog(tester);
     await search(tester, 'Brand New Tune');
