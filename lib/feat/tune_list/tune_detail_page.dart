@@ -673,21 +673,52 @@ class _LinkedSetRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      child: ListTile(
-        title: Text(entry.tuneSet.name),
-        onTap: () => context.push('/set_list/${entry.tuneSet.id}'),
-        trailing: IconButton(
-          icon: const Icon(Icons.close, size: 18),
-          tooltip: 'Remove from set',
-          onPressed: () => ref
-              .read(databaseProvider)
-              .setTuneDao
-              .removeTuneFromSet(entry.link.id),
+    return Dismissible(
+      key: ValueKey('linked-set-${entry.link.id}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmRemove(context),
+      onDismissed: (_) => ref
+          .read(databaseProvider)
+          .setTuneDao
+          .removeTuneFromSet(entry.link.id),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        color: Theme.of(context).colorScheme.errorContainer,
+        child: Icon(
+          Icons.delete_outline,
+          color: Theme.of(context).colorScheme.onErrorContainer,
+        ),
+      ),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        child: ListTile(
+          title: Text(entry.tuneSet.name),
+          onTap: () => context.push('/set_list/${entry.tuneSet.id}'),
         ),
       ),
     );
+  }
+
+  Future<bool> _confirmRemove(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove from set'),
+        content: Text('Remove this tune from "${entry.tuneSet.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 }
 
@@ -783,79 +814,101 @@ class _LinkedRecordingRow extends ConsumerWidget {
         ? null
         : recording.performers;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      child: SizedBox(
-        width: double.infinity,
-        child: InkWell(
-          onTap: () => context.push('/recording_list/${recording.id}'),
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 16,
-              right: 4,
-              top: 8,
-              bottom: 4,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          recording.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      tooltip: 'Remove from tune',
-                      onPressed: () => ref
-                          .read(databaseProvider)
-                          .tuneRecordingDao
-                          .unlinkTuneFromRecording(
-                            link.tuneId,
-                            link.recordingId,
-                          ),
-                    ),
-                  ],
-                ),
-                if (subtitle != null)
+    return Dismissible(
+      key: ValueKey('linked-recording-${link.tuneId}-${link.recordingId}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmRemove(context),
+      onDismissed: (_) => ref
+          .read(databaseProvider)
+          .tuneRecordingDao
+          .unlinkTuneFromRecording(link.tuneId, link.recordingId),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        color: Theme.of(context).colorScheme.errorContainer,
+        child: Icon(
+          Icons.delete_outline,
+          color: Theme.of(context).colorScheme.onErrorContainer,
+        ),
+      ),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        child: SizedBox(
+          width: double.infinity,
+          child: InkWell(
+            onTap: () => context.push('/recording_list/${recording.id}'),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 4,
+                top: 8,
+                bottom: 4,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      recording.name,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => _editTimes(context, ref),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: Text(
-                        [
-                          '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
-                          if (link.performedKey != null &&
-                              link.performedKey!.isNotEmpty)
-                            link.performedKey!,
-                        ].join('  ·  '),
-                        style: const TextStyle(fontFamily: 'monospace'),
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
-                  ],
-                ),
-              ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => _editTimes(context, ref),
+                        child: Text(
+                          [
+                            '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
+                            if (link.performedKey != null &&
+                                link.performedKey!.isNotEmpty)
+                              link.performedKey!,
+                          ].join('  ·  '),
+                          style: const TextStyle(fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<bool> _confirmRemove(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove recording'),
+        content: Text('Remove "${entry.recording.name}" from this tune?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   Future<void> _editTimes(BuildContext context, WidgetRef ref) async {

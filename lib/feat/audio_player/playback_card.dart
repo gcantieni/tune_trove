@@ -84,6 +84,28 @@ class PlaybackCard extends ConsumerWidget {
   }
 }
 
+/// The playback value a scrub should start from, given a touch at
+/// [touchTrackX] (pixels from the start of the effective track).
+///
+/// Touching within [grabRadius] of the current thumb grabs it and keeps
+/// [currentValue] (so a deliberate grab fine-tunes from where the playhead
+/// already is). Touching elsewhere on the line snaps the playhead to the
+/// touched position; the drag then moves relative from there.
+@visibleForTesting
+double scrubStartValue({
+  required double touchTrackX,
+  required double currentValue,
+  required double effectiveWidth,
+  required double duration,
+  required double grabRadius,
+}) {
+  if (duration <= 0 || effectiveWidth <= 0) return currentValue;
+  final currentThumbX = effectiveWidth * (currentValue / duration);
+  if ((touchTrackX - currentThumbX).abs() <= grabRadius) return currentValue;
+  final fraction = (touchTrackX / effectiveWidth).clamp(0.0, 1.0);
+  return fraction * duration;
+}
+
 class _ScrubbingSlider extends ConsumerStatefulWidget {
   const _ScrubbingSlider();
 
@@ -154,9 +176,23 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
               behavior: HitTestBehavior.opaque,
               onPanStart: duration > 0
                   ? (details) {
+                      // Snap the playhead to the touch position (unless the
+                      // touch grabbed the thumb), then drag relative from there.
+                      final touchTrackX =
+                          details.localPosition.dx -
+                          _horizontalMargin -
+                          _thumbDiameter / 2;
+                      final startValue = scrubStartValue(
+                        touchTrackX: touchTrackX,
+                        currentValue: _scrubValue ?? state.position,
+                        effectiveWidth: effectiveWidth,
+                        duration: duration,
+                        grabRadius: _thumbDiameter,
+                      );
                       setState(() {
                         _dragStart = details.localPosition;
-                        _dragStartValue = _scrubValue ?? state.position;
+                        _dragStartValue = startValue;
+                        _scrubValue = startValue;
                         _isDragging = true;
                         _multiplier = 1.0;
                       });

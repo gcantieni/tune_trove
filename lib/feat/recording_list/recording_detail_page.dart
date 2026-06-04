@@ -402,101 +402,123 @@ class _LinkedTuneRow extends ConsumerWidget {
     final showSaveLoop =
         isLocalOrApple && isThisRecordingActive && playerState.isLooping;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      child: SizedBox(
-        width: double.infinity,
-        child: InkWell(
-          onTap: () => context.push('/tune_list/${tune.id}'),
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 16,
-              right: 4,
-              top: 8,
-              bottom: 4,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
+    return Dismissible(
+      key: ValueKey('linked-tune-${link.tuneId}-${link.recordingId}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmRemove(context),
+      onDismissed: (_) => ref
+          .read(databaseProvider)
+          .tuneRecordingDao
+          .unlinkTuneFromRecording(link.tuneId, link.recordingId),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        color: Theme.of(context).colorScheme.errorContainer,
+        child: Icon(
+          Icons.delete_outline,
+          color: Theme.of(context).colorScheme.onErrorContainer,
+        ),
+      ),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        child: SizedBox(
+          width: double.infinity,
+          child: InkWell(
+            onTap: () => context.push('/tune_list/${tune.id}'),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 4,
+                top: 8,
+                bottom: 4,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      tune.name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: subtitle.isNotEmpty
+                            ? Text(
+                                subtitle,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      TextButton(
+                        onPressed: () => _editTimes(context, ref),
                         child: Text(
-                          tune.name,
-                          style: Theme.of(context).textTheme.titleMedium,
+                          '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
+                          style: const TextStyle(fontFamily: 'monospace'),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      tooltip: 'Remove from recording',
-                      onPressed: () => ref
-                          .read(databaseProvider)
-                          .tuneRecordingDao
-                          .unlinkTuneFromRecording(
-                            link.tuneId,
-                            link.recordingId,
+                      if (kind == RecordingLinkKind.youtube &&
+                          link.startTime != null)
+                        IconButton(
+                          icon: const Icon(Icons.play_circle_outline, size: 18),
+                          tooltip: 'Open at ${formatTime(link.startTime)}',
+                          onPressed: () => _launchUrl(
+                            context,
+                            _withTimestamp(recordingUrl, link.startTime!),
                           ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: subtitle.isNotEmpty
-                          ? Text(
-                              subtitle,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                    TextButton(
-                      onPressed: () => _editTimes(context, ref),
-                      child: Text(
-                        '${formatTime(link.startTime)} – ${formatTime(link.endTime)}',
-                        style: const TextStyle(fontFamily: 'monospace'),
-                      ),
-                    ),
-                    if (kind == RecordingLinkKind.youtube &&
-                        link.startTime != null)
-                      IconButton(
-                        icon: const Icon(Icons.play_circle_outline, size: 18),
-                        tooltip: 'Open at ${formatTime(link.startTime)}',
-                        onPressed: () => _launchUrl(
-                          context,
-                          _withTimestamp(recordingUrl, link.startTime!),
                         ),
-                      ),
-                    if (isLocalOrApple && link.startTime != null)
-                      IconButton(
-                        icon: const Icon(Icons.play_circle_outline, size: 18),
-                        tooltip: 'Play from ${formatTime(link.startTime)}',
-                        onPressed: () => ref
-                            .read(audioPlayerProvider.notifier)
-                            .playWithBounds(
-                              recordingUrl,
-                              start: link.startTime,
-                              end: link.endTime,
-                            ),
-                      ),
-                    if (showSaveLoop)
-                      IconButton(
-                        icon: const Icon(Icons.save_alt, size: 18),
-                        tooltip: 'Save loop as timestamps',
-                        onPressed: () => _saveLoop(ref, playerState),
-                      ),
-                  ],
-                ),
-              ],
+                      if (isLocalOrApple && link.startTime != null)
+                        IconButton(
+                          icon: const Icon(Icons.play_circle_outline, size: 18),
+                          tooltip: 'Play from ${formatTime(link.startTime)}',
+                          onPressed: () => ref
+                              .read(audioPlayerProvider.notifier)
+                              .playWithBounds(
+                                recordingUrl,
+                                start: link.startTime,
+                                end: link.endTime,
+                              ),
+                        ),
+                      if (showSaveLoop)
+                        IconButton(
+                          icon: const Icon(Icons.save_alt, size: 18),
+                          tooltip: 'Save loop as timestamps',
+                          onPressed: () => _saveLoop(ref, playerState),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<bool> _confirmRemove(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove tune'),
+        content: Text('Remove "${entry.tune.name}" from this recording?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   Future<void> _editTimes(BuildContext context, WidgetRef ref) async {
