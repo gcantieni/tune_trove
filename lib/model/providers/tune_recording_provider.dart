@@ -14,3 +14,10 @@ final recordingsForTuneProvider = StreamProvider.family
       final db = ref.watch(databaseProvider);
       return db.tuneRecordingDao.watchLinksForTune(tuneId);
     });
+
+/// Recording ids that have at least one linked tune. Backs the Recordings
+/// "Has tune link" filter.
+final linkedRecordingIdsProvider = StreamProvider.autoDispose<Set<int>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.tuneRecordingDao.watchLinkedRecordingIds();
+});

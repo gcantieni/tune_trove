@@ -6,9 +6,10 @@ import 'package:tune_trove/feat/audio_import/audio_import_controller.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_refresh_indicator.dart';
 import 'package:tune_trove/feat/music_kit/apple_music_link.dart';
 import 'package:tune_trove/feat/recording_list/add_recording_dialog.dart';
+import 'package:tune_trove/feat/recording_list/recording_filter_bar.dart';
+import 'package:tune_trove/feat/recording_list/recording_filters.dart';
 import 'package:tune_trove/feat/recording_list/recording_list_item.dart';
 import 'package:tune_trove/model/database.dart';
-import 'package:tune_trove/model/providers/recordings_provider.dart';
 import 'package:tune_trove/routing/nav_scaffold.dart';
 
 /// Recordings tab. Shared-file import (cold launch, share sheet, resume re-drain)
@@ -41,6 +42,7 @@ class RecordingListPage extends ConsumerWidget {
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
+              const RecordingFilterBar(),
               RecordingListWidget(),
               SizedBox(height: MediaQuery.of(context).size.width * 0.25),
             ],
@@ -76,7 +78,10 @@ class RecordingListWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const fontSize = 19.0;
-    final AsyncValue<List<Recording>> async = ref.watch(allRecordingsProvider);
+    final filters = ref.watch(recordingFiltersProvider);
+    final AsyncValue<List<Recording>> async = ref.watch(
+      filteredRecordingsProvider,
+    );
 
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -85,12 +90,14 @@ class RecordingListWidget extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: recordings.isEmpty
             ? [
-                const Padding(
-                  padding: EdgeInsets.all(20),
+                Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Center(
                     child: Text(
-                      'No recordings saved',
-                      style: TextStyle(fontSize: fontSize),
+                      filters.isActive
+                          ? 'No recordings match your filters'
+                          : 'No recordings saved',
+                      style: const TextStyle(fontSize: fontSize),
                     ),
                   ),
                 ),

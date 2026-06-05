@@ -42,6 +42,64 @@ TuneType? _safeType(String? s) {
   }
 }
 
+/// Maximum number of distinct tunes returned per search. A tune may carry
+/// several settings (e.g. thesession.org), all of which are kept — so the cap
+/// counts tunes, not rows, to avoid chopping a tune's settings in half.
+const _maxTunes = 20;
+
+/// Searches [all] for tunes whose name contains [query].
+///
+/// On thesession.org a single tune (one [RemoteTune.sourceId]) can have
+/// settings filed under different names. So rather than returning only the rows
+/// whose name matched, we collect the matched *tune ids* and then reverse-look
+/// up **every** setting sharing those ids — surfacing alternate transcriptions
+/// even when they're recorded under a different name. Rows without a sourceId
+/// (single-version sources) have no siblings and are returned as-is.
+///
+/// At most [maxTunes] distinct tunes are returned (all of each tune's settings
+/// are kept). Order: name-matched tunes in order of first appearance, then each
+/// tune's settings in source order.
+List<RemoteTune> searchTunes(
+  List<RemoteTune> all,
+  String query, {
+  int maxTunes = _maxTunes,
+}) {
+  final q = normalizeForSearch(query);
+
+  // Distinct tune ids whose name matched, in first-appearance order, plus the
+  // name-matched rows that have no tune id (kept verbatim). Together capped at
+  // [maxTunes] tunes.
+  final matchedIds = <String>{};
+  final orderedIds = <String>[];
+  final looseMatches = <RemoteTune>[];
+  for (final t in all) {
+    if (matchedIds.length + looseMatches.length >= maxTunes) break;
+    if (!normalizeForSearch(t.name).contains(q)) continue;
+    final id = t.sourceId;
+    if (id == null) {
+      looseMatches.add(t);
+    } else if (matchedIds.add(id)) {
+      orderedIds.add(id);
+    }
+  }
+
+  if (matchedIds.isEmpty) return looseMatches;
+
+  // Reverse lookup: gather all settings for each matched tune id, preserving
+  // the matched-tune order and source (setting) order within each tune.
+  final byId = <String, List<RemoteTune>>{};
+  for (final t in all) {
+    final id = t.sourceId;
+    if (id != null && matchedIds.contains(id)) {
+      (byId[id] ??= []).add(t);
+    }
+  }
+  return [
+    ...looseMatches,
+    for (final id in orderedIds) ...?byId[id],
+  ];
+}
+
 class StaticAssetTuneSource implements TuneSource {
   @override
   final String name;
@@ -73,11 +131,6 @@ class StaticAssetTuneSource implements TuneSource {
     return _cache!;
   }
 
-  /// Maximum number of distinct tunes returned per search. A tune may carry
-  /// several settings (e.g. thesession.org), all of which are kept — so the
-  /// cap counts tunes, not rows, to avoid chopping a tune's settings in half.
-  static const _maxTunes = 20;
-
   @override
   Future<List<RemoteTune>> search(
     String query, {
@@ -85,21 +138,7 @@ class StaticAssetTuneSource implements TuneSource {
     String? key,
   }) async {
     final all = await _load();
-    final q = normalizeForSearch(query);
-    final matches = all.where((t) => normalizeForSearch(t.name).contains(q));
-    final seenTunes = <String>{};
-    final result = <RemoteTune>[];
-    for (final t in matches) {
-      // Group settings by their tune. `sourceId` is the tune id; results that
-      // lack one (single-version sources) each count as their own tune.
-      final tuneKey = t.sourceId ?? 'noid:${t.name}:${result.length}';
-      if (!seenTunes.contains(tuneKey)) {
-        if (seenTunes.length >= _maxTunes) break;
-        seenTunes.add(tuneKey);
-      }
-      result.add(t);
-    }
-    return result;
+    return searchTunes(all, query);
   }
 
   @override

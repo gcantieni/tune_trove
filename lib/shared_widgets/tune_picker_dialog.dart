@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:tune_trove/feat/abc_midi/abc_midi_player.dart';
 import 'package:tune_trove/feat/abc_midi/abc_play_button.dart';
 import 'package:tune_trove/feat/abc_render/abc_renderer.dart';
 import 'package:tune_trove/feat/abc_render/abc_view.dart';
@@ -61,6 +62,12 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   String _cardKey(RemoteTune t) =>
       '${t.sourceName}|${t.sourceId}|${t.settingId}';
 
+  /// The shared MIDI player, captured only once a card has actually been
+  /// expanded (which constructs it). Lets us stop playback when the user
+  /// switches cards or closes the dialog — otherwise audio that's already
+  /// playing would keep looping with no button left to stop it.
+  AbcMidiPlayer? _player;
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +82,9 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   void dispose() {
     _debounceTimer?.cancel();
     _controller.dispose();
+    // Stop any audition still playing so it doesn't loop on forever after the
+    // dialog closes (e.g. right after "Use this setting").
+    _player?.stop();
     super.dispose();
   }
 
@@ -266,8 +276,12 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   }
 
   void _toggleExpanded(RemoteTune tune) {
+    // Stop whatever the previously-expanded card may be playing before we
+    // collapse it or switch to another setting.
+    _player?.stop();
     final key = _cardKey(tune);
     setState(() => _expandedKey = _expandedKey == key ? null : key);
+    if (_expandedKey != null) _player ??= ref.read(abcMidiPlayerProvider);
   }
 
   /// Orders source names by the same priority used in the Content Library

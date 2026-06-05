@@ -12,6 +12,8 @@ the `version` field in `pubspec.yaml`. The newest release is listed first.
   with rendered notation, a play button, and a tempo slider. For thesession.org,
   each alternate setting is shown separately, sorted oldest-first with a
   publishing-age hint, so you can pick the version you like best.
+- The Recordings list can now be filtered to those linked to a tune and sorted
+  by name (A–Z / Z–A) or most recently added.
 
 ## 1.0.24 — 2026-06-01
 

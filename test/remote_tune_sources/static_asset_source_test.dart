@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tune_trove/model/tables/tunes.dart' show TuneType;
+import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
 import 'package:tune_trove/remote_tune_sources/static_asset_source.dart';
 
 const _sampleData = [
@@ -201,6 +202,71 @@ void main() {
       final companion = await source.resolve(tunes[0]);
 
       expect(companion.genre.value, isNull);
+    });
+  });
+
+  group('searchTunes', () {
+    RemoteTune setting(
+      String name, {
+      required String id,
+      required int settingId,
+    }) => RemoteTune(
+      name: name,
+      sourceName: 'thesession.org',
+      sourceId: id,
+      settingId: settingId,
+    );
+
+    test('a name match pulls in every setting sharing that tune id', () {
+      final all = [
+        setting('The Butterfly', id: '5', settingId: 1),
+        setting('Butterfly', id: '5', settingId: 2), // alias, same tune id
+        setting('Unrelated', id: '6', settingId: 1),
+      ];
+
+      final results = searchTunes(all, 'the butterfly');
+
+      // Both settings of tune 5 are returned (including the differently-named
+      // alias), and nothing from tune 6.
+      expect(results.map((t) => t.settingId), [1, 2]);
+      expect(results.every((t) => t.sourceId == '5'), isTrue);
+    });
+
+    test('reverse lookup works when the alias is what matched', () {
+      final all = [
+        setting('Cooley', id: '1', settingId: 1),
+        setting("Cooley's Reel", id: '1', settingId: 2),
+      ];
+
+      // Query matches only the second row by name, but both come back.
+      final results = searchTunes(all, "cooley's reel");
+      expect(results, hasLength(2));
+    });
+
+    test('caps at maxTunes distinct tunes, keeping all of their settings', () {
+      final all = [
+        for (var tune = 0; tune < 5; tune++)
+          for (var s = 0; s < 3; s++)
+            setting('Tune $tune', id: '$tune', settingId: s),
+      ];
+
+      final results = searchTunes(all, 'tune', maxTunes: 2);
+
+      // 2 tunes × 3 settings each.
+      expect(results, hasLength(6));
+      expect(results.map((t) => t.sourceId).toSet(), {'0', '1'});
+    });
+
+    test('rows without a tune id are returned as-is', () {
+      final all = parseStaticJson(
+        _sampleData.cast<Map<String, dynamic>>(),
+        'Test',
+      );
+      final results = searchTunes(all, 'morning');
+      expect(results.map((t) => t.name), [
+        'Lark in the Morning',
+        'The Morning Dew',
+      ]);
     });
   });
 
