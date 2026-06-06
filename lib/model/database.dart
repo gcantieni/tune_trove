@@ -86,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -253,6 +253,25 @@ class AppDatabase extends _$AppDatabase {
             [meta.id, meta.name],
           );
         }
+      }
+      // v15 -> v16: re-render notation cached before key-signature injection.
+      // Sources like thesession.org store the tune body with the key in a
+      // separate field, so pre-v16 imports cached an SVG (and played MIDI) in
+      // C major regardless of the real key. We can't run the WebView renderer
+      // from a migration, so instead clear the stale cached SVG for any tune
+      // whose ABC has no `K:` header line; the detail view re-renders it lazily
+      // (via assembleAbc, folding in the tune's key) the next time it's opened.
+      // Schema-only change is none — this is a pure, idempotent data backfill
+      // (re-running re-nulls already-null rows, a no-op). Match a K: field at
+      // the start of the ABC or after any newline, mirroring the multiline
+      // `^K:` check in assembleAbc. See .context/standards/migrations.md.
+      if (from < 16 && to >= 16) {
+        await customStatement(
+          'UPDATE tunes SET abc_svg = NULL '
+          'WHERE abc_svg IS NOT NULL AND abc IS NOT NULL '
+          "AND abc NOT LIKE 'K:%' "
+          "AND abc NOT LIKE '%' || char(10) || 'K:%'",
+        );
       }
     },
   );

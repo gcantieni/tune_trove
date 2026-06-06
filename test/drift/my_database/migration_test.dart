@@ -13,6 +13,7 @@ import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v12.dart' as v12;
 import 'generated/schema_v13.dart' as v13;
 import 'generated/schema_v14.dart' as v14;
+import 'generated/schema_v15.dart' as v15;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v6.dart' as v6;
 
@@ -245,6 +246,73 @@ void main() {
       // `from` is left untouched by the migration.
       expect(byFrom['Imported'], 'Paul Hardy Session Tunebook');
       expect(byFrom['Learned'], 'my teacher Mary');
+
+      await app.close();
+    });
+  });
+
+  // Data-integrity test for the v15->v16 backfill: pre-v16, tunes imported from
+  // sources that store the body with the key in a separate field (e.g.
+  // thesession.org) cached an SVG rendered in C major. The migration clears the
+  // stale cached SVG (abc_svg) for any tune whose ABC lacks a `K:` header line
+  // so the detail view re-renders it with the right key, while leaving tunes
+  // whose ABC already declares a key untouched.
+  group('v15->v16 clears stale abc_svg for keyless ABC', () {
+    late Directory tmpDir;
+
+    setUp(() async {
+      tmpDir = await Directory.systemTemp.createTemp('tune_trove_svg');
+    });
+
+    tearDown(() async {
+      if (tmpDir.existsSync()) await tmpDir.delete(recursive: true);
+    });
+
+    test('nulls cached SVG only when the ABC has no K: header', () async {
+      final file = File('${tmpDir.path}/svg.sqlite');
+
+      final old = v15.DatabaseAtV15(NativeDatabase(file));
+      await old.customStatement('SELECT 1'); // open + createAll @ v15
+      // Keyless body (thesession-style) with a cached SVG → should be cleared.
+      await old.customStatement(
+        'INSERT INTO tunes (name, abc, abc_svg, created_at) '
+        "VALUES ('Keyless', '|:G>A B>G:|', '<svg>stale</svg>', 0)",
+      );
+      // ABC with a K: header line → SVG is valid, leave it.
+      await old.customStatement(
+        'INSERT INTO tunes (name, abc, abc_svg, created_at) '
+        "VALUES ('Keyed', 'X:1' || char(10) || 'K:Dmaj' || char(10) || "
+        "'ABcd', '<svg>good</svg>', 0)",
+      );
+      // ABC whose K: appears at the very start (no leading newline).
+      await old.customStatement(
+        'INSERT INTO tunes (name, abc, abc_svg, created_at) '
+        "VALUES ('KeyedFirst', 'K:Gmaj' || char(10) || 'GABc', "
+        "'<svg>good</svg>', 0)",
+      );
+      // No cached SVG yet → nothing to clear, stays null.
+      await old.customStatement(
+        'INSERT INTO tunes (name, abc, created_at) '
+        "VALUES ('NoSvg', '|:abc:|', 0)",
+      );
+      await old.close();
+
+      final app = AppDatabase(NativeDatabase(file));
+      final rows = await app
+          .customSelect('SELECT name, abc_svg FROM tunes ORDER BY name')
+          .get();
+      final bySvg = {
+        for (final r in rows)
+          r.read<String>('name'): r.readNullable<String>('abc_svg'),
+      };
+
+      // Keyless cached render is dropped so it re-renders with the real key.
+      expect(bySvg['Keyless'], isNull);
+      // Keyed renders are preserved.
+      expect(bySvg['Keyed'], '<svg>good</svg>');
+      expect(bySvg['KeyedFirst'], '<svg>good</svg>');
+      // Already-null stays null.
+      expect(bySvg['NoSvg'], isNull);
 
       await app.close();
     });

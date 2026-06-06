@@ -23,6 +23,8 @@ import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/shared_widgets/key_picker_sheet.dart';
 import 'package:tune_trove/shared_widgets/recording_picker_dialog.dart';
 import 'package:tune_trove/shared_widgets/timestamp_editor_dialog.dart';
+import 'package:tune_trove/util/abc_assembly.dart';
+import 'package:tune_trove/util/abc_metadata.dart';
 
 class TuneDetailPage extends ConsumerStatefulWidget {
   final int tuneId;
@@ -129,14 +131,27 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     final svg = newAbc == null
         ? null
         : await ref.read(abcRendererProvider).render(newAbc);
-    await _writeField(
-      tune.id,
-      TunesCompanion(
-        id: drift.Value(tune.id),
-        abc: drift.Value(newAbc),
-        abcSvg: drift.Value(svg),
-      ),
+    var changes = TunesCompanion(
+      id: drift.Value(tune.id),
+      abc: drift.Value(newAbc),
+      abcSvg: drift.Value(svg),
     );
+    // Auto-populate type/composer/genre from the ABC header (R:/C:/O:), but
+    // only fields the user hasn't already set, so we never clobber a manual
+    // choice.
+    if (newAbc != null) {
+      final meta = parseAbcMetadata(newAbc);
+      if (tune.type == null && meta.type != null) {
+        changes = changes.copyWith(type: drift.Value(meta.type));
+      }
+      if (tune.composer == null && meta.composer != null) {
+        changes = changes.copyWith(composer: drift.Value(meta.composer));
+      }
+      if (tune.genre == null && meta.genre != null) {
+        changes = changes.copyWith(genre: drift.Value(meta.genre));
+      }
+    }
+    await _writeField(tune.id, changes);
     if (!mounted) return;
     setState(() => _editingAbc = false);
   }
@@ -179,12 +194,17 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
   }
 
   Widget _buildReadView(Tune tune) {
+    // Tunes imported before key-signature injection (and some sources) store
+    // the body without a K: header; fold in the tune's key so notation and
+    // MIDI use the right mode instead of defaulting to C major. Idempotent
+    // when the ABC already declares a key.
+    final displayAbc = assembleAbc(tune.abc, key: tune.key);
     // Backfill: if a tune has ABC but no cached SVG (existing rows
     // pre-dating the column, or a previous render failure), kick off
     // a render in the background.
-    if (tune.abc != null && tune.abc!.isNotEmpty && tune.abcSvg == null) {
+    if (displayAbc != null && displayAbc.isNotEmpty && tune.abcSvg == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _renderAndCacheSvg(tune.id, tune.abc!);
+        if (mounted) _renderAndCacheSvg(tune.id, displayAbc);
       });
     }
     return ListView(
@@ -245,7 +265,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
         const Text('ABC', style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         AbcView(
-          abc: _editingAbc ? _abcController.text : tune.abc,
+          abc: _editingAbc ? _abcController.text : displayAbc,
           svg: _editingAbc ? _liveSvg : tune.abcSvg,
         ),
         const SizedBox(height: 4),
@@ -288,7 +308,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
           ),
         ],
         const SizedBox(height: 8),
-        AbcPlayButton(abc: _editingAbc ? _abcController.text : tune.abc),
+        AbcPlayButton(abc: _editingAbc ? _abcController.text : displayAbc),
         const SizedBox(height: 24),
         const Divider(),
         const SizedBox(height: 8),
@@ -462,34 +482,16 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
     required String title,
     required String label,
     required String initial,
-  }) async {
-    final controller = TextEditingController(text: initial);
-    final result = await showDialog<String>(
+  }) {
+    return showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          // These fields hold names of people or tunes, so capitalize words.
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(labelText: label),
-          onSubmitted: (v) => Navigator.of(dialogContext).pop(v),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      // The controller lives inside _TextPromptDialog so it's disposed only
+      // when that widget leaves the tree (after the dialog's exit animation),
+      // not the instant showDialog returns — disposing it early made the
+      // still-animating TextField rebuild against a disposed controller.
+      builder: (_) =>
+          _TextPromptDialog(title: title, label: label, initial: initial),
     );
-    controller.dispose();
-    return result;
   }
 
   Future<void> _quickEditName(Tune tune) async {
@@ -958,6 +960,64 @@ class _OptionPickerSheet<T> extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A single-field text prompt. Owns its [TextEditingController] so the
+/// controller is disposed when this widget leaves the tree (after the dialog's
+/// exit animation completes), avoiding a "used after dispose" crash that occurs
+/// when the controller is disposed synchronously right after `showDialog`
+/// returns while the dialog is still animating out. Pops the entered string on
+/// Save/submit, or null on Cancel.
+class _TextPromptDialog extends StatefulWidget {
+  final String title;
+  final String label;
+  final String initial;
+
+  const _TextPromptDialog({
+    required this.title,
+    required this.label,
+    required this.initial,
+  });
+
+  @override
+  State<_TextPromptDialog> createState() => _TextPromptDialogState();
+}
+
+class _TextPromptDialogState extends State<_TextPromptDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        // These fields hold names of people or tunes, so capitalize words.
+        textCapitalization: TextCapitalization.words,
+        decoration: InputDecoration(labelText: widget.label),
+        onSubmitted: (v) => Navigator.of(context).pop(v),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }

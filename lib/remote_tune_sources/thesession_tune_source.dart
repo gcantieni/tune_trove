@@ -1,20 +1,4 @@
-import 'package:drift/drift.dart' as drift;
-import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
-
-List<TunesCompanion> parseTunes(List<Map<String, dynamic>> data) {
-  return data.map((entry) {
-    return TunesCompanion.insert(
-      name: entry['name'] as String,
-      createdAt: DateTime.now(),
-      from: const drift.Value(null),
-      tsId: drift.Value(entry['id'] as int),
-      abc: drift.Value(entry['abc'] as String),
-      key: drift.Value(entry['key'] as String),
-      type: drift.Value(stringToType(entry['type'] as String)),
-    );
-  }).toList();
-}
 
 TuneType stringToType(String s) {
   switch (s) {

@@ -62,10 +62,13 @@ class TuneListPage extends ConsumerWidget {
           // Already in the library — jump to its detail page.
           context.push('/tune_list/${tune.id}');
         },
-        onRemoteTune: (companion) {
-          dao.insertTune(
+        onRemoteTune: (companion) async {
+          // Insert the chosen setting, then open its detail page (mirrors the
+          // library-tune path, which also jumps to detail).
+          final id = await dao.insertTune(
             companion.copyWith(createdAt: drift.Value(DateTime.now())),
           );
+          if (context.mounted) context.push('/tune_list/$id');
         },
         onCreateNew: (name) {
           dao.insertTune(

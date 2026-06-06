@@ -8,6 +8,7 @@ import 'package:tune_trove/remote_tune_sources/remote_tune.dart';
 import 'package:tune_trove/remote_tune_sources/thesession_tune_source.dart'
     show stringToType;
 import 'package:tune_trove/remote_tune_sources/tune_source.dart';
+import 'package:tune_trove/util/abc_assembly.dart';
 import 'package:tune_trove/util/search_normalize.dart';
 
 List<RemoteTune> parseStaticJson(
@@ -18,12 +19,17 @@ List<RemoteTune> parseStaticJson(
     final id = e['id'];
     final settingId = e['setting_id'];
     final rawDate = e['date'] as String?;
+    final key = e['key'] as String?;
     return RemoteTune(
       name: e['name'] as String,
       type: _safeType(e['type'] as String?),
-      key: e['key'] as String?,
+      key: key,
       genre: e['genre'] as String?,
-      abc: e['abc'] as String?,
+      // Many downloaded collections (notably thesession.org) store the tune
+      // body with the key in a separate field. Inject a K: header so the
+      // notation renders with the right accidentals and the MIDI plays in the
+      // correct mode instead of defaulting to C major.
+      abc: assembleAbc(e['abc'] as String?, key: key),
       sourceName: sourceName,
       sourceId: id != null ? '$id' : null,
       settingId: settingId is int ? settingId : int.tryParse('$settingId'),

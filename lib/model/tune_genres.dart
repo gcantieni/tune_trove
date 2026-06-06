@@ -8,8 +8,11 @@
 const List<String> kTuneGenres = [
   'Irish',
   'Scottish',
+  'Shetland',
   'English',
   'Welsh',
+  'Breton',
+  'Balfolk',
   'Old-time',
   'Bluegrass',
   'New England',
