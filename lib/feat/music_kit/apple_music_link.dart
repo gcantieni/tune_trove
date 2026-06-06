@@ -39,6 +39,15 @@ String? appleMusicCatalogIdFromShareUrl(String raw) {
 /// album, playlist, artist). Used to gate transport and the "Add from link" UI.
 bool isAppleMusicShareUrl(String raw) => _appleMusicUri(raw) != null;
 
+/// The public Apple Music *web* URL for a song catalog id. Recordings imported
+/// from an Apple Music link are stored under the internal `music-catalog:<id>`
+/// scheme, which no app can open directly ("There is no application set to open
+/// the URL music-catalog:…"). This rebuilds an openable link: the storefront-
+/// less `…/song/<id>` form is geo-redirected by Apple Music to the visitor's
+/// storefront/slugged title, and opens the Apple Music app when installed.
+String appleMusicWebUrlForCatalogId(String catalogId) =>
+    'https://music.apple.com/song/$catalogId';
+
 /// Derives a human title from an Apple Music link's slug, for use as a fallback
 /// recording name when catalog metadata can't be resolved (MusicKit unavailable
 /// / unauthorized). `…/song/the-morning-dew/1` → `The Morning Dew`. Returns null

@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:tune_trove/feat/audio_player/audio_player_notifier.dart';
 import 'package:tune_trove/feat/audio_player/audio_player_state.dart';
 import 'package:tune_trove/feat/audio_player/playback_card.dart';
+import 'package:tune_trove/feat/music_kit/apple_music_link.dart';
+import 'package:tune_trove/feat/music_kit/music_kit_constants.dart';
 import 'package:tune_trove/feat/music_kit/music_kit_notifier.dart';
 import 'package:tune_trove/feat/recording_list/recording_link_kind.dart';
 import 'package:tune_trove/model/accessors/tune_recording_dao.dart';
@@ -19,7 +21,15 @@ import 'package:tune_trove/shared_widgets/tune_picker_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 Future<void> _launchUrl(BuildContext context, String url) async {
-  final uri = Uri.tryParse(url);
+  // Apple Music recordings are stored under the internal `music-catalog:<id>`
+  // scheme (for in-app MusicKit playback), which no app can open externally.
+  // Rewrite it to the public Apple Music web URL so "Open URL" reaches the
+  // listing instead of failing with "no application set to open the URL".
+  final catalogId = catalogIdFromUrl(url);
+  final target = catalogId != null
+      ? appleMusicWebUrlForCatalogId(catalogId)
+      : url;
+  final uri = Uri.tryParse(target);
   if (uri == null) return;
   final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (!ok && context.mounted) {
