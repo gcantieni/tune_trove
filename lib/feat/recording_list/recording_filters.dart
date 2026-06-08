@@ -43,12 +43,10 @@ List<Recording> applyRecordingFilters(
 ) {
   final filtered = switch (filters.tuneLink) {
     TuneLinkFilter.any => List<Recording>.of(all),
-    TuneLinkFilter.hasTune => all
-        .where((r) => linkedRecordingIds.contains(r.id))
-        .toList(),
-    TuneLinkFilter.noTune => all
-        .where((r) => !linkedRecordingIds.contains(r.id))
-        .toList(),
+    TuneLinkFilter.hasTune =>
+      all.where((r) => linkedRecordingIds.contains(r.id)).toList(),
+    TuneLinkFilter.noTune =>
+      all.where((r) => !linkedRecordingIds.contains(r.id)).toList(),
   };
 
   filtered.sort((a, b) {

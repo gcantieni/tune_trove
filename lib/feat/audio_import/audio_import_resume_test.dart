@@ -120,10 +120,9 @@ void main() {
     expect(find.byType(RecordingFormWidget), findsOneWidget);
     expect(find.textContaining('file://'), findsOneWidget);
 
-    final copied = Directory(p.join(tempDocs.path, 'audio_recordings'))
-        .listSync()
-        .whereType<File>()
-        .toList();
+    final copied = Directory(
+      p.join(tempDocs.path, 'audio_recordings'),
+    ).listSync().whereType<File>().toList();
     expect(copied, hasLength(1));
     expect(p.basename(copied.first.path), 'Shared from extension.m4a');
   });
@@ -159,10 +158,9 @@ void main() {
     expect(find.byType(RecordingFormWidget), findsOneWidget);
     expect(find.textContaining('file://'), findsOneWidget);
 
-    final copied = Directory(p.join(tempDocs.path, 'audio_recordings'))
-        .listSync()
-        .whereType<File>()
-        .toList();
+    final copied = Directory(
+      p.join(tempDocs.path, 'audio_recordings'),
+    ).listSync().whereType<File>().toList();
     expect(copied, hasLength(1));
     expect(p.basename(copied.first.path), 'On another tab.m4a');
   });

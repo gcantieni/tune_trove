@@ -20,12 +20,12 @@ void main() {
   });
 
   Future<int> insertSet(String name) => db.setDao.insertSet(
-        TuneSetsCompanion.insert(name: name, createdAt: DateTime.now()),
-      );
+    TuneSetsCompanion.insert(name: name, createdAt: DateTime.now()),
+  );
 
   Future<int> insertTune(String name) => db.tuneDao.insertTune(
-        TunesCompanion.insert(name: name, createdAt: DateTime.now()),
-      );
+    TunesCompanion.insert(name: name, createdAt: DateTime.now()),
+  );
 
   group('SetTuneDao', () {
     test('addTuneToSet assigns sequential positions', () async {
@@ -59,10 +59,7 @@ void main() {
 
       await db.setTuneDao.removeTuneFromSet(setTuneId);
 
-      await expectLater(
-        db.setTuneDao.watchTunesInSet(setId),
-        emits(isEmpty),
-      );
+      await expectLater(db.setTuneDao.watchTunesInSet(setId), emits(isEmpty));
     });
 
     test('watchTunesInSet orders by position', () async {
@@ -78,7 +75,11 @@ void main() {
       final entries = await db.setTuneDao.watchTunesInSet(setId).first;
 
       expect(entries.map((e) => e.link.position).toList(), [0, 1, 2]);
-      expect(entries.map((e) => e.tune.name).toList(), ['Alpha', 'Beta', 'Gamma']);
+      expect(entries.map((e) => e.tune.name).toList(), [
+        'Alpha',
+        'Beta',
+        'Gamma',
+      ]);
     });
 
     test('watchSetsForTune returns both sets the tune belongs to', () async {

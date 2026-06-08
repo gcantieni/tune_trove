@@ -27,23 +27,18 @@ void main() {
     fake = FakeCloudKitSyncService();
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    svc = SyncOutboundService(
-      db,
-      fake,
-      SyncReconciliationService(db),
-      prefs,
-    );
+    svc = SyncOutboundService(db, fake, SyncReconciliationService(db), prefs);
   });
   tearDown(() => db.close());
 
   Future<int> seedTune(String name) => db.tuneDao.insertTune(
-        TunesCompanion.insert(
-          name: name,
-          createdAt: DateTime(2024),
-          tsId: const drift.Value(11),
-          type: const drift.Value(null),
-        ),
-      );
+    TunesCompanion.insert(
+      name: name,
+      createdAt: DateTime(2024),
+      tsId: const drift.Value(11),
+      type: const drift.Value(null),
+    ),
+  );
 
   group('serializeByCloudId', () {
     test('serializes a tune', () async {
@@ -66,8 +61,11 @@ void main() {
           createdAt: DateTime(2024),
         ),
       );
-      await db.tuneRecordingDao
-          .linkTuneToRecording(tuneId, recId, startTime: 2.0);
+      await db.tuneRecordingDao.linkTuneToRecording(
+        tuneId,
+        recId,
+        startTime: 2.0,
+      );
       final tune = await db.tuneDao.getTune(tuneId);
       final link = (await db.tuneRecordingDao.getAll()).single;
 
@@ -77,26 +75,28 @@ void main() {
       expect(map['start_time'], 2.0);
     });
 
-    test('serializes a set, a set-tune link, and a source confirmation',
-        () async {
-      final setId = await db.setDao.insertSet(
-        TuneSetsCompanion.insert(name: 'S', createdAt: DateTime(2024)),
-      );
-      final tuneId = await seedTune('T');
-      await db.setTuneDao.addTuneToSet(setId, tuneId, key: 'D');
-      await db.sourceConfirmationDao.confirm('thesession', 'ODbL');
+    test(
+      'serializes a set, a set-tune link, and a source confirmation',
+      () async {
+        final setId = await db.setDao.insertSet(
+          TuneSetsCompanion.insert(name: 'S', createdAt: DateTime(2024)),
+        );
+        final tuneId = await seedTune('T');
+        await db.setTuneDao.addTuneToSet(setId, tuneId, key: 'D');
+        await db.sourceConfirmationDao.confirm('thesession', 'ODbL');
 
-      final setCid = (await db.setDao.getAll()).single.cloudId!;
-      final stCid = (await db.setTuneDao.getAll()).single.cloudId!;
-      final scCid = (await db.sourceConfirmationDao.getAll()).single.cloudId!;
+        final setCid = (await db.setDao.getAll()).single.cloudId!;
+        final stCid = (await db.setTuneDao.getAll()).single.cloudId!;
+        final scCid = (await db.sourceConfirmationDao.getAll()).single.cloudId!;
 
-      expect((await svc.serializeByCloudId('TuneSet', setCid))!['name'], 'S');
-      final st = await svc.serializeByCloudId('SetTune', stCid);
-      expect(st!['set_cloud_id'], setCid);
-      expect(st['key'], 'D');
-      final sc = await svc.serializeByCloudId('SourceConfirmation', scCid);
-      expect(sc!['source_id'], 'thesession');
-    });
+        expect((await svc.serializeByCloudId('TuneSet', setCid))!['name'], 'S');
+        final st = await svc.serializeByCloudId('SetTune', stCid);
+        expect(st!['set_cloud_id'], setCid);
+        expect(st['key'], 'D');
+        final sc = await svc.serializeByCloudId('SourceConfirmation', scCid);
+        expect(sc!['source_id'], 'thesession');
+      },
+    );
 
     test('serializes a source ranking and an app setting', () async {
       await db.sourceRankingsDao.appendSource('thesession');
@@ -121,30 +121,32 @@ void main() {
   });
 
   group('syncNow', () {
-    test('initializes, reconciles fetched changes, backfills and sends',
-        () async {
-      await seedTune('Local');
-      // Remote hands back a brand-new tune to reconcile in.
-      fake.fetched = FetchedChanges([
-        SyncUpsertEvent('Tune', {
-          'cloud_id': 'remote-1',
-          'name': 'Remote Tune',
-          'created_at': DateTime(2023).millisecondsSinceEpoch,
-        }),
-      ], const []);
+    test(
+      'initializes, reconciles fetched changes, backfills and sends',
+      () async {
+        await seedTune('Local');
+        // Remote hands back a brand-new tune to reconcile in.
+        fake.fetched = FetchedChanges([
+          SyncUpsertEvent('Tune', {
+            'cloud_id': 'remote-1',
+            'name': 'Remote Tune',
+            'created_at': DateTime(2023).millisecondsSinceEpoch,
+          }),
+        ], const []);
 
-      final result = await svc.syncNow();
+        final result = await svc.syncNow();
 
-      expect(fake.initializeCalls, 1);
-      expect(fake.sendCalls, 1);
-      expect(result, isA<SendResult>());
-      // Reconciliation ran.
-      expect(await db.tuneDao.getByCloudId('remote-1'), isNotNull);
-      // First sync backfills: every local row was staged.
-      expect(fake.stagedRecords, hasLength(1));
-      expect(fake.stagedRecords.single, isNotEmpty);
-      expect(prefs.getBool('sync_initial_push_done'), isTrue);
-    });
+        expect(fake.initializeCalls, 1);
+        expect(fake.sendCalls, 1);
+        expect(result, isA<SendResult>());
+        // Reconciliation ran.
+        expect(await db.tuneDao.getByCloudId('remote-1'), isNotNull);
+        // First sync backfills: every local row was staged.
+        expect(fake.stagedRecords, hasLength(1));
+        expect(fake.stagedRecords.single, isNotEmpty);
+        expect(prefs.getBool('sync_initial_push_done'), isTrue);
+      },
+    );
 
     test('does not re-stage everything once backfilled', () async {
       await seedTune('Local');

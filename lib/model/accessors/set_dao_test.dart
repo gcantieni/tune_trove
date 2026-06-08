@@ -19,8 +19,12 @@ void main() {
   TuneSetsCompanion set(String name, {int? position, String? cloudId}) =>
       TuneSetsCompanion(
         name: drift.Value(name),
-        position: position == null ? const drift.Value.absent() : drift.Value(position),
-        cloudId: cloudId == null ? const drift.Value.absent() : drift.Value(cloudId),
+        position: position == null
+            ? const drift.Value.absent()
+            : drift.Value(position),
+        cloudId: cloudId == null
+            ? const drift.Value.absent()
+            : drift.Value(cloudId),
         createdAt: drift.Value(DateTime(2024)),
       );
 

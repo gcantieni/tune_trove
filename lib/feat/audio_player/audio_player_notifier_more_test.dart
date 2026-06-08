@@ -90,12 +90,14 @@ void main() {
   AudioPlayerState state() => container.read(audioPlayerProvider);
 
   group('play + transport delegation', () {
-    test('play routes to the local backend with no startTime when not looping',
-        () async {
-      await notifier().play('app-data:a.mp3');
-      expect(local.plays.single.uri, 'app-data:a.mp3');
-      expect(local.plays.single.start, isNull);
-    });
+    test(
+      'play routes to the local backend with no startTime when not looping',
+      () async {
+        await notifier().play('app-data:a.mp3');
+        expect(local.plays.single.uri, 'app-data:a.mp3');
+        expect(local.plays.single.start, isNull);
+      },
+    );
 
     test('transport calls before play are no-ops', () async {
       // No active backend yet: these must resolve without throwing.
@@ -122,31 +124,35 @@ void main() {
   });
 
   group('playback rate', () {
-    test('updates state immediately and the backend after the debounce',
-        () async {
-      final n = notifier();
-      await n.play('app-data:a.mp3');
-      local.rates.clear(); // ignore the rate re-applied on play
-      n.setPlaybackRate(0.75);
-      expect(state().playbackRate, 0.75); // immediate
-      expect(local.rates, isEmpty); // debounced
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      expect(local.rates, [0.75]);
-    });
+    test(
+      'updates state immediately and the backend after the debounce',
+      () async {
+        final n = notifier();
+        await n.play('app-data:a.mp3');
+        local.rates.clear(); // ignore the rate re-applied on play
+        n.setPlaybackRate(0.75);
+        expect(state().playbackRate, 0.75); // immediate
+        expect(local.rates, isEmpty); // debounced
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        expect(local.rates, [0.75]);
+      },
+    );
 
-    test('play re-applies the chosen speed (a reload resets it to 1x)',
-        () async {
-      final n = notifier();
-      await n.play('app-data:a.mp3');
-      n.setPlaybackRate(0.5);
-      await Future<void>.delayed(const Duration(milliseconds: 120));
-      local.rates.clear();
+    test(
+      'play re-applies the chosen speed (a reload resets it to 1x)',
+      () async {
+        final n = notifier();
+        await n.play('app-data:a.mp3');
+        n.setPlaybackRate(0.5);
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        local.rates.clear();
 
-      // Playing again (e.g. the big play button after stopping) must push the
-      // chosen speed back to the backend, which a reload would otherwise drop.
-      await n.play('app-data:a.mp3');
-      expect(local.rates, contains(0.5));
-    });
+        // Playing again (e.g. the big play button after stopping) must push the
+        // chosen speed back to the backend, which a reload would otherwise drop.
+        await n.play('app-data:a.mp3');
+        expect(local.rates, contains(0.5));
+      },
+    );
 
     test('resume re-applies the chosen speed', () async {
       final n = notifier();
@@ -193,12 +199,14 @@ void main() {
   });
 
   group('loop config', () {
-    test('toggleLoop falls back to a 60s loop end when duration is unknown',
-        () {
-      notifier().toggleLoop();
-      expect(state().isLooping, isTrue);
-      expect(state().loopEnd, 60.0);
-    });
+    test(
+      'toggleLoop falls back to a 60s loop end when duration is unknown',
+      () {
+        notifier().toggleLoop();
+        expect(state().isLooping, isTrue);
+        expect(state().loopEnd, 60.0);
+      },
+    );
 
     test('toggleLoop uses the known duration for the loop end', () async {
       final n = notifier();
@@ -296,53 +304,57 @@ void main() {
       expect(state().loopEnd, 20);
     });
 
-    test('speed carries to a new recording but each remembers its own',
-        () async {
-      final n = notifier();
-      await playAndAck(n, 'a.mp3');
-      n.setPlaybackRate(0.5);
-      await Future<void>.delayed(const Duration(milliseconds: 120));
+    test(
+      'speed carries to a new recording but each remembers its own',
+      () async {
+        final n = notifier();
+        await playAndAck(n, 'a.mp3');
+        n.setPlaybackRate(0.5);
+        await Future<void>.delayed(const Duration(milliseconds: 120));
 
-      // A new recording inherits the current speed (sticky).
-      await playAndAck(n, 'b.mp3');
-      expect(state().playbackRate, 0.5);
-      n.setPlaybackRate(0.75);
-      await Future<void>.delayed(const Duration(milliseconds: 120));
+        // A new recording inherits the current speed (sticky).
+        await playAndAck(n, 'b.mp3');
+        expect(state().playbackRate, 0.5);
+        n.setPlaybackRate(0.75);
+        await Future<void>.delayed(const Duration(milliseconds: 120));
 
-      // Back to A restores 0.5; forward to B restores 0.75.
-      await playAndAck(n, 'a.mp3');
-      expect(state().playbackRate, 0.5);
-      await playAndAck(n, 'b.mp3');
-      expect(state().playbackRate, 0.75);
-    });
+        // Back to A restores 0.5; forward to B restores 0.75.
+        await playAndAck(n, 'a.mp3');
+        expect(state().playbackRate, 0.5);
+        await playAndAck(n, 'b.mp3');
+        expect(state().playbackRate, 0.75);
+      },
+    );
   });
 
   group('cross-backend playback', () {
-    test('switching backends stops the previous one so they do not overlap',
-        () async {
-      final music = FakeMusicBackend();
-      final c = ProviderContainer(
-        overrides: [
-          localFileBackendProvider.overrideWithValue(local),
-          musicKitBackendProvider.overrideWithValue(music),
-        ],
-      );
-      addTearDown(c.dispose);
-      final n = c.read(audioPlayerProvider.notifier);
+    test(
+      'switching backends stops the previous one so they do not overlap',
+      () async {
+        final music = FakeMusicBackend();
+        final c = ProviderContainer(
+          overrides: [
+            localFileBackendProvider.overrideWithValue(local),
+            musicKitBackendProvider.overrideWithValue(music),
+          ],
+        );
+        addTearDown(c.dispose);
+        final n = c.read(audioPlayerProvider.notifier);
 
-      // Start an Apple Music track...
-      await n.play('music-catalog:123');
-      expect(music.plays, isNotEmpty);
-      expect(music.stops, 0);
+        // Start an Apple Music track...
+        await n.play('music-catalog:123');
+        expect(music.plays, isNotEmpty);
+        expect(music.stops, 0);
 
-      // ...then play a local file: the music backend must be stopped.
-      await n.play('app-data:a.mp3');
-      expect(music.stops, 1);
-      expect(local.plays, isNotEmpty);
+        // ...then play a local file: the music backend must be stopped.
+        await n.play('app-data:a.mp3');
+        expect(music.stops, 1);
+        expect(local.plays, isNotEmpty);
 
-      // Back to Apple Music: the local backend is stopped in turn.
-      await n.play('music-catalog:123');
-      expect(local.stops, 1);
-    });
+        // Back to Apple Music: the local backend is stopped in turn.
+        await n.play('music-catalog:123');
+        expect(local.stops, 1);
+      },
+    );
   });
 }

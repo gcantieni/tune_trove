@@ -26,15 +26,18 @@ void main() {
     expect(await dao.watchValue('missing').first, isNull);
   });
 
-  test('setValue inserts a row with a non-null cloudId and modifiedAt', () async {
-    await dao.setValue('invertNotationInDarkMode', 'false');
-    final row = await dao.getByKey('invertNotationInDarkMode');
-    expect(row, isNotNull);
-    expect(row!.value, 'false');
-    expect(row.cloudId, isNotNull);
-    expect(row.cloudId!.length, greaterThan(10));
-    expect(row.modifiedAt, isNotNull);
-  });
+  test(
+    'setValue inserts a row with a non-null cloudId and modifiedAt',
+    () async {
+      await dao.setValue('invertNotationInDarkMode', 'false');
+      final row = await dao.getByKey('invertNotationInDarkMode');
+      expect(row, isNotNull);
+      expect(row!.value, 'false');
+      expect(row.cloudId, isNotNull);
+      expect(row.cloudId!.length, greaterThan(10));
+      expect(row.modifiedAt, isNotNull);
+    },
+  );
 
   test('setValue updates in place and keeps the same cloudId', () async {
     await dao.setValue('k', 'true');
@@ -89,19 +92,22 @@ void main() {
     expect((await dao.getByKey('k'))!.value, 'true');
   });
 
-  test('upsertFromRemote adopts cloudId by natural key (the setting key)', () async {
-    await dao.setValue('k', 'true');
-    await dao.upsertFromRemote(
-      key: 'k',
-      cloudId: 'remote-cloud-id',
-      value: 'false',
-      modifiedAt: DateTime.now().add(const Duration(hours: 1)),
-    );
-    final row = await dao.getByKey('k');
-    expect(row!.cloudId, 'remote-cloud-id');
-    expect(row.value, 'false');
-    expect(await dao.getAll(), hasLength(1));
-  });
+  test(
+    'upsertFromRemote adopts cloudId by natural key (the setting key)',
+    () async {
+      await dao.setValue('k', 'true');
+      await dao.upsertFromRemote(
+        key: 'k',
+        cloudId: 'remote-cloud-id',
+        value: 'false',
+        modifiedAt: DateTime.now().add(const Duration(hours: 1)),
+      );
+      final row = await dao.getByKey('k');
+      expect(row!.cloudId, 'remote-cloud-id');
+      expect(row.value, 'false');
+      expect(await dao.getAll(), hasLength(1));
+    },
+  );
 
   test('deleteByCloudId removes the row', () async {
     await dao.setValue('k', 'true');

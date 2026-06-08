@@ -30,7 +30,11 @@ void main() {
     expect(current().phase, SyncPhase.idle);
 
     notifier.reportBackgroundResult(
-      const SendResult(saved: 1, failedCount: 2, failures: ['a: boom', 'b: bad']),
+      const SendResult(
+        saved: 1,
+        failedCount: 2,
+        failures: ['a: boom', 'b: bad'],
+      ),
     );
 
     final s = current();
@@ -41,19 +45,21 @@ void main() {
     expect(s.lastSyncedAt, isNotNull);
   });
 
-  test('a clean background result does not snackbar-flip idle to success',
-      () async {
-    final notifier = await readyNotifier();
+  test(
+    'a clean background result does not snackbar-flip idle to success',
+    () async {
+      final notifier = await readyNotifier();
 
-    notifier.reportBackgroundResult(const SendResult(saved: 3));
+      notifier.reportBackgroundResult(const SendResult(saved: 3));
 
-    final s = current();
-    // Phase stays idle (no launch-style "Sync complete" pop), but the
-    // timestamp is refreshed so the tile reflects recent activity.
-    expect(s.phase, SyncPhase.idle);
-    expect(s.failedCount, 0);
-    expect(s.lastSyncedAt, isNotNull);
-  });
+      final s = current();
+      // Phase stays idle (no launch-style "Sync complete" pop), but the
+      // timestamp is refreshed so the tile reflects recent activity.
+      expect(s.phase, SyncPhase.idle);
+      expect(s.failedCount, 0);
+      expect(s.lastSyncedAt, isNotNull);
+    },
+  );
 
   test('a clean background result clears a prior partial problem', () async {
     final notifier = await readyNotifier();

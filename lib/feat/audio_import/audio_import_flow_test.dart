@@ -113,10 +113,9 @@ void main() {
     expect(find.text('Session clip'), findsWidgets); // name field
     expect(find.textContaining('file://'), findsOneWidget); // url field
 
-    final copied = Directory(p.join(tempDocs.path, 'audio_recordings'))
-        .listSync()
-        .whereType<File>()
-        .toList();
+    final copied = Directory(
+      p.join(tempDocs.path, 'audio_recordings'),
+    ).listSync().whereType<File>().toList();
     expect(copied, hasLength(1));
     expect(p.basename(copied.first.path), 'Session clip.m4a');
   });

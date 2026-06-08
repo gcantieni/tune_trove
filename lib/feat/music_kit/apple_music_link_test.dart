@@ -72,11 +72,14 @@ void main() {
       );
     });
 
-    test('produces a recognized Apple Music web URL (not the internal scheme)', () {
-      final url = appleMusicWebUrlForCatalogId('819532955');
-      expect(isAppleMusicShareUrl(url), isTrue);
-      expect(url.startsWith('https://'), isTrue);
-    });
+    test(
+      'produces a recognized Apple Music web URL (not the internal scheme)',
+      () {
+        final url = appleMusicWebUrlForCatalogId('819532955');
+        expect(isAppleMusicShareUrl(url), isTrue);
+        expect(url.startsWith('https://'), isTrue);
+      },
+    );
   });
 
   group('appleMusicNameFromSlug', () {

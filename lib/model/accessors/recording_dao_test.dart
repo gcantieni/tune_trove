@@ -71,7 +71,10 @@ void main() {
 
       final all = await dao.getAll();
       expect(all.length, 2);
-      expect(all.map((r) => r.name), containsAll(['Recording A', 'Recording B']));
+      expect(
+        all.map((r) => r.name),
+        containsAll(['Recording A', 'Recording B']),
+      );
     });
 
     test('updateRecording persists changes', () async {

@@ -8,12 +8,12 @@ void main() {
   group('scrubStartValue', () {
     // 100px-wide track, 200s clip → 2s per pixel.
     double snap(double touchTrackX, double currentValue) => scrubStartValue(
-          touchTrackX: touchTrackX,
-          currentValue: currentValue,
-          effectiveWidth: 100,
-          duration: 200,
-          grabRadius: 20,
-        );
+      touchTrackX: touchTrackX,
+      currentValue: currentValue,
+      effectiveWidth: 100,
+      duration: 200,
+      grabRadius: 20,
+    );
 
     test('touching the line away from the thumb snaps to that position', () {
       // Thumb is at 0s (x=0); touch at x=75 → 75% → 150s.

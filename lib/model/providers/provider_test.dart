@@ -44,19 +44,18 @@ void main() {
     final firstValue = Completer<void>();
     final secondValue = Completer<void>();
 
-    final sub = container.listen<AsyncValue<Tune?>>(
-      singleTuneProvider(id),
-      (_, next) {
-        if (!next.hasValue) return;
-        emitted.add(next.value);
-        if (!firstValue.isCompleted) {
-          firstValue.complete();
-        } else if (!secondValue.isCompleted) {
-          secondValue.complete();
-        }
-      },
-      fireImmediately: true,
-    );
+    final sub = container.listen<AsyncValue<Tune?>>(singleTuneProvider(id), (
+      _,
+      next,
+    ) {
+      if (!next.hasValue) return;
+      emitted.add(next.value);
+      if (!firstValue.isCompleted) {
+        firstValue.complete();
+      } else if (!secondValue.isCompleted) {
+        secondValue.complete();
+      }
+    }, fireImmediately: true);
 
     await firstValue.future;
 
@@ -78,16 +77,15 @@ void main() {
     final firstEmit = Completer<void>();
     final thirdEmit = Completer<void>();
 
-    final sub = container.listen<AsyncValue<List<Tune>>>(
-      allTunesProvider,
-      (_, next) {
-        if (!next.hasValue) return;
-        history.add(next.value!);
-        if (!firstEmit.isCompleted) firstEmit.complete();
-        if (history.length >= 3 && !thirdEmit.isCompleted) thirdEmit.complete();
-      },
-      fireImmediately: true,
-    );
+    final sub = container.listen<AsyncValue<List<Tune>>>(allTunesProvider, (
+      _,
+      next,
+    ) {
+      if (!next.hasValue) return;
+      history.add(next.value!);
+      if (!firstEmit.isCompleted) firstEmit.complete();
+      if (history.length >= 3 && !thirdEmit.isCompleted) thirdEmit.complete();
+    }, fireImmediately: true);
 
     await firstEmit.future;
 

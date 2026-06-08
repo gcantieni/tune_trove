@@ -11,18 +11,26 @@ void main() {
     });
 
     test('is active while loading', () {
-      expect(const AbcMidiState(status: AbcMidiStatus.loading).isActive, isTrue);
+      expect(
+        const AbcMidiState(status: AbcMidiStatus.loading).isActive,
+        isTrue,
+      );
     });
 
     test('is active while playing', () {
-      expect(const AbcMidiState(status: AbcMidiStatus.playing).isActive, isTrue);
+      expect(
+        const AbcMidiState(status: AbcMidiStatus.playing).isActive,
+        isTrue,
+      );
     });
 
     test('is inactive when idle or in error', () {
       expect(const AbcMidiState().isActive, isFalse); // defaults to idle
       expect(
-        const AbcMidiState(status: AbcMidiStatus.error, message: 'boom')
-            .isActive,
+        const AbcMidiState(
+          status: AbcMidiStatus.error,
+          message: 'boom',
+        ).isActive,
         isFalse,
       );
     });

@@ -26,7 +26,6 @@ void main() {
     await db.close();
   });
 
-
   Future<(int tuneId, int recId)> seedLinkedPair() async {
     final tuneId = await db.tuneDao.insertTune(
       TunesCompanion(
@@ -59,8 +58,9 @@ void main() {
   test('recordingsForTuneProvider streams the recordings for a tune', () async {
     final (tuneId, recId) = await seedLinkedPair();
     container.listen(recordingsForTuneProvider(tuneId), (_, _) {});
-    final links =
-        await container.read(recordingsForTuneProvider(tuneId).future);
+    final links = await container.read(
+      recordingsForTuneProvider(tuneId).future,
+    );
     expect(links, hasLength(1));
     expect(links.single.recording.id, recId);
   });
@@ -68,13 +68,7 @@ void main() {
   test('providers emit empty lists when there are no links', () async {
     container.listen(linksForRecordingProvider(42), (_, _) {});
     container.listen(recordingsForTuneProvider(42), (_, _) {});
-    expect(
-      await container.read(linksForRecordingProvider(42).future),
-      isEmpty,
-    );
-    expect(
-      await container.read(recordingsForTuneProvider(42).future),
-      isEmpty,
-    );
+    expect(await container.read(linksForRecordingProvider(42).future), isEmpty);
+    expect(await container.read(recordingsForTuneProvider(42).future), isEmpty);
   });
 }

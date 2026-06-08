@@ -28,14 +28,16 @@ void main() {
     expect(all.single.cloudId, isNotNull);
   });
 
-  test('revoke removes the row; revoking a missing source is a no-op',
-      () async {
-    final dao = db.sourceConfirmationDao;
-    await dao.revoke('not_there'); // no throw
-    await dao.confirm('thesession', 'ODbL 1.0');
-    await dao.revoke('thesession');
-    expect(await dao.getAll(), isEmpty);
-  });
+  test(
+    'revoke removes the row; revoking a missing source is a no-op',
+    () async {
+      final dao = db.sourceConfirmationDao;
+      await dao.revoke('not_there'); // no throw
+      await dao.confirm('thesession', 'ODbL 1.0');
+      await dao.revoke('thesession');
+      expect(await dao.getAll(), isEmpty);
+    },
+  );
 
   test('getBySourceId and getByCloudId look rows up', () async {
     final dao = db.sourceConfirmationDao;

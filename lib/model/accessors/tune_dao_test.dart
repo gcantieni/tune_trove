@@ -20,7 +20,9 @@ void main() {
       TunesCompanion(
         name: drift.Value(name),
         tsId: tsId == null ? const drift.Value.absent() : drift.Value(tsId),
-        cloudId: cloudId == null ? const drift.Value.absent() : drift.Value(cloudId),
+        cloudId: cloudId == null
+            ? const drift.Value.absent()
+            : drift.Value(cloudId),
         genre: const drift.Value('irish'),
         createdAt: drift.Value(DateTime(2024)),
       );

@@ -99,10 +99,7 @@ void main() {
     tester,
   ) async {
     await pumpDialog(tester);
-    expect(
-      find.textContaining('No recordings yet'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('No recordings yet'), findsOneWidget);
   });
 
   testWidgets('a URL query offers a create-from-URL tile', (tester) async {

@@ -28,8 +28,7 @@ void main() {
 
     test('confirmation-required sources are not always-active', () {
       for (final m in allContentSources) {
-        expect(m.isAlwaysActive, equals(!m.confirmationRequired),
-            reason: m.id);
+        expect(m.isAlwaysActive, equals(!m.confirmationRequired), reason: m.id);
       }
     });
 
@@ -42,13 +41,13 @@ void main() {
 
   group('compareSourcesForDisplay', () {
     ContentSourceMeta meta(String name, String genre) => ContentSourceMeta(
-          id: name,
-          name: name,
-          genre: genre,
-          license: '',
-          attribution: '',
-          confirmationRequired: false,
-        );
+      id: name,
+      name: name,
+      genre: genre,
+      license: '',
+      attribution: '',
+      confirmationRequired: false,
+    );
 
     List<String> ordered(List<ContentSourceMeta> input) {
       final list = [...input]..sort(compareSourcesForDisplay);
@@ -76,13 +75,10 @@ void main() {
     });
 
     test('breaks ties within a genre by name', () {
-      expect(
-        ordered([
-          meta('Beta', 'Irish'),
-          meta('Alpha', 'Irish'),
-        ]),
-        ['Alpha', 'Beta'],
-      );
+      expect(ordered([meta('Beta', 'Irish'), meta('Alpha', 'Irish')]), [
+        'Alpha',
+        'Beta',
+      ]);
     });
 
     test('ignores a leading "The" when alphabetizing within a genre', () {
@@ -100,8 +96,9 @@ void main() {
 
     test('on the real registry, The Athole Collection leads the Scottish '
         'section', () {
-      final scottish = [...allContentSources.where((m) => m.genre == 'Scottish')]
-        ..sort(compareSourcesForDisplay);
+      final scottish = [
+        ...allContentSources.where((m) => m.genre == 'Scottish'),
+      ]..sort(compareSourcesForDisplay);
       expect(scottish.first.id, 'athole');
     });
 
@@ -112,16 +109,18 @@ void main() {
       expect(lastIrish, lessThan(firstScottish));
     });
 
-    test('thesession.org is pinned last even against another ungenred source',
-        () {
-      // 'zzz' would otherwise sort after 'thesession' by name; the pin wins.
-      final sorted = [
-        meta('thesession', ''),
-        meta('aaa', ''),
-        meta('zzz', ''),
-      ]..sort(compareSourcesForDisplay);
-      expect(sorted.last.id, 'thesession');
-    });
+    test(
+      'thesession.org is pinned last even against another ungenred source',
+      () {
+        // 'zzz' would otherwise sort after 'thesession' by name; the pin wins.
+        final sorted = [
+          meta('thesession', ''),
+          meta('aaa', ''),
+          meta('zzz', ''),
+        ]..sort(compareSourcesForDisplay);
+        expect(sorted.last.id, 'thesession');
+      },
+    );
 
     test('on the real registry, thesession.org sorts dead last', () {
       final sorted = [...allContentSources]..sort(compareSourcesForDisplay);
@@ -130,8 +129,7 @@ void main() {
   });
 
   group('Bremner Scots Reels source', () {
-    final bremner =
-        allContentSources.where((m) => m.id == 'bremner').toList();
+    final bremner = allContentSources.where((m) => m.id == 'bremner').toList();
 
     test('is registered as a GPL Scottish source requiring confirmation', () {
       expect(bremner, hasLength(1));

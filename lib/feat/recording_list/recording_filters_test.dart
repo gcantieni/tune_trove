@@ -86,7 +86,11 @@ void main() {
     });
 
     test('default sort is newest first by createdAt', () {
-      final result = applyRecordingFilters(all, const RecordingFilters(), const {});
+      final result = applyRecordingFilters(
+        all,
+        const RecordingFilters(),
+        const {},
+      );
       expect(result.map((r) => r.id), [2, 3, 1]);
     });
   });

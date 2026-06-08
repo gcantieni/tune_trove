@@ -29,10 +29,7 @@ void main() {
 
   Future<bool?> readInvert() {
     // Keep the autoDispose provider alive while we await its first value.
-    final sub = container.listen(
-      invertNotationInDarkModeProvider,
-      (_, _) {},
-    );
+    final sub = container.listen(invertNotationInDarkModeProvider, (_, _) {});
     addTearDown(sub.close);
     return container.read(invertNotationInDarkModeProvider.future);
   }

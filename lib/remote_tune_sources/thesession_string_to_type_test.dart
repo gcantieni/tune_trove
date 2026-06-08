@@ -12,9 +12,18 @@ void main() {
     test('march', () => expect(stringToType('march'), TuneType.march));
     test('slip jig', () => expect(stringToType('slip jig'), TuneType.slipJig));
     test('waltz', () => expect(stringToType('waltz'), TuneType.waltz));
-    test('barndance', () => expect(stringToType('barndance'), TuneType.barndance));
-    test('strathspey', () => expect(stringToType('strathspey'), TuneType.strathspey));
-    test('three-two', () => expect(stringToType('three-two'), TuneType.threeTwo));
+    test(
+      'barndance',
+      () => expect(stringToType('barndance'), TuneType.barndance),
+    );
+    test(
+      'strathspey',
+      () => expect(stringToType('strathspey'), TuneType.strathspey),
+    );
+    test(
+      'three-two',
+      () => expect(stringToType('three-two'), TuneType.threeTwo),
+    );
     test('mazurka', () => expect(stringToType('mazurka'), TuneType.mazurka));
     test('unknown throws Exception', () {
       expect(() => stringToType('unknown'), throwsA(isA<Exception>()));

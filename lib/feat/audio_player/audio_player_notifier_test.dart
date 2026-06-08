@@ -93,19 +93,21 @@ void main() {
       expect(backend.lastStartTime, 30.0);
     });
 
-    test('with neither start nor end plays from beginning without loop',
-        () async {
-      final notifier = container.read(audioPlayerProvider.notifier);
-      await notifier.playWithBounds(
-        'app-data:test.mp3',
-        start: null,
-        end: null,
-      );
+    test(
+      'with neither start nor end plays from beginning without loop',
+      () async {
+        final notifier = container.read(audioPlayerProvider.notifier);
+        await notifier.playWithBounds(
+          'app-data:test.mp3',
+          start: null,
+          end: null,
+        );
 
-      final s = container.read(audioPlayerProvider);
-      expect(s.isLooping, isFalse);
-      expect(backend.lastStartTime, isNull);
-    });
+        final s = container.read(audioPlayerProvider);
+        expect(s.isLooping, isFalse);
+        expect(backend.lastStartTime, isNull);
+      },
+    );
 
     test('loop state is preserved through the backend state update', () async {
       final notifier = container.read(audioPlayerProvider.notifier);

@@ -103,9 +103,7 @@ TuneType? _typeFromRhythm(String? rhythm) {
 /// denotes a traditional/anonymous tune (no royalty attribution).
 String? _composerFromField(String? composer) {
   if (composer == null) return null;
-  final normalized = composer
-      .toLowerCase()
-      .replaceAll(RegExp(r'[.\s]'), '');
+  final normalized = composer.toLowerCase().replaceAll(RegExp(r'[.\s]'), '');
   const noComposer = {'trad', 'traditional', 'anon', 'anonymous', 'unknown'};
   if (noComposer.contains(normalized)) return null;
   return composer;

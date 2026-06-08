@@ -64,7 +64,10 @@ void main() {
     await dao.setRanks(['a']);
     final row = await dao.getBySourceId('a');
     expect(row!.modifiedAt, isNotNull);
-    expect(row.modifiedAt!.isAfter(before.subtract(const Duration(seconds: 1))), isTrue);
+    expect(
+      row.modifiedAt!.isAfter(before.subtract(const Duration(seconds: 1))),
+      isTrue,
+    );
   });
 
   test('setRanks is idempotent with the same order', () async {
@@ -130,19 +133,21 @@ void main() {
     expect(unchanged!.rank, originalRank);
   });
 
-  test('upsertFromRemote adopts cloudId by natural key when no cloudId match',
-      () async {
-    await dao.appendSource('x');
-    await dao.upsertFromRemote(
-      sourceId: 'x',
-      cloudId: 'new-cloud-id',
-      rank: 7,
-      modifiedAt: DateTime.now().add(const Duration(hours: 1)),
-    );
-    final row = await dao.getBySourceId('x');
-    expect(row!.cloudId, 'new-cloud-id');
-    expect(row.rank, 7);
-  });
+  test(
+    'upsertFromRemote adopts cloudId by natural key when no cloudId match',
+    () async {
+      await dao.appendSource('x');
+      await dao.upsertFromRemote(
+        sourceId: 'x',
+        cloudId: 'new-cloud-id',
+        rank: 7,
+        modifiedAt: DateTime.now().add(const Duration(hours: 1)),
+      );
+      final row = await dao.getBySourceId('x');
+      expect(row!.cloudId, 'new-cloud-id');
+      expect(row.rank, 7);
+    },
+  );
 
   test('deleteByCloudId removes the row', () async {
     await dao.appendSource('x');

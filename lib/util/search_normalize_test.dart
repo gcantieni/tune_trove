@@ -11,9 +11,12 @@ void main() {
       expect(normalizeForSearch("Cooley's"), equals("cooley's"));
     });
 
-    test('right single quote (curly apostrophe) maps to straight apostrophe', () {
-      expect(normalizeForSearch('Cooley’s'), equals("cooley's"));
-    });
+    test(
+      'right single quote (curly apostrophe) maps to straight apostrophe',
+      () {
+        expect(normalizeForSearch('Cooley’s'), equals("cooley's"));
+      },
+    );
 
     test('left single quote maps to straight apostrophe', () {
       expect(normalizeForSearch('Cooley‘s'), equals("cooley's"));
@@ -32,7 +35,10 @@ void main() {
     });
 
     test('unrelated characters are not modified', () {
-      expect(normalizeForSearch('Lark in the Morning'), equals('lark in the morning'));
+      expect(
+        normalizeForSearch('Lark in the Morning'),
+        equals('lark in the morning'),
+      );
     });
 
     test('mixed: curly apostrophe + regular text', () {

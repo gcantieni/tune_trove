@@ -190,9 +190,9 @@ class TuneRecordingDao extends DatabaseAccessor<AppDatabase>
   /// The set of recording ids that have at least one linked tune. Streams so
   /// the Recordings "Has tune link" filter updates live as links change.
   Stream<Set<int>> watchLinkedRecordingIds() {
-    return select(tuneRecording).watch().map(
-      (rows) => {for (final row in rows) row.recordingId},
-    );
+    return select(
+      tuneRecording,
+    ).watch().map((rows) => {for (final row in rows) row.recordingId});
   }
 
   Stream<List<RecordedTune>> watchLinksForRecording(int recordingId) {

@@ -100,10 +100,7 @@ List<RemoteTune> searchTunes(
       (byId[id] ??= []).add(t);
     }
   }
-  return [
-    ...looseMatches,
-    for (final id in orderedIds) ...?byId[id],
-  ];
+  return [...looseMatches, for (final id in orderedIds) ...?byId[id]];
 }
 
 class StaticAssetTuneSource implements TuneSource {

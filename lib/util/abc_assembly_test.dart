@@ -55,13 +55,16 @@ void main() {
       expect('K:'.allMatches(once!).length, 1);
     });
 
-    test('does not duplicate a partial header (X:/M:/L: present, K: absent)', () {
-      final out = assembleAbc('X:1\nM:6/8\nL:1/8\n|:abc:|', key: 'Ador');
-      expect('X:'.allMatches(out!).length, 1);
-      expect('M:'.allMatches(out).length, 1);
-      expect(out, contains('M:6/8')); // keeps the body's own meter
-      expect(out, contains('K:Ador'));
-    });
+    test(
+      'does not duplicate a partial header (X:/M:/L: present, K: absent)',
+      () {
+        final out = assembleAbc('X:1\nM:6/8\nL:1/8\n|:abc:|', key: 'Ador');
+        expect('X:'.allMatches(out!).length, 1);
+        expect('M:'.allMatches(out).length, 1);
+        expect(out, contains('M:6/8')); // keeps the body's own meter
+        expect(out, contains('K:Ador'));
+      },
+    );
 
     test('returns input unchanged when key is unparseable', () {
       expect(assembleAbc('|:abc:|'), '|:abc:|');

@@ -4,8 +4,10 @@ import 'package:tune_trove/feat/music_kit/music_kit_constants.dart';
 void main() {
   group('catalogIdFromUrl', () {
     test('extracts the id after the catalog scheme', () {
-      expect(catalogIdFromUrl('$kAppleMusicCatalogScheme:123456'),
-          equals('123456'));
+      expect(
+        catalogIdFromUrl('$kAppleMusicCatalogScheme:123456'),
+        equals('123456'),
+      );
     });
 
     test('returns the empty string when there is no id', () {
