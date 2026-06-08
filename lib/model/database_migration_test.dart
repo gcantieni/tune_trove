@@ -7,15 +7,15 @@ import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tune_trove/model/database.dart';
-import 'generated/schema.dart';
-import 'generated/schema_v1.dart' as v1;
-import 'generated/schema_v11.dart' as v11;
-import 'generated/schema_v12.dart' as v12;
-import 'generated/schema_v13.dart' as v13;
-import 'generated/schema_v14.dart' as v14;
-import 'generated/schema_v15.dart' as v15;
-import 'generated/schema_v2.dart' as v2;
-import 'generated/schema_v6.dart' as v6;
+import 'package:tune_trove/model/migration_schemas/schema.dart';
+import 'package:tune_trove/model/migration_schemas/schema_v1.dart' as v1;
+import 'package:tune_trove/model/migration_schemas/schema_v11.dart' as v11;
+import 'package:tune_trove/model/migration_schemas/schema_v12.dart' as v12;
+import 'package:tune_trove/model/migration_schemas/schema_v13.dart' as v13;
+import 'package:tune_trove/model/migration_schemas/schema_v14.dart' as v14;
+import 'package:tune_trove/model/migration_schemas/schema_v15.dart' as v15;
+import 'package:tune_trove/model/migration_schemas/schema_v2.dart' as v2;
+import 'package:tune_trove/model/migration_schemas/schema_v6.dart' as v6;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;

@@ -1,13 +1,15 @@
+// Test co-located in lib/ (no test/ tree), so the analyzer cannot treat it
+// as a test for @visibleForTesting purposes.
+// ignore_for_file: invalid_use_of_visible_for_testing_member
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_service.dart';
+import 'package:tune_trove/feat/cloudkit_sync/fake_cloudkit_sync_service.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_outbound_service.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_reconciliation_service.dart';
 import 'package:tune_trove/model/database.dart';
-
-import 'support/fake_cloudkit_sync_service.dart';
 
 void main() {
   late AppDatabase db;

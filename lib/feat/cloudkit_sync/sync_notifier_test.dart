@@ -2,9 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_providers.dart';
 import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_service.dart';
+import 'package:tune_trove/feat/cloudkit_sync/fake_cloudkit_sync_service.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_notifier.dart';
-
-import 'support/fake_cloudkit_sync_service.dart';
 
 void main() {
   late FakeCloudKitSyncService fake;

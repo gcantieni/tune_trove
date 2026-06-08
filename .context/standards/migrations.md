@@ -67,10 +67,10 @@ table.
    dart run drift_dev schema dump \
      lib/model/database.dart drift_schemas/      # snapshot the new version
    dart run drift_dev schema generate \
-     drift_schemas/ test/drift/my_database/generated/
+     drift_schemas/ lib/model/migration_schemas/
    ```
 4. **Always update the migration test suite**
-   (`test/drift/my_database/migration_test.dart`) — this is a hard project rule.
+   (`lib/model/database_migration_test.dart`) — this is a hard project rule.
    The auto-generated "simple database migrations" group only exercises *clean*
    schema-at-N → M upgrades, so it will **not** catch the interrupted-migration
    crash above. For any hand-written `addColumn`/raw-DDL step, also add an

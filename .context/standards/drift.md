@@ -26,11 +26,12 @@ re-run otherwise).
 - Increment `schemaVersion` in `database.dart` for every schema change.
 - Steps up to v9 use `stepByStep()` (schema-typed); later changes are
   hand-written `if (from < N && to >= N)` blocks that must be idempotent.
-- Always test migrations with the generated schema versions in `test/drift/`.
-- After adding a migration, export and regenerate test schemas:
+- Always test migrations with the generated schema versions in
+  `lib/model/migration_schemas/`.
+- After adding a migration, export and regenerate the schemas:
   ```bash
   dart run drift_dev schema dump lib/model/database.dart drift_schemas/
-  dart run drift_dev schema generate drift_schemas/ test/drift/my_database/generated/
+  dart run drift_dev schema generate drift_schemas/ lib/model/migration_schemas/
   ```
 
 ## Code Generation

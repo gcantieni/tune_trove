@@ -157,7 +157,7 @@ String? _genreFromOrigin(String? origin) {
     ..sort((a, b) => b.length.compareTo(a.length));
   for (final keyword in ordered) {
     if (RegExp('\\b${RegExp.escape(keyword)}\\b').hasMatch(o)) {
-      return keywords[keyword]!;
+      return keywords[keyword];
     }
   }
   return null;

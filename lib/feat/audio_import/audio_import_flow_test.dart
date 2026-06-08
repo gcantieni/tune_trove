@@ -1,3 +1,6 @@
+// Test co-located in lib/ (no test/ tree), so the analyzer cannot treat it
+// as a test for @visibleForTesting purposes.
+// ignore_for_file: invalid_use_of_visible_for_testing_member
 import 'dart:io';
 
 import 'package:drift/drift.dart' as drift;

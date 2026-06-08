@@ -56,6 +56,6 @@ When adding or modifying a table:
 5. Export the new schema for tests:
    ```bash
    dart run drift_dev schema dump lib/model/database.dart drift_schemas/
-   dart run drift_dev schema generate drift_schemas/ test/drift/my_database/generated/
+   dart run drift_dev schema generate drift_schemas/ lib/model/migration_schemas/
    ```
-6. Update migration tests in `test/drift/my_database/migration_test.dart`
+6. Update migration tests in `lib/model/database_migration_test.dart`

@@ -13,19 +13,25 @@ Never write implementation code without a corresponding failing test first.
 ## Running Tests
 
 ```bash
-flutter test                          # all tests
-flutter test test/provider_test.dart  # single file
-flutter test --name "singleTuneProvider"  # by name
+flutter test lib                                  # all tests
+flutter test lib/model/providers/provider_test.dart  # single file
+flutter test lib --name "singleTuneProvider"      # by name
 ```
+
+There is **no `test/` directory** — tests are co-located in `lib/` next to the
+code they exercise (a `*_test.dart` beside its subject). `flutter test` with no
+path defaults to `test/` and would find nothing, so always pass `lib` (the
+Makefile `test`/`coverage` targets already do).
 
 ## Test Structure
 
-Tests live in `test/` mirroring the lib structure:
+Each test sits next to its subject, e.g.:
 
-- `test/provider_test.dart` — Riverpod provider integration tests
-- `test/thesession_tune_source_test.dart` — data parsing unit tests
-- `test/database_test.dart` — database operation tests
-- `test/drift/` — schema migration verification tests
+- `lib/model/providers/provider_test.dart` — Riverpod provider integration tests
+- `lib/util/abc_metadata_test.dart` — pure unit tests beside `abc_metadata.dart`
+- `lib/model/database_test.dart` — database operation tests
+- `lib/model/database_migration_test.dart` (+ `lib/model/migration_schemas/`) —
+  schema migration verification tests
 
 ## Writing Database Tests
 

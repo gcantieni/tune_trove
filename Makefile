@@ -61,13 +61,13 @@ deps:
 	bash scripts/fetch_soundfonts.sh
 
 test:
-	flutter test --no-pub
+	flutter test lib --no-pub
 
 lcov:
-	flutter test --coverage --no-pub
+	flutter test lib --coverage --no-pub
 
 coverage:
-	flutter test --coverage --no-pub
+	flutter test lib --coverage --no-pub
 	genhtml coverage/lcov.info -o coverage/html
 	open coverage/html/index.html
 
