@@ -1,4 +1,13 @@
-.PHONY: format analyze test coverage lcov bump publish-ios publish-macos publish-android deps run-macos run-ios build-macos build-ios build-android icon reregister-macos
+.PHONY: format analyze test coverage lcov bump publish-ios publish-macos publish-android deps run-macos run-ios build-macos build-ios build-android icon reregister-macos generate dump-schemas gen-schemas drift-schemas
+
+# Install dependencies, run code generators, and fetch soundfonts.
+# This now includes `make generate` (build_runner for Drift code) and `make drift-schemas`
+# (schema dump and migration schema generation), so `make deps` handles the full setup.
+# Run this after pulling changes or updating pubspec.yaml.
+deps:
+	flutter pub get
+	make generate
+	bash scripts/fetch_soundfonts.sh
 
 clean:
 	rm -rf ~/Library/Developer/Xcode/DerivedData/Runner-*
@@ -56,9 +65,24 @@ build-ios:
 build-android:
 	flutter build appbundle $(DART_DEFINES)
 
-deps:
-	flutter pub get
-	bash scripts/fetch_soundfonts.sh
+# Code generation for Drift database table/DAO changes.
+# Run this after editing any table definitions in lib/model/tables/ or DAOs in lib/model/accessors/.
+# Generates database.g.dart, .steps.dart, and related Drift code.
+generate:
+	dart run build_runner build --delete-conflicting-outputs
+
+# Export the current Drift schema snapshot to drift_schemas/.
+# Run this after changing the database schema (new tables, columns, indexes, etc).
+# Usually run as part of `make drift-schemas` (the full workflow).
+dump-schemas:
+	dart run drift_dev schema dump lib/model/database.dart drift_schemas/
+
+# Regenerate migration schema versions in lib/model/migration_schemas/.
+# Used by tests to validate migrations between schema versions.
+# Run this after `dump-schemas` to capture the new schema history.
+# Usually run as part of `make drift-schemas` (the full workflow).
+gen-schemas:
+	dart run drift_dev schema generate drift_schemas/ lib/model/migration_schemas/
 
 test:
 	flutter test lib --no-pub
