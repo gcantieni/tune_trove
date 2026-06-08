@@ -152,6 +152,7 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
             value: filters.sort,
             // Always show the current sort — there's no "unset" state.
             displayValue: (s) => switch (s) {
+              TuneSort.grouped => 'Grouped',
               TuneSort.newestFirst => 'Newest',
               TuneSort.oldestFirst => 'Oldest',
               TuneSort.nameAZ => 'A–Z',
@@ -159,8 +160,12 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
               TuneSort.statusTodoFirst => 'To-do first',
               TuneSort.statusMasteredFirst => 'Mastered first',
             },
-            isDefault: filters.sort == TuneSort.newestFirst,
+            isDefault: filters.sort == TuneSort.grouped,
             options: const [
+              _FilterOption(
+                value: TuneSort.grouped,
+                label: 'Grouped (genre · type)',
+              ),
               _FilterOption(value: TuneSort.newestFirst, label: 'Newest first'),
               _FilterOption(value: TuneSort.oldestFirst, label: 'Oldest first'),
               _FilterOption(value: TuneSort.nameAZ, label: 'Name A–Z'),

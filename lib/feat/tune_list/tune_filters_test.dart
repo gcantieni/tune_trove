@@ -268,6 +268,68 @@ void main() {
     expect(names, ['Oldest', 'Middle', 'Newest']);
   });
 
+  test(
+    'filteredTunesProvider grouped sort orders by genre, type, then name',
+    () async {
+      final tunes = [
+        // Deliberately scrambled; grouped is the default sort.
+        _tune(
+          id: 1,
+          name: 'Banish Misfortune',
+          genre: 'Irish',
+          type: TuneType.jig,
+          createdAt: DateTime(2024),
+        ),
+        _tune(
+          id: 2,
+          name: "Cooley's",
+          genre: 'Irish',
+          type: TuneType.reel,
+          createdAt: DateTime(2024),
+        ),
+        _tune(
+          id: 3,
+          name: 'Apple',
+          genre: 'Irish',
+          type: TuneType.reel,
+          createdAt: DateTime(2024),
+        ),
+        _tune(
+          id: 4,
+          name: 'Athole',
+          genre: 'Scottish',
+          type: TuneType.reel,
+          createdAt: DateTime(2024),
+        ),
+        _tune(id: 5, name: 'Zilch', createdAt: DateTime(2024)), // no genre/type
+        _tune(
+          id: 6,
+          name: 'Banks Hornpipe',
+          genre: 'Irish',
+          type: TuneType.hornpipe,
+          createdAt: DateTime(2024),
+        ),
+      ];
+      final container = _container(tunes);
+      addTearDown(container.dispose);
+
+      final names = (await _awaitFilteredTunes(
+        container,
+      )).map((t) => t.name).toList();
+      expect(names, [
+        // Irish (canonical rank 0): reels (A–Z), then jig, then hornpipe.
+        'Apple',
+        "Cooley's",
+        'Banish Misfortune',
+        'Banks Hornpipe',
+        // Scottish (rank 1).
+        'Athole',
+        // No genre → "Other" section last; untyped sorts last within it.
+        'Zilch',
+      ]);
+    },
+  );
+
   test('availableKeysProvider returns sorted distinct keys', () async {
     final tunes = [
       _tune(id: 1, name: "Cooley's", key: 'Em', createdAt: DateTime(2024)),

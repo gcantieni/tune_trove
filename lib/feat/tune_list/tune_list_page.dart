@@ -7,6 +7,7 @@ import 'package:tune_trove/feat/cloudkit_sync/sync_refresh_indicator.dart';
 import 'package:tune_trove/feat/tune_list/tune_filter_bar.dart';
 import 'package:tune_trove/feat/tune_list/tune_filters.dart';
 import 'package:tune_trove/feat/tune_list/tune_list_item.dart';
+import 'package:tune_trove/feat/tune_list/tune_type_labels.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/routing/nav_scaffold.dart';
@@ -106,9 +107,78 @@ class TuneListWidget extends ConsumerWidget {
         }
         return Column(
           mainAxisSize: MainAxisSize.min,
-          children: [for (final t in tunes) TuneListItem(tune: t)],
+          children: filters.sort == TuneSort.grouped
+              ? _groupedChildren(tunes)
+              : [for (final t in tunes) TuneListItem(tune: t)],
         );
       },
+    );
+  }
+
+  /// Builds the tune list interleaved with two-tier section headers: a large
+  /// genre header ("Scottish") and, beneath it, a fully-qualified type
+  /// sub-header ("Scottish Jigs"). Assumes [tunes] is already ordered
+  /// genre → type → name (see [TuneSort.grouped] in `tune_filters.dart`).
+  List<Widget> _groupedChildren(List<Tune> tunes) {
+    final children = <Widget>[];
+    String? curGenre;
+    String? curType;
+    for (final t in tunes) {
+      final genre = sectionGenreLabel(t.genre);
+      if (genre != curGenre) {
+        children.add(_GenreHeader(genre));
+        curGenre = genre;
+        curType = null;
+      }
+      final typePlural = t.type == null ? null : tuneTypePlural(t.type!);
+      if (typePlural != curType) {
+        children.add(_TypeHeader(genre: genre, typePlural: typePlural));
+        curType = typePlural;
+      }
+      children.add(TuneListItem(tune: t));
+    }
+    return children;
+  }
+}
+
+/// Large genre section marker for the grouped tune list (e.g. "Scottish").
+class _GenreHeader extends StatelessWidget {
+  final String genre;
+  const _GenreHeader(this.genre);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 20, 4, 2),
+      child: Text(
+        genre,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// Subtle, fully-qualified type sub-header for the grouped tune list (e.g.
+/// "Scottish Jigs"). [typePlural] is null for untyped tunes.
+class _TypeHeader extends StatelessWidget {
+  final String genre;
+  final String? typePlural;
+  const _TypeHeader({required this.genre, required this.typePlural});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = typePlural == null ? '$genre · Other' : '$genre $typePlural';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

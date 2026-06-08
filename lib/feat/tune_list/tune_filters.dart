@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/providers/tunes_provider.dart';
 import 'package:tune_trove/model/tables/tunes.dart';
+import 'package:tune_trove/model/tune_genres.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 import 'package:tune_trove/util/search_normalize.dart';
 
 enum TuneSort {
+  grouped,
   newestFirst,
   oldestFirst,
   nameAZ,
@@ -15,6 +17,26 @@ enum TuneSort {
   statusTodoFirst,
   statusMasteredFirst,
 }
+
+/// Section label a tune falls under in the [TuneSort.grouped] view: its trimmed
+/// genre, or "Other" when it has none. Shared by the comparator and the list UI
+/// so grouping and ordering stay in lockstep.
+String sectionGenreLabel(String? genre) {
+  final g = genre?.trim() ?? '';
+  return g.isEmpty ? 'Other' : g;
+}
+
+/// Sort rank for a genre section: canonical [kTuneGenres] order first, then any
+/// unrecognized free-text genres after (rank == length, broken by label).
+int _genreRank(String label) {
+  final i = kTuneGenres.indexOf(label);
+  return i >= 0 ? i : kTuneGenres.length;
+}
+
+/// Sort rank for a tune type within its genre: declaration order in
+/// [TuneType.values], with untyped tunes (null) sorted last.
+int _typeRank(TuneType? type) =>
+    type == null ? TuneType.values.length : type.index;
 
 class TuneFilters {
   final String? genre;
@@ -30,7 +52,7 @@ class TuneFilters {
     this.key,
     this.status,
     this.nameQuery = '',
-    this.sort = TuneSort.newestFirst,
+    this.sort = TuneSort.grouped,
   });
 
   bool get isActive =>
@@ -39,7 +61,7 @@ class TuneFilters {
       (key != null && key!.isNotEmpty) ||
       status != null ||
       nameQuery.isNotEmpty ||
-      sort != TuneSort.newestFirst;
+      sort != TuneSort.grouped;
 
   TuneFilters copyWith({
     Object? genre = _sentinel,
@@ -114,6 +136,18 @@ final filteredTunesProvider = Provider.autoDispose<AsyncValue<List<Tune>>>((
 
     filtered.sort((a, b) {
       switch (filters.sort) {
+        case TuneSort.grouped:
+          // Section by genre (canonical order), then type (tradition order),
+          // then name — the default glanceable view.
+          final ga = sectionGenreLabel(a.genre);
+          final gb = sectionGenreLabel(b.genre);
+          final gr = _genreRank(ga).compareTo(_genreRank(gb));
+          if (gr != 0) return gr;
+          final gl = ga.toLowerCase().compareTo(gb.toLowerCase());
+          if (gl != 0) return gl;
+          final tr = _typeRank(a.type).compareTo(_typeRank(b.type));
+          if (tr != 0) return tr;
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
         case TuneSort.newestFirst:
         case TuneSort.oldestFirst:
           final ta = a.modifiedAt ?? a.createdAt;
