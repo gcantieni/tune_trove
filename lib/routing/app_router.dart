@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:tune_trove/feat/content_library/content_library_page.dart';
 import 'package:tune_trove/feat/content_library/source_ranking_page.dart';
-import 'package:tune_trove/feat/recorder/recorder_page.dart';
 import 'package:tune_trove/feat/recording_list/recording_detail_page.dart';
 import 'package:tune_trove/feat/recording_list/recording_list_page.dart';
 import 'package:tune_trove/feat/set_list/set_detail_page.dart';
@@ -17,11 +16,19 @@ const _navOrder = [
   '/set_list',
   '/tune_list',
   '/recording_list',
-  '/recorder',
-  '/settings',
-  '/content_library',
 ];
 int _previousNavIndex = 1; // tune_list is the initial location
+
+/// Where the app navigates on launch (`/` redirects here). Configurable from
+/// Settings via the "Default Page" dropdown and set from persisted prefs in
+/// `main()` before the first navigation; defaults to the Tunes tab.
+String _defaultStartLocation = '/tune_list';
+
+/// Updates the launch destination. Called from `main()` at startup and from the
+/// Settings "Default Page" dropdown (takes effect on next launch).
+void setDefaultStartLocation(String location) {
+  _defaultStartLocation = location;
+}
 
 CustomTransitionPage<void> _directionalPage({
   required String path,
@@ -53,7 +60,9 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter router = GoRouter(
   navigatorKey: rootNavigatorKey,
-  initialLocation: '/tune_list',
+  initialLocation: '/',
+  redirect: (context, state) =>
+      state.matchedLocation == '/' ? _defaultStartLocation : null,
   routes: [
     ShellRoute(
       builder: (context, state, child) {
@@ -111,24 +120,14 @@ final GoRouter router = GoRouter(
           ],
         ),
         GoRoute(
-          path: '/recorder',
-          name: 'recorder',
-          pageBuilder: (context, state) =>
-              _directionalPage(path: '/recorder', child: RecorderPage()),
-        ),
-        GoRoute(
           path: '/settings',
           name: 'settings',
-          pageBuilder: (context, state) =>
-              _directionalPage(path: '/settings', child: SettingsPage()),
+          builder: (context, state) => SettingsPage(),
         ),
         GoRoute(
           path: '/content_library',
           name: 'content_library',
-          pageBuilder: (context, state) => _directionalPage(
-            path: '/content_library',
-            child: const ContentLibraryPage(),
-          ),
+          builder: (context, state) => const ContentLibraryPage(),
           routes: [
             GoRoute(
               path: 'search_order',

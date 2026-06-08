@@ -8,12 +8,15 @@ import 'package:tune_trove/feat/abc_render/abc_renderer.dart';
 import 'package:tune_trove/feat/audio_import/audio_import_controller.dart';
 import 'package:tune_trove/feat/cloudkit_sync/cloudkit_sync_providers.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_notifier.dart';
+import 'package:tune_trove/feat/settings/settings_providers.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
 import 'package:tune_trove/routing/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  // Resolve the launch tab before the first navigation (`/` redirects to it).
+  setDefaultStartLocation(prefs.getString(kDefaultPage) ?? '/tune_list');
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],

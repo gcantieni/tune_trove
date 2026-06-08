@@ -66,8 +66,8 @@ void main() {
     importService = MockAudioImportService();
     musicKit = MockMusicKitService();
     // The router is a global singleton retaining its location between tests;
-    // start on the dependency-light Recorder tab.
-    router.go('/recorder');
+    // start on the dependency-light Sets tab (only needs the database).
+    router.go('/set_list');
   });
 
   tearDown(() async {

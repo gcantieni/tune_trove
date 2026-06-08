@@ -43,8 +43,8 @@ void main() {
     );
     importService = MockAudioImportService();
     musicKit = MockMusicKitService();
-    // Start on the dependency-light Recorder tab (router is a global singleton).
-    router.go('/recorder');
+    // Start on the dependency-light Sets tab (router is a global singleton).
+    router.go('/set_list');
   });
 
   tearDown(() async {
@@ -89,8 +89,9 @@ void main() {
     );
 
     // Navigated to Recordings and opened the prefilled form with the catalog URL
-    // and the mock-resolved "Title — Artist" name.
-    expect(find.text('Recordings'), findsOneWidget);
+    // and the mock-resolved "Title — Artist" name. ('Recordings' also appears as
+    // a bottom-nav label, so match the AppBar title specifically.)
+    expect(find.widgetWithText(AppBar, 'Recordings'), findsOneWidget);
     expect(find.byType(RecordingFormWidget), findsOneWidget);
     expect(find.textContaining('music-catalog:789012'), findsOneWidget);
     expect(find.textContaining('The Morning Dew'), findsWidgets);

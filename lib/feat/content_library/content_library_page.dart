@@ -6,7 +6,6 @@ import 'package:tune_trove/feat/content_library/source_confirmation_dialog.dart'
 import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
 import 'package:tune_trove/remote_tune_sources/tune_source_providers.dart';
-import 'package:tune_trove/routing/nav_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ContentLibraryPage extends ConsumerWidget {
@@ -43,14 +42,7 @@ class ContentLibraryPage extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          tooltip: 'Open menu',
-          onPressed: () => navScaffoldKey.currentState?.openDrawer(),
-        ),
-        title: const Text('Content Library'),
-      ),
+      appBar: AppBar(title: const Text('Content Library')),
       body: SyncRefreshIndicator(
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),

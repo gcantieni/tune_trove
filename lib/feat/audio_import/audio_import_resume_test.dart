@@ -67,10 +67,10 @@ void main() {
     importService = MockAudioImportService();
     musicKit = MockMusicKitService();
     // The router is a global singleton that retains its location between tests;
-    // reset to a known, dependency-light tab (Recorder) so each test starts
+    // reset to a known, dependency-light tab (Sets) so each test starts
     // somewhere other than Recordings without needing the Tunes tab's provider
-    // graph (shared prefs / content sources).
-    router.go('/recorder');
+    // graph (shared prefs / content sources). Sets only needs the database.
+    router.go('/set_list');
   });
 
   tearDown(() async {
@@ -136,8 +136,8 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
-    // We're on the Recorder tab, not Recordings.
-    expect(find.text('Record'), findsOneWidget);
+    // We're on the Sets tab, not Recordings.
+    expect(find.widgetWithText(AppBar, 'Sets'), findsOneWidget);
     expect(find.byType(RecordingFormWidget), findsNothing);
 
     // A file arrives via the live stream (share sheet / drained scheme) while a
@@ -153,8 +153,9 @@ void main() {
     });
     await tester.pumpAndSettle();
 
-    // Navigated to Recordings and opened the prefilled form.
-    expect(find.text('Recordings'), findsOneWidget);
+    // Navigated to Recordings and opened the prefilled form. ('Recordings' also
+    // appears as a bottom-nav label, so match the AppBar title specifically.)
+    expect(find.widgetWithText(AppBar, 'Recordings'), findsOneWidget);
     expect(find.byType(RecordingFormWidget), findsOneWidget);
     expect(find.textContaining('file://'), findsOneWidget);
 

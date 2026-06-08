@@ -4,23 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_notifier.dart';
 import 'package:tune_trove/feat/settings/settings_providers.dart';
 import 'package:tune_trove/model/database_provider.dart';
-import 'package:tune_trove/routing/nav_scaffold.dart';
 
 class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          tooltip: 'Open menu',
-          onPressed: () => navScaffoldKey.currentState?.openDrawer(),
-        ),
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
           _SyncStatusTile(),
+          const Divider(height: 1),
+          _DefaultPageTile(),
           const Divider(height: 1),
           _InvertNotationTile(),
           const SizedBox(height: 24),
@@ -56,6 +50,32 @@ class _BuildInfoFooter extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(info, style: style),
         ),
+      ),
+    );
+  }
+}
+
+/// Chooses which tab the app opens to on launch. Device-local; takes effect on
+/// the next launch (the running session isn't renavigated).
+class _DefaultPageTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(defaultPageProvider);
+    return ListTile(
+      leading: const Icon(Icons.home_outlined),
+      title: const Text('Default page'),
+      subtitle: const Text('The tab the app opens to on launch'),
+      trailing: DropdownButton<String>(
+        value: current,
+        underline: const SizedBox.shrink(),
+        onChanged: (route) {
+          if (route == null) return;
+          ref.read(defaultPageProvider.notifier).set(route);
+        },
+        items: [
+          for (final entry in kDefaultPageRoutes.entries)
+            DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+        ],
       ),
     );
   }
