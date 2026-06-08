@@ -16,6 +16,7 @@ import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/model/providers/recordings_provider.dart';
 import 'package:tune_trove/model/providers/tune_recording_provider.dart';
+import 'package:tune_trove/routing/cross_tab_nav.dart';
 import 'package:tune_trove/shared_widgets/timestamp_editor_dialog.dart';
 import 'package:tune_trove/shared_widgets/tune_picker_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -50,7 +51,15 @@ String _withTimestamp(String url, double seconds) {
 class RecordingDetailPage extends ConsumerStatefulWidget {
   final int recordingId;
 
-  const RecordingDetailPage({required this.recordingId, super.key});
+  /// When opened from another tab via a cross-tab link, the origin location its
+  /// back arrow returns to. Null when reached within the Recordings tab.
+  final String? returnTo;
+
+  const RecordingDetailPage({
+    required this.recordingId,
+    this.returnTo,
+    super.key,
+  });
 
   @override
   ConsumerState<RecordingDetailPage> createState() =>
@@ -134,6 +143,7 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: originAwareLeading(context, widget.returnTo),
         title: async.maybeWhen(
           data: (r) => Text(r?.name ?? 'Recording'),
           orElse: () => const Text('Recording'),
@@ -434,7 +444,7 @@ class _LinkedTuneRow extends ConsumerWidget {
         child: SizedBox(
           width: double.infinity,
           child: InkWell(
-            onTap: () => context.push('/tune_list/${tune.id}'),
+            onTap: () => goCrossTab(context, '/tune_list/${tune.id}'),
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.only(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:tune_trove/model/accessors/set_tune_dao.dart';
+import 'package:tune_trove/routing/cross_tab_nav.dart';
 import 'package:tune_trove/shared_widgets/key_picker_sheet.dart';
 
 class SetTuneCard extends StatelessWidget {
@@ -94,7 +94,7 @@ class SetTuneCard extends StatelessWidget {
             index: index,
             child: const Icon(Icons.drag_handle),
           ),
-          onTap: () => context.push('/tune_list/${entry.tune.id}'),
+          onTap: () => goCrossTab(context, '/tune_list/${entry.tune.id}'),
         ),
       ),
     );

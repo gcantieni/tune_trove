@@ -20,6 +20,7 @@ import 'package:tune_trove/model/tables/tunes.dart';
 import 'package:tune_trove/model/tune_genres.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_meta.dart';
 import 'package:tune_trove/remote_tune_sources/content_source_registry.dart';
+import 'package:tune_trove/routing/cross_tab_nav.dart';
 import 'package:tune_trove/shared_widgets/key_picker_sheet.dart';
 import 'package:tune_trove/shared_widgets/recording_picker_dialog.dart';
 import 'package:tune_trove/shared_widgets/timestamp_editor_dialog.dart';
@@ -29,7 +30,11 @@ import 'package:tune_trove/util/abc_metadata.dart';
 class TuneDetailPage extends ConsumerStatefulWidget {
   final int tuneId;
 
-  const TuneDetailPage({required this.tuneId, super.key});
+  /// When opened from another tab via a cross-tab link, the origin location its
+  /// back arrow returns to. Null when reached within the Tunes tab.
+  final String? returnTo;
+
+  const TuneDetailPage({required this.tuneId, this.returnTo, super.key});
 
   @override
   ConsumerState<TuneDetailPage> createState() => _TuneDetailPageState();
@@ -162,6 +167,7 @@ class _TuneDetailPageState extends ConsumerState<TuneDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: originAwareLeading(context, widget.returnTo),
         title: tuneAsync.maybeWhen(
           data: (tune) => Text(tune?.name ?? 'Tune'),
           orElse: () => const Text('Tune'),
@@ -625,7 +631,7 @@ class _LinkedSetRow extends ConsumerWidget {
         margin: const EdgeInsets.symmetric(vertical: 2),
         child: ListTile(
           title: Text(entry.tuneSet.name),
-          onTap: () => context.push('/set_list/${entry.tuneSet.id}'),
+          onTap: () => goCrossTab(context, '/set_list/${entry.tuneSet.id}'),
         ),
       ),
     );
@@ -767,7 +773,8 @@ class _LinkedRecordingRow extends ConsumerWidget {
         child: SizedBox(
           width: double.infinity,
           child: InkWell(
-            onTap: () => context.push('/recording_list/${recording.id}'),
+            onTap: () =>
+                goCrossTab(context, '/recording_list/${recording.id}'),
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.only(

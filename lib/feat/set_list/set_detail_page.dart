@@ -9,12 +9,17 @@ import 'package:tune_trove/feat/set_list/set_tune_card.dart';
 import 'package:tune_trove/model/database.dart';
 import 'package:tune_trove/model/database_provider.dart';
 import 'package:tune_trove/model/providers/sets_provider.dart';
+import 'package:tune_trove/routing/cross_tab_nav.dart';
 import 'package:tune_trove/shared_widgets/tune_picker_dialog.dart';
 
 class SetDetailPage extends ConsumerStatefulWidget {
-  const SetDetailPage({required this.setId, super.key});
+  const SetDetailPage({required this.setId, this.returnTo, super.key});
 
   final int setId;
+
+  /// When opened from another tab via a cross-tab link, the origin location its
+  /// back arrow returns to. Null when reached within the Sets tab.
+  final String? returnTo;
 
   @override
   ConsumerState<SetDetailPage> createState() => _SetDetailPageState();
@@ -104,6 +109,7 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
 
         return Scaffold(
           appBar: AppBar(
+            leading: originAwareLeading(context, widget.returnTo),
             title: TextField(
               controller: _nameController,
               style: Theme.of(context).textTheme.titleLarge,

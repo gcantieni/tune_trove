@@ -6,39 +6,10 @@ import 'package:tune_trove/model/database_provider.dart';
 
 final navScaffoldKey = GlobalKey<ScaffoldState>();
 
-// Primary destinations shown in the persistent bottom navigation bar, in
-// display order (Sets, Tunes, Recordings).
-const _tabRoutes = [
-  '/set_list',
-  '/tune_list',
-  '/recording_list',
-];
-
-// Secondary destinations reached via the top-left hamburger drawer. Pushed (not
-// switched to) so they keep the bottom bar and get a back button.
-const _drawerRoutes = [
-  '/settings',
-  '/content_library',
-];
-
-/// Index of the active bottom tab, or `null` when the current location belongs
-/// to no tab (Settings / Content Library). Detail sub-routes map to their tab.
-int? _tabIndex(String location) {
-  for (int i = 0; i < _tabRoutes.length; i++) {
-    final r = _tabRoutes[i];
-    if (location == r || location.startsWith('$r/')) return i;
-  }
-  return null;
-}
-
-/// Index of the active drawer destination, or `null` when not on one.
-int? _drawerIndex(String location) {
-  for (int i = 0; i < _drawerRoutes.length; i++) {
-    final r = _drawerRoutes[i];
-    if (location == r || location.startsWith('$r/')) return i;
-  }
-  return null;
-}
+// Branch indices in the StatefulShellRoute (see app_router.dart). The first
+// three are the bottom tabs; the last two are the drawer destinations.
+const _tunesBranchIndex = 1;
+const _firstDrawerBranchIndex = 3; // Settings (3), Content Library (4)
 
 // Pages that render their own bottom-right "add" FAB, on which we shift the
 // global play/pause FAB left so the two don't overlap. The list pages have one;
@@ -50,15 +21,19 @@ bool _hasAddFab(String location) =>
     location == '/set_list' ||
     location.startsWith('/set_list/');
 
+/// App shell: a persistent bottom tab bar plus a hamburger drawer for the
+/// secondary (Settings / Content Library) destinations, wrapping the
+/// [StatefulNavigationShell] that hosts each branch's own navigator.
 class NavScaffold extends ConsumerWidget {
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
-  const NavScaffold({required this.child, super.key});
+  const NavScaffold({required this.navigationShell, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.toString();
-    final tabIndex = _tabIndex(location);
+    final index = navigationShell.currentIndex;
+    final onTab = index < _firstDrawerBranchIndex;
 
     final playerState = ref.watch(audioPlayerProvider);
     final notifier = ref.read(audioPlayerProvider.notifier);
@@ -66,12 +41,12 @@ class NavScaffold extends ConsumerWidget {
 
     return Scaffold(
       key: navScaffoldKey,
-      body: child,
+      body: navigationShell,
       drawer: NavigationDrawer(
-        selectedIndex: _drawerIndex(location),
-        onDestinationSelected: (index) {
+        selectedIndex: onTab ? null : index - _firstDrawerBranchIndex,
+        onDestinationSelected: (i) {
           navScaffoldKey.currentState?.closeDrawer();
-          context.push(_drawerRoutes[index]);
+          navigationShell.goBranch(_firstDrawerBranchIndex + i);
         },
         children: [
           Padding(
@@ -91,7 +66,11 @@ class NavScaffold extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: _BottomTabBar(selectedIndex: tabIndex),
+      bottomNavigationBar: _BottomTabBar(
+        selectedIndex: onTab ? index : null,
+        onSelected: (i) =>
+            navigationShell.goBranch(i, initialLocation: i == index),
+      ),
       // Shift the global play/pause FAB left so it sits beside (not on top
       // of) each page's own bottom-right "add" FAB.
       floatingActionButton: showFab
@@ -130,14 +109,15 @@ class NavScaffold extends ConsumerWidget {
 /// without a selection highlight.
 class _BottomTabBar extends StatelessWidget {
   final int? selectedIndex;
+  final ValueChanged<int> onSelected;
 
-  const _BottomTabBar({required this.selectedIndex});
+  const _BottomTabBar({required this.selectedIndex, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
     final bar = NavigationBar(
-      selectedIndex: selectedIndex ?? 0,
-      onDestinationSelected: (index) => context.go(_tabRoutes[index]),
+      selectedIndex: selectedIndex ?? _tunesBranchIndex,
+      onDestinationSelected: onSelected,
       destinations: const [
         NavigationDestination(
           icon: Icon(Icons.queue_music),

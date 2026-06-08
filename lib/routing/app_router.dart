@@ -10,14 +10,8 @@ import 'package:tune_trove/feat/set_list/set_list_page.dart';
 import 'package:tune_trove/feat/settings/settings_page.dart';
 import 'package:tune_trove/feat/tune_list/tune_detail_page.dart';
 import 'package:tune_trove/feat/tune_list/tune_list_page.dart';
+import 'package:tune_trove/routing/cross_tab_nav.dart';
 import 'package:tune_trove/routing/nav_scaffold.dart';
-
-const _navOrder = [
-  '/set_list',
-  '/tune_list',
-  '/recording_list',
-];
-int _previousNavIndex = 1; // tune_list is the initial location
 
 /// Where the app navigates on launch (`/` redirects here). Configurable from
 /// Settings via the "Default Page" dropdown and set from persisted prefs in
@@ -30,109 +24,104 @@ void setDefaultStartLocation(String location) {
   _defaultStartLocation = location;
 }
 
-CustomTransitionPage<void> _directionalPage({
-  required String path,
-  required Widget child,
-}) {
-  final newIndex = _navOrder.indexOf(path);
-  final fromRight = newIndex >= _previousNavIndex;
-  _previousNavIndex = newIndex;
-  final begin = Offset(fromRight ? 1 : -1, 0);
-  return CustomTransitionPage<void>(
-    key: ValueKey(path),
-    child: child,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      return SlideTransition(
-        position: Tween<Offset>(
-          begin: begin,
-          end: Offset.zero,
-        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-        child: child,
-      );
-    },
-  );
-}
-
 /// Root navigator key. Lets non-widget owners (e.g. [AudioImportController])
 /// surface app-wide UI — like the prefilled add-recording dialog on a shared
 /// file — from any tab, via `rootNavigatorKey.currentContext`.
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// The five branches behind [StatefulShellRoute]: the three bottom tabs (Sets,
+/// Tunes, Recordings — indices 0-2), then Settings and Content Library
+/// (indices 3-4), which the hamburger drawer switches to. Each branch keeps its
+/// own navigator + history, so switching tabs preserves where you were.
 final GoRouter router = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   redirect: (context, state) =>
       state.matchedLocation == '/' ? _defaultStartLocation : null,
   routes: [
-    ShellRoute(
-      builder: (context, state, child) {
-        return NavScaffold(child: child);
-      },
-      routes: [
-        GoRoute(
-          path: '/set_list',
-          name: 'set_list',
-          pageBuilder: (context, state) =>
-              _directionalPage(path: '/set_list', child: SetListPage()),
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) =>
+          NavScaffold(navigationShell: navigationShell),
+      branches: [
+        StatefulShellBranch(
           routes: [
             GoRoute(
-              path: ':id',
-              name: 'set_detail',
-              builder: (context, state) {
-                final id = int.parse(state.pathParameters['id']!);
-                return SetDetailPage(setId: id);
-              },
+              path: '/set_list',
+              name: 'set_list',
+              builder: (context, state) => SetListPage(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'set_detail',
+                  builder: (context, state) => SetDetailPage(
+                    setId: int.parse(state.pathParameters['id']!),
+                    returnTo: returnToOf(state),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        GoRoute(
-          path: '/tune_list',
-          name: 'tune_list',
-          pageBuilder: (context, state) =>
-              _directionalPage(path: '/tune_list', child: TuneListPage()),
+        StatefulShellBranch(
           routes: [
             GoRoute(
-              path: ':id',
-              name: 'tune_detail',
-              builder: (context, state) {
-                final id = int.parse(state.pathParameters['id']!);
-                return TuneDetailPage(tuneId: id);
-              },
+              path: '/tune_list',
+              name: 'tune_list',
+              builder: (context, state) => TuneListPage(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'tune_detail',
+                  builder: (context, state) => TuneDetailPage(
+                    tuneId: int.parse(state.pathParameters['id']!),
+                    returnTo: returnToOf(state),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        GoRoute(
-          path: '/recording_list',
-          name: 'recording_list',
-          pageBuilder: (context, state) => _directionalPage(
-            path: '/recording_list',
-            child: const RecordingListPage(),
-          ),
+        StatefulShellBranch(
           routes: [
             GoRoute(
-              path: ':id',
-              name: 'recording_detail',
-              builder: (context, state) {
-                final id = int.parse(state.pathParameters['id']!);
-                return RecordingDetailPage(recordingId: id);
-              },
+              path: '/recording_list',
+              name: 'recording_list',
+              builder: (context, state) => const RecordingListPage(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  name: 'recording_detail',
+                  builder: (context, state) => RecordingDetailPage(
+                    recordingId: int.parse(state.pathParameters['id']!),
+                    returnTo: returnToOf(state),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        GoRoute(
-          path: '/settings',
-          name: 'settings',
-          builder: (context, state) => SettingsPage(),
-        ),
-        GoRoute(
-          path: '/content_library',
-          name: 'content_library',
-          builder: (context, state) => const ContentLibraryPage(),
+        StatefulShellBranch(
           routes: [
             GoRoute(
-              path: 'search_order',
-              name: 'source_ranking',
-              builder: (context, state) => const SourceRankingPage(),
+              path: '/settings',
+              name: 'settings',
+              builder: (context, state) => SettingsPage(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/content_library',
+              name: 'content_library',
+              builder: (context, state) => const ContentLibraryPage(),
+              routes: [
+                GoRoute(
+                  path: 'search_order',
+                  name: 'source_ranking',
+                  builder: (context, state) => const SourceRankingPage(),
+                ),
+              ],
             ),
           ],
         ),
