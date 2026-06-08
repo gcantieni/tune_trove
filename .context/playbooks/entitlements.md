@@ -26,6 +26,23 @@ To enable MusicKit for this app:
 1. Developer portal → Identifiers → `com.gcantieni.tuneCatcher` → enable **MusicKit** under App Services → Save.
 2. Clean the Xcode build folder to regenerate provisioning profiles.
 
+## macOS sandbox: saving the backup file
+
+The backup export uses a native **Save** panel on macOS (file_picker). Writing to
+a user-chosen location requires the **read-write** user-selected files
+entitlement, not read-only:
+
+```
+com.apple.security.files.user-selected.read-write   (true)
+```
+
+This replaced `…user-selected.read-only` in both
+`macos/Runner/DebugProfile.entitlements` and `Release.entitlements`. Symptom of
+the read-only form: `PlatformException(ENTITLEMENT_REQUIRED_WRITE, The Read-Write
+entitlement is required for this action.)`. read-write is a real, Xcode-listed
+entitlement (App Sandbox → File Access → User Selected File → Read/Write) and
+supersedes read-only.
+
 ## Common hallucinated entitlements
 
 | Hallucinated key | Reality |

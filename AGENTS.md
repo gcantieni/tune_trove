@@ -84,6 +84,7 @@ or "security fixes") without detailing the specifics.
 ### Playbooks — step-by-step guides for common development actions
 
 - [.context/playbooks/adding-a-feature.md](/.context/playbooks/adding-a-feature.md)
+- [.context/playbooks/backup-and-sync.md](/.context/playbooks/backup-and-sync.md) — sync transports, the shared canonical record codec (sync_core/), the ZIP backup, and how to add a new transport (Dropbox/Drive)
 - [.context/playbooks/build.md](/.context/playbooks/build.md)
 - [.context/playbooks/entitlements.md](/.context/playbooks/entitlements.md)
 - [.context/playbooks/testing.md](/.context/playbooks/testing.md)

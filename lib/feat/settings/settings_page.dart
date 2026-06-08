@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tune_trove/feat/backup/backup_providers.dart';
 import 'package:tune_trove/feat/cloudkit_sync/sync_notifier.dart';
 import 'package:tune_trove/feat/settings/settings_providers.dart';
 import 'package:tune_trove/model/database_provider.dart';
@@ -8,6 +9,20 @@ import 'package:tune_trove/model/database_provider.dart';
 class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Surface backup export/import outcomes as a snackbar.
+    ref.listen<AsyncValue<BackupState>>(backupProvider, (_, next) {
+      final s = next.value;
+      if (s == null) return;
+      if (s.phase == BackupPhase.success || s.phase == BackupPhase.error) {
+        final msg =
+            s.message ??
+            (s.phase == BackupPhase.success ? 'Done' : 'Something went wrong');
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(content: Text(msg)));
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -17,12 +32,97 @@ class SettingsPage extends ConsumerWidget {
           _DefaultPageTile(),
           const Divider(height: 1),
           _InvertNotationTile(),
+          const Divider(height: 1),
+          _ImportDataTile(),
+          _ExportDataTile(),
           const SizedBox(height: 24),
           _BuildInfoFooter(),
           const SizedBox(height: 16),
         ],
       ),
     );
+  }
+}
+
+/// Exports the whole library (tunes, recordings, sets, sources) plus the audio
+/// files into a ZIP and hands it to the system share sheet.
+class _ExportDataTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(backupProvider).value ?? const BackupState();
+    final exporting = state.phase == BackupPhase.exporting;
+    return ListTile(
+      leading: exporting
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.ios_share),
+      title: const Text('Export backup'),
+      subtitle: const Text('Save a ZIP of your library and audio files'),
+      onTap: state.isBusy
+          ? null
+          : () => ref
+                .read(backupProvider.notifier)
+                .exportBackup(sharePositionOrigin: _originOf(context)),
+    );
+  }
+
+  /// The tile's global rect, used to anchor the iOS share popover (iOS throws
+  /// without a non-zero origin).
+  Rect? _originOf(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+}
+
+/// Imports a previously-exported backup ZIP, merging it into the library.
+/// Non-destructive: existing items are kept and duplicates are skipped.
+class _ImportDataTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(backupProvider).value ?? const BackupState();
+    final importing = state.phase == BackupPhase.importing;
+    return ListTile(
+      leading: importing
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.unarchive_outlined),
+      title: const Text('Import backup'),
+      subtitle: const Text('Merge a backup ZIP into your library'),
+      onTap: state.isBusy ? null : () => _confirmAndImport(context, ref),
+    );
+  }
+
+  Future<void> _confirmAndImport(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import backup?'),
+        content: const Text(
+          'Pick a backup ZIP to merge into your library. Existing items are '
+          'kept and matching items are not duplicated.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Choose file'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await ref.read(backupProvider.notifier).importBackup();
+    }
   }
 }
 
