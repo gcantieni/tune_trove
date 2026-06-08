@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tune_trove/feat/audio_player/audio_player_notifier.dart';
@@ -120,10 +121,12 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
   bool _isDragging = false;
   double _multiplier = 1.0;
   String? _lastTrackUri;
+  bool _hovered = false;
 
   static const _thumbDiameter = 20.0;
   static const _trackHeight = 4.0;
   static const _horizontalMargin = 12.0;
+  static const _haloDiameter = 36.0;
 
   double _multiplierForVertical(double dist) {
     if (dist < 40) return 1.0;
@@ -171,121 +174,154 @@ class _ScrubbingSliderState extends ConsumerState<_ScrubbingSlider> {
           builder: (context, constraints) {
             final effectiveWidth =
                 constraints.maxWidth - _horizontalMargin * 2 - _thumbDiameter;
+            final thumbCenterX =
+                _horizontalMargin +
+                effectiveWidth * fraction +
+                _thumbDiameter / 2;
 
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onPanStart: duration > 0
-                  ? (details) {
-                      // Snap the playhead to the touch position (unless the
-                      // touch grabbed the thumb), then drag relative from there.
-                      final touchTrackX =
-                          details.localPosition.dx -
-                          _horizontalMargin -
-                          _thumbDiameter / 2;
-                      final startValue = scrubStartValue(
-                        touchTrackX: touchTrackX,
-                        currentValue: _scrubValue ?? state.position,
-                        effectiveWidth: effectiveWidth,
-                        duration: duration,
-                        grabRadius: _thumbDiameter,
-                      );
-                      setState(() {
-                        _dragStart = details.localPosition;
-                        _dragStartValue = startValue;
-                        _scrubValue = startValue;
-                        _isDragging = true;
-                        _multiplier = 1.0;
-                      });
-                    }
-                  : null,
-              onPanUpdate: duration > 0
-                  ? (details) {
-                      if (_dragStart == null || _dragStartValue == null) return;
-                      final dx = details.localPosition.dx - _dragStart!.dx;
-                      final vertDist =
-                          (details.localPosition.dy - _dragStart!.dy).abs();
-                      final multiplier = _multiplierForVertical(vertDist);
-                      final delta = dx * multiplier * duration / effectiveWidth;
-                      setState(() {
-                        _multiplier = multiplier;
-                        _scrubValue = (_dragStartValue! + delta).clamp(
-                          0.0,
-                          duration,
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onHover: (event) {
+                final over =
+                    (event.localPosition.dx - thumbCenterX).abs() <=
+                    _thumbDiameter;
+                if (over != _hovered) setState(() => _hovered = over);
+              },
+              onExit: (_) {
+                if (_hovered) setState(() => _hovered = false);
+              },
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onPanStart: duration > 0
+                    ? (details) {
+                        // Snap the playhead to the touch position (unless the
+                        // touch grabbed the thumb), then drag relative from there.
+                        final touchTrackX =
+                            details.localPosition.dx -
+                            _horizontalMargin -
+                            _thumbDiameter / 2;
+                        final startValue = scrubStartValue(
+                          touchTrackX: touchTrackX,
+                          currentValue: _scrubValue ?? state.position,
+                          effectiveWidth: effectiveWidth,
+                          duration: duration,
+                          grabRadius: _thumbDiameter,
                         );
-                      });
-                    }
-                  : null,
-              onPanEnd: duration > 0
-                  ? (_) {
-                      if (_scrubValue != null) {
-                        ref
-                            .read(audioPlayerProvider.notifier)
-                            .seek(_scrubValue!);
+                        setState(() {
+                          _dragStart = details.localPosition;
+                          _dragStartValue = startValue;
+                          _scrubValue = startValue;
+                          _isDragging = true;
+                          _multiplier = 1.0;
+                        });
                       }
-                      setState(() {
-                        _isDragging = false;
-                        _scrubValue = null;
-                        _dragStart = null;
-                        _dragStartValue = null;
-                        _multiplier = 1.0;
-                      });
-                    }
-                  : null,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: _horizontalMargin,
-                  vertical: 16,
-                ),
-                child: SizedBox(
-                  height: _thumbDiameter,
-                  child: Stack(
-                    alignment: Alignment.centerLeft,
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Inactive track
-                      Positioned(
-                        left: _thumbDiameter / 2,
-                        right: _thumbDiameter / 2,
-                        child: Container(
-                          height: _trackHeight,
-                          decoration: BoxDecoration(
-                            color: scheme.onSurfaceVariant.withValues(
-                              alpha: 0.24,
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              _trackHeight / 2,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Active track
-                      if (fraction > 0)
+                    : null,
+                onPanUpdate: duration > 0
+                    ? (details) {
+                        if (_dragStart == null || _dragStartValue == null) {
+                          return;
+                        }
+                        final dx = details.localPosition.dx - _dragStart!.dx;
+                        final vertDist =
+                            (details.localPosition.dy - _dragStart!.dy).abs();
+                        final multiplier = _multiplierForVertical(vertDist);
+                        final delta =
+                            dx * multiplier * duration / effectiveWidth;
+                        setState(() {
+                          _multiplier = multiplier;
+                          _scrubValue = (_dragStartValue! + delta).clamp(
+                            0.0,
+                            duration,
+                          );
+                        });
+                      }
+                    : null,
+                onPanEnd: duration > 0
+                    ? (_) {
+                        if (_scrubValue != null) {
+                          ref
+                              .read(audioPlayerProvider.notifier)
+                              .seek(_scrubValue!);
+                        }
+                        setState(() {
+                          _isDragging = false;
+                          _scrubValue = null;
+                          _dragStart = null;
+                          _dragStartValue = null;
+                          _multiplier = 1.0;
+                        });
+                      }
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: _horizontalMargin,
+                    vertical: 16,
+                  ),
+                  child: SizedBox(
+                    height: _thumbDiameter,
+                    child: Stack(
+                      alignment: Alignment.centerLeft,
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Inactive track
                         Positioned(
                           left: _thumbDiameter / 2,
+                          right: _thumbDiameter / 2,
                           child: Container(
-                            width: effectiveWidth * fraction,
                             height: _trackHeight,
                             decoration: BoxDecoration(
-                              color: scheme.primary,
+                              color: scheme.onSurfaceVariant.withValues(
+                                alpha: 0.24,
+                              ),
                               borderRadius: BorderRadius.circular(
                                 _trackHeight / 2,
                               ),
                             ),
                           ),
                         ),
-                      // Thumb
-                      Positioned(
-                        left: effectiveWidth * fraction,
-                        child: Container(
-                          width: _thumbDiameter,
-                          height: _thumbDiameter,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: scheme.primary,
+                        // Active track
+                        if (fraction > 0)
+                          Positioned(
+                            left: _thumbDiameter / 2,
+                            child: Container(
+                              width: effectiveWidth * fraction,
+                              height: _trackHeight,
+                              decoration: BoxDecoration(
+                                color: scheme.primary,
+                                borderRadius: BorderRadius.circular(
+                                  _trackHeight / 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        // Thumb (with hover/drag halo behind it)
+                        if (_hovered || _isDragging)
+                          Positioned(
+                            left:
+                                effectiveWidth * fraction -
+                                (_haloDiameter - _thumbDiameter) / 2,
+                            child: Container(
+                              width: _haloDiameter,
+                              height: _haloDiameter,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: scheme.primary.withValues(alpha: 0.18),
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          left: effectiveWidth * fraction,
+                          child: Container(
+                            width: _thumbDiameter,
+                            height: _thumbDiameter,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: scheme.primary,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -362,15 +398,32 @@ class _ScrubbingRangeSliderState extends ConsumerState<_ScrubbingRangeSlider> {
   _Thumb _lastThumb = _Thumb.end;
   double? _scrubValue;
   bool _isDragging = false;
+  // True once a pan has travelled past the tap threshold. A mouse click on
+  // macOS jitters enough to start a (zero-distance) pan; without this guard its
+  // onPanEnd would commit the unchanged bound on the same pointer-up as the
+  // double-tap snap, reverting the snap. Touch never trips this (larger slop).
+  bool _panMoved = false;
   double _multiplier = 1.0;
 
-  // Local x (within the track area) of the most recent double-tap-down, used to
-  // pick which loop thumb a double-tap should snap to the playback position.
-  double? _doubleTapLocalX;
+  // Manual double-tap detection on a Listener (raw pointer events). We can't use
+  // any tap-family recognizer on the GestureDetector: it joins the gesture arena
+  // alongside the pan recognizer and stops pan from winning under a precise
+  // (mouse) pointer on macOS, which makes the loop thumbs un-draggable. Raw
+  // pointer events don't enter the arena, so we time the taps ourselves. We key
+  // off pointer-up (not -down) with a movement check so a drag isn't mistaken
+  // for a tap.
+  DateTime? _lastTapTime;
+  Offset? _downPosition;
+  Offset? _lastTapPosition;
+
+  // Which thumb the mouse is currently hovering (for the hover halo). Null when
+  // the cursor isn't over either thumb.
+  _Thumb? _hoveredThumb;
 
   static const _thumbDiameter = 20.0;
   static const _trackHeight = 4.0;
   static const _horizontalMargin = 12.0;
+  static const _haloDiameter = 36.0;
 
   double _multiplierForVertical(double dist) {
     if (dist < 40) return 1.0;
@@ -393,6 +446,15 @@ class _ScrubbingRangeSliderState extends ConsumerState<_ScrubbingRangeSlider> {
     if (distToEnd < distToStart) return _Thumb.end;
     return _lastThumb;
   }
+
+  Widget _thumbHalo(Color color) => Container(
+    width: _haloDiameter,
+    height: _haloDiameter,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: color.withValues(alpha: 0.18),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -432,166 +494,253 @@ class _ScrubbingRangeSliderState extends ConsumerState<_ScrubbingRangeSlider> {
                 constraints.maxWidth - _horizontalMargin * 2 - _thumbDiameter;
             final startThumbX = effectiveWidth * startFraction;
             final endThumbX = effectiveWidth * endFraction;
+            // Thumb centres in the slider's own coordinate space (the thumbs
+            // sit inside a horizontal margin / Stack).
+            final startCenterX =
+                _horizontalMargin + startThumbX + _thumbDiameter / 2;
+            final endCenterX =
+                _horizontalMargin + endThumbX + _thumbDiameter / 2;
 
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onDoubleTapDown: (details) {
-                _doubleTapLocalX = details.localPosition.dx - _horizontalMargin;
-              },
-              onDoubleTap: () {
-                final touchX = _doubleTapLocalX;
-                if (touchX == null) return;
-                // Move the double-tapped loop thumb to the current playback
-                // position — a quick way to set a loop edge precisely without
-                // fine-dragging. Clamp so the two thumbs can't cross.
-                final thumb = _nearestThumb(
-                  touchX,
-                  startThumbX + _thumbDiameter / 2,
-                  endThumbX + _thumbDiameter / 2,
-                );
-                final (newStart, newEnd) = loopBoundsAfterSnap(
-                  isStart: thumb == _Thumb.start,
-                  position: state.position,
-                  loopStart: loopStart,
-                  loopEnd: loopEnd,
-                  duration: duration,
-                );
-                ref
-                    .read(audioPlayerProvider.notifier)
-                    .setLoopBounds(newStart, newEnd);
-                setState(() => _lastThumb = thumb);
-              },
-              onPanStart: (details) {
-                // Subtract horizontal margin to get position within track area.
-                final touchX = details.localPosition.dx - _horizontalMargin;
-                final thumb = _nearestThumb(
-                  touchX,
-                  startThumbX + _thumbDiameter / 2,
-                  endThumbX + _thumbDiameter / 2,
-                );
-                setState(() {
-                  _dragStart = details.localPosition;
-                  _dragStartValue = thumb == _Thumb.start ? loopStart : loopEnd;
-                  _activeThumb = thumb;
-                  _lastThumb = thumb;
-                  _isDragging = true;
-                  _multiplier = 1.0;
-                  _scrubValue = _dragStartValue;
-                });
-              },
-              onPanUpdate: (details) {
-                if (_dragStart == null ||
-                    _dragStartValue == null ||
-                    _activeThumb == null) {
-                  return;
+            // Double-tap detection lives on a Listener (raw pointer events that
+            // don't enter the gesture arena) so it can't compete with the pan
+            // recognizer. A tap-family recognizer on the same GestureDetector
+            // blocks the pan from winning under a precise (mouse) pointer on
+            // macOS, which made the loop thumbs un-draggable.
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onHover: (event) {
+                final x = event.localPosition.dx;
+                final distStart = (x - startCenterX).abs();
+                final distEnd = (x - endCenterX).abs();
+                _Thumb? over;
+                if (distStart <= _thumbDiameter || distEnd <= _thumbDiameter) {
+                  over = distStart <= distEnd ? _Thumb.start : _Thumb.end;
                 }
-                final dx = details.localPosition.dx - _dragStart!.dx;
-                final vertDist = (details.localPosition.dy - _dragStart!.dy)
-                    .abs();
-                final multiplier = _multiplierForVertical(vertDist);
-                final delta = dx * multiplier * duration / effectiveWidth;
-                final raw = _dragStartValue! + delta;
-                // Prevent the two thumbs from crossing each other.
-                final clamped = _activeThumb == _Thumb.start
-                    ? raw.clamp(0.0, displayEnd)
-                    : raw.clamp(displayStart, duration);
-                setState(() {
-                  _multiplier = multiplier;
-                  _scrubValue = clamped;
-                });
+                if (over != _hoveredThumb) {
+                  setState(() => _hoveredThumb = over);
+                }
               },
-              onPanEnd: (_) {
-                if (_scrubValue != null && _activeThumb != null) {
-                  final notifier = ref.read(audioPlayerProvider.notifier);
-                  final s = ref.read(audioPlayerProvider);
-                  if (_activeThumb == _Thumb.start) {
-                    notifier.setLoopBounds(
-                      _scrubValue!,
-                      s.loopEnd.clamp(0.0, duration),
-                    );
-                  } else {
-                    notifier.setLoopBounds(
-                      s.loopStart.clamp(0.0, duration),
-                      _scrubValue!,
-                    );
+              onExit: (_) {
+                if (_hoveredThumb != null) {
+                  setState(() => _hoveredThumb = null);
+                }
+              },
+              child: Listener(
+                onPointerDown: (event) => _downPosition = event.localPosition,
+                onPointerUp: (event) {
+                  final down = _downPosition;
+                  _downPosition = null;
+                  if (down == null) return;
+                  // A drag releases far from where it started — only a stationary
+                  // press/release counts as a tap for double-tap purposes.
+                  if ((event.localPosition - down).distance > kTouchSlop) {
+                    _lastTapTime = null;
+                    _lastTapPosition = null;
+                    return;
                   }
-                }
-                setState(() {
-                  _isDragging = false;
-                  _scrubValue = null;
-                  _dragStart = null;
-                  _dragStartValue = null;
-                  _activeThumb = null;
-                  _multiplier = 1.0;
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: _horizontalMargin,
-                  vertical: 16,
-                ),
-                child: SizedBox(
-                  height: _thumbDiameter,
-                  child: Stack(
-                    alignment: Alignment.centerLeft,
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Inactive track (full width)
-                      Positioned(
-                        left: _thumbDiameter / 2,
-                        right: _thumbDiameter / 2,
-                        child: Container(
-                          height: _trackHeight,
-                          decoration: BoxDecoration(
-                            color: tertiary.withValues(alpha: 0.24),
-                            borderRadius: BorderRadius.circular(
-                              _trackHeight / 2,
+                  final now = DateTime.now();
+                  final lastTime = _lastTapTime;
+                  final lastPos = _lastTapPosition;
+                  final isDoubleTap =
+                      lastTime != null &&
+                      now.difference(lastTime) < kDoubleTapTimeout &&
+                      lastPos != null &&
+                      (event.localPosition - lastPos).distance < kDoubleTapSlop;
+                  if (!isDoubleTap) {
+                    _lastTapTime = now;
+                    _lastTapPosition = event.localPosition;
+                    return;
+                  }
+                  // Reset so a third tap starts a fresh sequence.
+                  _lastTapTime = null;
+                  _lastTapPosition = null;
+                  final touchX = event.localPosition.dx - _horizontalMargin;
+                  // Move the double-tapped loop thumb to the current playback
+                  // position — a quick way to set a loop edge precisely without
+                  // fine-dragging. Clamp so the two thumbs can't cross.
+                  final thumb = _nearestThumb(
+                    touchX,
+                    startThumbX + _thumbDiameter / 2,
+                    endThumbX + _thumbDiameter / 2,
+                  );
+                  final fresh = ref.read(audioPlayerProvider);
+                  final (newStart, newEnd) = loopBoundsAfterSnap(
+                    isStart: thumb == _Thumb.start,
+                    position: fresh.position,
+                    loopStart: fresh.loopStart.clamp(0.0, duration),
+                    loopEnd: fresh.loopEnd.clamp(0.0, duration),
+                    duration: duration,
+                  );
+                  ref
+                      .read(audioPlayerProvider.notifier)
+                      .setLoopBounds(newStart, newEnd);
+                  setState(() => _lastThumb = thumb);
+                },
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onPanStart: (details) {
+                    // Subtract horizontal margin to get position within track area.
+                    final touchX = details.localPosition.dx - _horizontalMargin;
+                    final thumb = _nearestThumb(
+                      touchX,
+                      startThumbX + _thumbDiameter / 2,
+                      endThumbX + _thumbDiameter / 2,
+                    );
+                    setState(() {
+                      _dragStart = details.localPosition;
+                      _dragStartValue = thumb == _Thumb.start
+                          ? loopStart
+                          : loopEnd;
+                      _activeThumb = thumb;
+                      _lastThumb = thumb;
+                      _isDragging = true;
+                      _panMoved = false;
+                      _multiplier = 1.0;
+                      _scrubValue = _dragStartValue;
+                    });
+                  },
+                  onPanUpdate: (details) {
+                    if (_dragStart == null ||
+                        _dragStartValue == null ||
+                        _activeThumb == null) {
+                      return;
+                    }
+                    if ((details.localPosition - _dragStart!).distance >
+                        kTouchSlop) {
+                      _panMoved = true;
+                    }
+                    final dx = details.localPosition.dx - _dragStart!.dx;
+                    final vertDist = (details.localPosition.dy - _dragStart!.dy)
+                        .abs();
+                    final multiplier = _multiplierForVertical(vertDist);
+                    final delta = dx * multiplier * duration / effectiveWidth;
+                    final raw = _dragStartValue! + delta;
+                    // Prevent the two thumbs from crossing each other.
+                    final clamped = _activeThumb == _Thumb.start
+                        ? raw.clamp(0.0, displayEnd)
+                        : raw.clamp(displayStart, duration);
+                    setState(() {
+                      _multiplier = multiplier;
+                      _scrubValue = clamped;
+                    });
+                  },
+                  onPanEnd: (_) {
+                    // Only commit a real drag. A click that never moved past the
+                    // tap threshold leaves the bound to the double-tap handler.
+                    if (_panMoved &&
+                        _scrubValue != null &&
+                        _activeThumb != null) {
+                      final notifier = ref.read(audioPlayerProvider.notifier);
+                      final s = ref.read(audioPlayerProvider);
+                      if (_activeThumb == _Thumb.start) {
+                        notifier.setLoopBounds(
+                          _scrubValue!,
+                          s.loopEnd.clamp(0.0, duration),
+                        );
+                      } else {
+                        notifier.setLoopBounds(
+                          s.loopStart.clamp(0.0, duration),
+                          _scrubValue!,
+                        );
+                      }
+                    }
+                    setState(() {
+                      _isDragging = false;
+                      _panMoved = false;
+                      _scrubValue = null;
+                      _dragStart = null;
+                      _dragStartValue = null;
+                      _activeThumb = null;
+                      _multiplier = 1.0;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: _horizontalMargin,
+                      vertical: 16,
+                    ),
+                    child: SizedBox(
+                      height: _thumbDiameter,
+                      child: Stack(
+                        alignment: Alignment.centerLeft,
+                        clipBehavior: Clip.none,
+                        children: [
+                          // Inactive track (full width)
+                          Positioned(
+                            left: _thumbDiameter / 2,
+                            right: _thumbDiameter / 2,
+                            child: Container(
+                              height: _trackHeight,
+                              decoration: BoxDecoration(
+                                color: tertiary.withValues(alpha: 0.24),
+                                borderRadius: BorderRadius.circular(
+                                  _trackHeight / 2,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      // Active range between the two thumbs
-                      Positioned(
-                        left:
-                            _thumbDiameter / 2 + effectiveWidth * startFraction,
-                        child: Container(
-                          width:
-                              (effectiveWidth * (endFraction - startFraction))
-                                  .clamp(0.0, double.infinity),
-                          height: _trackHeight,
-                          decoration: BoxDecoration(
-                            color: tertiary,
-                            borderRadius: BorderRadius.circular(
-                              _trackHeight / 2,
+                          // Active range between the two thumbs
+                          Positioned(
+                            left:
+                                _thumbDiameter / 2 +
+                                effectiveWidth * startFraction,
+                            child: Container(
+                              width:
+                                  (effectiveWidth *
+                                          (endFraction - startFraction))
+                                      .clamp(0.0, double.infinity),
+                              height: _trackHeight,
+                              decoration: BoxDecoration(
+                                color: tertiary,
+                                borderRadius: BorderRadius.circular(
+                                  _trackHeight / 2,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                      // Start thumb
-                      Positioned(
-                        left: startThumbX,
-                        child: Container(
-                          width: _thumbDiameter,
-                          height: _thumbDiameter,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: tertiary,
+                          // Start thumb (with hover/drag halo behind it)
+                          if (_hoveredThumb == _Thumb.start ||
+                              (_isDragging && _activeThumb == _Thumb.start))
+                            Positioned(
+                              left:
+                                  startThumbX -
+                                  (_haloDiameter - _thumbDiameter) / 2,
+                              child: _thumbHalo(tertiary),
+                            ),
+                          Positioned(
+                            left: startThumbX,
+                            child: Container(
+                              width: _thumbDiameter,
+                              height: _thumbDiameter,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: tertiary,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      // End thumb
-                      Positioned(
-                        left: endThumbX,
-                        child: Container(
-                          width: _thumbDiameter,
-                          height: _thumbDiameter,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: tertiary,
+                          // End thumb (with hover/drag halo behind it)
+                          if (_hoveredThumb == _Thumb.end ||
+                              (_isDragging && _activeThumb == _Thumb.end))
+                            Positioned(
+                              left:
+                                  endThumbX -
+                                  (_haloDiameter - _thumbDiameter) / 2,
+                              child: _thumbHalo(tertiary),
+                            ),
+                          Positioned(
+                            left: endThumbX,
+                            child: Container(
+                              width: _thumbDiameter,
+                              height: _thumbDiameter,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: tertiary,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
