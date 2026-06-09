@@ -1,124 +1,106 @@
 {
-  "color-space-for-untagged-svg-colors" : "display-p3",
-  "fill-specializations" : [
+  "color-space-for-untagged-svg-colors": "display-p3",
+  "fill-specializations": [
     {
-      "value" : {
-        "solid" : "display-p3:0.03184,0.11996,0.07696,1.00000"
+      "value": {
+        "solid": "display-p3:0.03184,0.11996,0.07696,1.00000"
       }
     },
     {
-      "appearance" : "dark",
-      "value" : {
-        "solid" : "display-p3:0.01258,0.04738,0.03040,1.00000"
+      "appearance": "dark",
+      "value": {
+        "solid": "display-p3:0.01258,0.04738,0.03040,1.00000"
       }
     }
   ],
-  "groups" : [
+  "groups": [
     {
-      "hidden" : false,
-      "layers" : [
+      "hidden": false,
+      "layers": [
         {
-          "fill" : "none",
-          "image-name" : "tail 2.svg",
-          "name" : "tail",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
+          "fill": "none",
+          "image-name": "tail.svg",
+          "name": "tail",
+          "position": {
+            "scale": 1,
+            "translation-in-points": [0, 0]
           }
         },
         {
-          "fill" : "none",
-          "image-name" : "chest 2.svg",
-          "name" : "chest",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
+          "fill": "none",
+          "image-name": "chest.svg",
+          "name": "chest",
+          "position": {
+            "scale": 1,
+            "translation-in-points": [0, 0]
           }
         },
         {
-          "fill" : "none",
-          "image-name" : "ball.svg",
-          "name" : "ball",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
+          "fill": "none",
+          "image-name": "ball.svg",
+          "name": "ball",
+          "position": {
+            "scale": 1,
+            "translation-in-points": [0, 0]
           }
         },
         {
-          "fill" : "none",
-          "image-name" : "stick.svg",
-          "name" : "stick",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
+          "fill": "none",
+          "image-name": "stick.svg",
+          "name": "stick",
+          "position": {
+            "scale": 1,
+            "translation-in-points": [0, 0]
           }
         },
         {
-          "hidden" : false,
-          "image-name" : "lid.svg",
-          "name" : "lid"
+          "hidden": false,
+          "image-name": "lid.svg",
+          "name": "lid"
         }
       ],
-      "position" : {
-        "scale" : 0.32,
-        "translation-in-points" : [
-          0,
-          0
-        ]
+      "position": {
+        "scale": 0.32,
+        "translation-in-points": [0, 0]
       },
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "specular" : true,
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0.5
+      "specular": true,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
       }
     },
     {
-      "hidden" : false,
-      "layers" : [
+      "hidden": false,
+      "layers": [
         {
-          "glass" : false,
-          "hidden" : false,
-          "image-name" : "glow.svg",
-          "name" : "glow"
+          "glass": false,
+          "hidden": false,
+          "image-name": "glow.svg",
+          "name": "glow"
         }
       ],
-      "name" : "Group",
-      "opacity" : 1,
-      "position" : {
-        "scale" : 0.32,
-        "translation-in-points" : [
-          0,
-          0
-        ]
+      "name": "Group",
+      "opacity": 1,
+      "position": {
+        "scale": 0.32,
+        "translation-in-points": [0, 0]
       },
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "specular" : false,
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0.5
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
       }
     }
   ],
-  "supported-platforms" : {
-    "squares" : "shared"
+  "supported-platforms": {
+    "squares": "shared"
   }
 }
