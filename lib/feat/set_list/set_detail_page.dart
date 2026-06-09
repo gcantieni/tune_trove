@@ -65,6 +65,7 @@ class _SetDetailPageState extends ConsumerState<SetDetailPage> {
     final dao = ref.read(databaseProvider);
     showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (_) => TunePickerDialog(
         title: 'Add tune to set',
         onLibraryTune: (tune) {

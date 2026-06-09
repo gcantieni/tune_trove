@@ -141,23 +141,31 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
     final localTunesAsync = ref.watch(allTunesProvider);
     final remoteResultsAsync = ref.watch(tuneSearchProvider(query));
 
-    return Dialog(
-      child: SizedBox(
-        width: 600,
+    return Dialog.fullscreen(
+      child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                widget.title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    widget.title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               TextField(
                 controller: _controller,
                 autofocus: true,
@@ -167,7 +175,7 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
                 ),
               ),
               const SizedBox(height: 12),
-              Flexible(
+              Expanded(
                 child: query.isEmpty
                     ? const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
@@ -236,7 +244,6 @@ class _TunePickerDialogState extends ConsumerState<TunePickerDialog> {
   }) {
     final orderedSources = _orderedSources(remoteResults.keys);
     return ListView(
-      shrinkWrap: true,
       children: [
         if (matchingLocal.isNotEmpty) ...[
           const _SectionHeader('In your library'),

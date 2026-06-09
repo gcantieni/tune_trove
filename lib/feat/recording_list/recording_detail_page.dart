@@ -271,6 +271,7 @@ class _RecordingDetailPageState extends ConsumerState<RecordingDetailPage> {
     final dao = ref.read(databaseProvider).tuneRecordingDao;
     showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (_) => TunePickerDialog(
         title: 'Add tune to recording',
         initialQuery: recordingName,

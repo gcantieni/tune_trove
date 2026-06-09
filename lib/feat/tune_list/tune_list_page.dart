@@ -57,6 +57,7 @@ class TuneListPage extends ConsumerWidget {
     final dao = ref.read(databaseProvider).tuneDao;
     showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (_) => TunePickerDialog(
         title: 'Add tune',
         onLibraryTune: (tune) {

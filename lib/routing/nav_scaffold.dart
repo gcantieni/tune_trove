@@ -41,6 +41,7 @@ class NavScaffold extends ConsumerWidget {
 
     return Scaffold(
       key: navScaffoldKey,
+      drawerEnableOpenDragGesture: false,
       body: navigationShell,
       drawer: NavigationDrawer(
         selectedIndex: onTab ? null : index - _firstDrawerBranchIndex,

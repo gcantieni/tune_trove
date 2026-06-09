@@ -86,6 +86,8 @@ class _MyAppState extends ConsumerState<MyApp> {
       scaffoldMessengerKey: _scaffoldMessengerKey,
       theme: ThemeData(
         colorScheme: colorScheme,
+        appBarTheme: const AppBarTheme(toolbarHeight: 44),
+        navigationBarTheme: const NavigationBarThemeData(height: 62),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           selectedItemColor: colorScheme.secondary,
           unselectedItemColor: colorScheme.secondaryContainer,
