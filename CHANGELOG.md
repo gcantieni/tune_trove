@@ -3,6 +3,54 @@
 All notable changes to Tune Trove are documented here. Versions correspond to
 the `version` field in `pubspec.yaml`. The newest release is listed first.
 
+## 1.0.32 - 2026-06-09
+
+### Changed
+
+- Compact app bar and bottom navigation bar to reclaim vertical screen space.
+- Tune search modal is now full-screen with an explicit close button, giving
+  sheet music previews and long tune names more room.
+- Swipe from the left edge of the screen now triggers back navigation instead
+  of opening the side drawer; the drawer remains accessible via the menu button.
+
+## 1.0.31 — 2026-06-09
+
+### Changed
+
+- App icon refinements.
+
+## 1.0.30 — 2026-06-08
+
+### Added
+
+- Export a full backup of your library as a ZIP file from Settings.
+
+### Changed
+
+- Tunes are now grouped by genre and type by default.
+
+## 1.0.29 — 2026-06-08
+
+### Added
+
+- Apple Music links now open directly in the Music app.
+
+### Changed
+
+- Improved cross-tab navigation: navigating to a tab you're already on returns
+  to the top of that tab rather than doing nothing.
+- Simplified navigation with a hamburger menu for secondary destinations.
+
+### Fixed
+
+- Loop playback no longer snaps to an incorrect position when restarting.
+
+## 1.0.28 — 2026-06-04
+
+### Changed
+
+- Bug fixes and performance improvements.
+
 ## 1.0.27 — 2026-06-04
 
 ### Added
