@@ -153,9 +153,9 @@ class _GenreHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 20, 4, 2),
       child: Text(
         genre,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }

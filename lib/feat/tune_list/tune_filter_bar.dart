@@ -21,8 +21,6 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
   @override
   void initState() {
     super.initState();
-    // Persisted query (set last session of this app run) reopens with
-    // the bar so the user sees what's filtering their list.
     final initial = ref.read(tuneFiltersProvider).nameQuery;
     if (initial.isNotEmpty) {
       _searchExpanded = true;
@@ -49,153 +47,328 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
     });
   }
 
+  void _showFilterSheet(BuildContext context) {
+    // Capture the container before entering the modal route so _FilterSheet
+    // can subscribe reactively without needing any InheritedWidget lookups
+    // inside the sheet (which triggers the "not our descendant" assertion).
+    final container = ProviderScope.containerOf(context, listen: false);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => _FilterSheet(container: container),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filters = ref.watch(tuneFiltersProvider);
     final notifier = ref.read(tuneFiltersProvider.notifier);
-    final availableGenres = ref.watch(availableGenresProvider);
-    final availableKeys = ref.watch(availableKeysProvider);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          IconButton(
-            icon: Icon(_searchExpanded ? Icons.search_off : Icons.search),
-            tooltip: _searchExpanded ? 'Close search' : 'Search by name',
-            visualDensity: VisualDensity.compact,
-            onPressed: _toggleSearch,
-          ),
-          if (_searchExpanded)
-            SizedBox(
-              width: 220,
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocus,
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: 'Filter by name…',
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.clear, size: 16),
-                          onPressed: () {
-                            _searchController.clear();
-                            notifier.setNameQuery('');
-                            setState(() {});
-                          },
-                        ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-                onChanged: (v) {
-                  notifier.setNameQuery(v);
-                  setState(() {}); // refresh suffix icon
-                },
-              ),
+      child: _searchExpanded
+          ? _buildSearchBar(notifier)
+          : _buildFilterRow(context, filters, notifier),
+    );
+  }
+
+  Widget _buildSearchBar(TuneFiltersNotifier notifier) {
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Close search',
+          visualDensity: VisualDensity.compact,
+          onPressed: _toggleSearch,
+        ),
+        Expanded(
+          child: TextField(
+            controller: _searchController,
+            focusNode: _searchFocus,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Filter by name…',
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear, size: 16),
+                      onPressed: () {
+                        _searchController.clear();
+                        notifier.setNameQuery('');
+                        setState(() {});
+                      },
+                    ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
             ),
-          _FilterChipMenu<String?>(
-            label: 'Genre',
-            value: filters.genre,
-            displayValue: (g) => g,
-            options: [
-              const _FilterOption<String?>(value: null, label: 'Any'),
-              for (final g in availableGenres)
-                _FilterOption<String?>(value: g, label: g),
-            ],
-            onChanged: notifier.setGenre,
-            onClear: () => notifier.setGenre(null),
-          ),
-          _FilterChipMenu<TuneType?>(
-            label: 'Type',
-            value: filters.type,
-            displayValue: (t) => t?.name,
-            options: [
-              const _FilterOption<TuneType?>(value: null, label: 'Any'),
-              for (final t in TuneType.values)
-                _FilterOption<TuneType?>(value: t, label: t.name),
-            ],
-            onChanged: notifier.setType,
-            onClear: () => notifier.setType(null),
-          ),
-          _FilterChipMenu<TuneStatus?>(
-            label: 'Status',
-            value: filters.status,
-            displayValue: (s) => s == null ? null : tuneStatusToString(s),
-            options: [
-              const _FilterOption<TuneStatus?>(value: null, label: 'Any'),
-              for (final s in TuneStatus.values)
-                _FilterOption<TuneStatus?>(
-                  value: s,
-                  label: tuneStatusToString(s),
-                ),
-            ],
-            onChanged: notifier.setStatus,
-            onClear: () => notifier.setStatus(null),
-          ),
-          _FilterChipMenu<String?>(
-            label: 'Key',
-            value: filters.key,
-            displayValue: (k) => k,
-            options: [
-              const _FilterOption<String?>(value: null, label: 'Any'),
-              for (final k in availableKeys)
-                _FilterOption<String?>(value: k, label: k),
-            ],
-            onChanged: notifier.setKey,
-            onClear: () => notifier.setKey(null),
-          ),
-          _FilterChipMenu<TuneSort>(
-            label: 'Sort',
-            value: filters.sort,
-            // Always show the current sort — there's no "unset" state.
-            displayValue: (s) => switch (s) {
-              TuneSort.grouped => 'Grouped',
-              TuneSort.newestFirst => 'Newest',
-              TuneSort.oldestFirst => 'Oldest',
-              TuneSort.nameAZ => 'A–Z',
-              TuneSort.nameZA => 'Z–A',
-              TuneSort.statusTodoFirst => 'To-do first',
-              TuneSort.statusMasteredFirst => 'Mastered first',
+            onChanged: (v) {
+              notifier.setNameQuery(v);
+              setState(() {});
             },
-            isDefault: filters.sort == TuneSort.grouped,
-            options: const [
-              _FilterOption(
-                value: TuneSort.grouped,
-                label: 'Grouped (genre · type)',
-              ),
-              _FilterOption(value: TuneSort.newestFirst, label: 'Newest first'),
-              _FilterOption(value: TuneSort.oldestFirst, label: 'Oldest first'),
-              _FilterOption(value: TuneSort.nameAZ, label: 'Name A–Z'),
-              _FilterOption(value: TuneSort.nameZA, label: 'Name Z–A'),
-              _FilterOption(
-                value: TuneSort.statusTodoFirst,
-                label: 'Status: to-do → mastered',
-              ),
-              _FilterOption(
-                value: TuneSort.statusMasteredFirst,
-                label: 'Status: mastered → to-do',
-              ),
-            ],
-            onChanged: notifier.setSort,
           ),
-          if (filters.isActive)
-            TextButton(
-              onPressed: notifier.clear,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 32),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('Clear all'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterRow(
+    BuildContext context,
+    TuneFilters filters,
+    TuneFiltersNotifier notifier,
+  ) {
+    final activeCount = [
+      filters.genre,
+      filters.type,
+      filters.status,
+      filters.key,
+    ].where((v) => v != null).length;
+
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.search),
+          tooltip: 'Search by name',
+          visualDensity: VisualDensity.compact,
+          onPressed: _toggleSearch,
+        ),
+        const Spacer(),
+        _FilterButton(
+          activeCount: activeCount,
+          onTap: () => _showFilterSheet(context),
+          onClear: filters.hasFacets ? notifier.clearFacets : null,
+        ),
+        const SizedBox(width: 6),
+        _FilterChipMenu<TuneSort>(
+          label: 'Sort',
+          value: filters.sort,
+          displayValue: (s) => switch (s) {
+            TuneSort.grouped => 'Grouped',
+            TuneSort.newestFirst => 'Newest',
+            TuneSort.oldestFirst => 'Oldest',
+            TuneSort.nameAZ => 'A–Z',
+            TuneSort.nameZA => 'Z–A',
+            TuneSort.statusTodoFirst => 'To-do first',
+            TuneSort.statusMasteredFirst => 'Mastered first',
+          },
+          isDefault: filters.sort == TuneSort.grouped,
+          options: const [
+            _FilterOption(
+              value: TuneSort.grouped,
+              label: 'Grouped (genre · type)',
             ),
-        ],
+            _FilterOption(value: TuneSort.newestFirst, label: 'Newest first'),
+            _FilterOption(value: TuneSort.oldestFirst, label: 'Oldest first'),
+            _FilterOption(value: TuneSort.nameAZ, label: 'Name A–Z'),
+            _FilterOption(value: TuneSort.nameZA, label: 'Name Z–A'),
+            _FilterOption(
+              value: TuneSort.statusTodoFirst,
+              label: 'Status: to-do → mastered',
+            ),
+            _FilterOption(
+              value: TuneSort.statusMasteredFirst,
+              label: 'Status: mastered → to-do',
+            ),
+          ],
+          onChanged: notifier.setSort,
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Filter button chip
+// ---------------------------------------------------------------------------
+
+/// Chip that opens the filter sheet on body-tap and clears facets on the X.
+/// Uses ActionChip so onPressed and onDeleted have separate hit-test regions —
+/// a GestureDetector(child: Chip) fires BOTH when the X is tapped.
+class _FilterButton extends StatelessWidget {
+  final int activeCount;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+
+  const _FilterButton({
+    required this.activeCount,
+    required this.onTap,
+    this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final active = activeCount > 0;
+    final label = active ? 'Filter · $activeCount' : 'Filter';
+
+    return InputChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          color: active ? scheme.onSecondaryContainer : scheme.onSurface,
+        ),
+      ),
+      backgroundColor: active ? scheme.secondaryContainer : null,
+      side: BorderSide(color: scheme.outlineVariant),
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      avatar: active ? null : const Icon(Icons.tune, size: 16),
+      deleteIcon: active ? const Icon(Icons.close, size: 16) : null,
+      onDeleted: onClear,
+      onPressed: onTap,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Filter bottom sheet — plain StatefulWidget, no InheritedWidget Riverpod
+// lookups inside the modal (avoids the "not our descendant" assertion).
+// ---------------------------------------------------------------------------
+
+class _FilterSheet extends StatefulWidget {
+  final ProviderContainer container;
+  const _FilterSheet({required this.container});
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  late TuneFilters _filters;
+  late List<String> _genres;
+  late List<String> _keys;
+  ProviderSubscription<TuneFilters>? _sub;
+
+  TuneFiltersNotifier get _notifier =>
+      widget.container.read(tuneFiltersProvider.notifier);
+
+  @override
+  void initState() {
+    super.initState();
+    _filters = widget.container.read(tuneFiltersProvider);
+    _genres = widget.container.read(availableGenresProvider);
+    _keys = widget.container.read(availableKeysProvider);
+    _sub = widget.container.listen<TuneFilters>(tuneFiltersProvider, (_, next) {
+      setState(() {
+        _filters = next;
+        _genres = widget.container.read(availableGenresProvider);
+        _keys = widget.container.read(availableKeysProvider);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final notifier = _notifier;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 32,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Text('Filters', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                if (_filters.hasFacets)
+                  TextButton(
+                    onPressed: () {
+                      notifier.clearFacets();
+                      Navigator.of(context).pop();
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Clear all'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _FilterChipMenu<String?>(
+                  label: 'Genre',
+                  value: _filters.genre,
+                  displayValue: (g) => g,
+                  options: [
+                    const _FilterOption<String?>(value: null, label: 'Any'),
+                    for (final g in _genres)
+                      _FilterOption<String?>(value: g, label: g),
+                  ],
+                  onChanged: notifier.setGenre,
+                  onClear: () => notifier.setGenre(null),
+                ),
+                _FilterChipMenu<TuneType?>(
+                  label: 'Type',
+                  value: _filters.type,
+                  displayValue: (t) => t?.name,
+                  options: [
+                    const _FilterOption<TuneType?>(value: null, label: 'Any'),
+                    for (final t in TuneType.values)
+                      _FilterOption<TuneType?>(value: t, label: t.name),
+                  ],
+                  onChanged: notifier.setType,
+                  onClear: () => notifier.setType(null),
+                ),
+                _FilterChipMenu<TuneStatus?>(
+                  label: 'Status',
+                  value: _filters.status,
+                  displayValue: (s) => s == null ? null : tuneStatusToString(s),
+                  options: [
+                    const _FilterOption<TuneStatus?>(value: null, label: 'Any'),
+                    for (final s in TuneStatus.values)
+                      _FilterOption<TuneStatus?>(
+                        value: s,
+                        label: tuneStatusToString(s),
+                      ),
+                  ],
+                  onChanged: notifier.setStatus,
+                  onClear: () => notifier.setStatus(null),
+                ),
+                _FilterChipMenu<String?>(
+                  label: 'Key',
+                  value: _filters.key,
+                  displayValue: (k) => k,
+                  options: [
+                    const _FilterOption<String?>(value: null, label: 'Any'),
+                    for (final k in _keys)
+                      _FilterOption<String?>(value: k, label: k),
+                  ],
+                  onChanged: notifier.setKey,
+                  onClear: () => notifier.setKey(null),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Shared chip + option types
+// ---------------------------------------------------------------------------
 
 class _FilterOption<T> {
   final T value;
@@ -203,11 +376,7 @@ class _FilterOption<T> {
   const _FilterOption({required this.value, required this.label});
 }
 
-/// Compact chip that opens a popup menu of options. Shows just the
-/// label when at default ("Type"); shows label + value when active
-/// ("Type: jig") with an inline clear affordance — except for filters
-/// where there's no notion of "unset" (e.g. sort), in which case the
-/// `isDefault` flag controls whether the chip looks active.
+/// Compact chip that opens a popup menu of options.
 class _FilterChipMenu<T> extends StatelessWidget {
   final String label;
   final T value;

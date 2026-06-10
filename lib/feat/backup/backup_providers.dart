@@ -44,7 +44,10 @@ class BackupNotifier extends AsyncNotifier<BackupState> {
       final records = await serializeAll(db, recordTypes: backupRecordTypes);
       final appVersion = await _appVersion();
       final transport = FileSyncTransport(db);
-      final bytes = await transport.buildArchive(records, appVersion: appVersion);
+      final bytes = await transport.buildArchive(
+        records,
+        appVersion: appVersion,
+      );
       final saved = await transport.deliver(
         bytes,
         sharePositionOrigin: sharePositionOrigin,

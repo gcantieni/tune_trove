@@ -122,9 +122,9 @@ class StaticAssetTuneSource implements TuneSource {
   StaticAssetTuneSource({
     required this.name,
     required this.sourceId,
-    required String assetPath,
+    required this._assetPath,
     this.defaultGenre,
-  }) : _assetPath = assetPath;
+  });
 
   Future<List<RemoteTune>> _load() async {
     if (_cache != null) return _cache!;

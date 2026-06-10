@@ -773,8 +773,7 @@ class _LinkedRecordingRow extends ConsumerWidget {
         child: SizedBox(
           width: double.infinity,
           child: InkWell(
-            onTap: () =>
-                goCrossTab(context, '/recording_list/${recording.id}'),
+            onTap: () => goCrossTab(context, '/recording_list/${recording.id}'),
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.only(

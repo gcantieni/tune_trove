@@ -56,78 +56,84 @@ void main() {
     sourceDir.deleteSync(recursive: true);
   });
 
-  test('export then import restores library and audio into a fresh db', () async {
-    // A local audio file the recording points at.
-    final audioBytes = List<int>.generate(64, (i) => i % 256);
-    final audioFile = File(p.join(sourceDir.path, 'take.m4a'))
-      ..writeAsBytesSync(audioBytes);
+  test(
+    'export then import restores library and audio into a fresh db',
+    () async {
+      // A local audio file the recording points at.
+      final audioBytes = List<int>.generate(64, (i) => i % 256);
+      final audioFile = File(p.join(sourceDir.path, 'take.m4a'))
+        ..writeAsBytesSync(audioBytes);
 
-    final src = _memDb();
-    final tuneId = await src.tuneDao.insertTune(
-      TunesCompanion.insert(name: "Cooley's", createdAt: DateTime(2024)),
-    );
-    final recId = await src.recordingDao.insertRecording(
-      RecordingsCompanion.insert(
-        name: 'A take',
-        url: 'file://${audioFile.path}',
-        createdAt: DateTime(2024),
-      ),
-    );
-    await src.tuneRecordingDao.linkTuneToRecording(tuneId, recId);
-    final setId = await src.setDao.insertSet(
-      TuneSetsCompanion.insert(name: 'My set', createdAt: DateTime(2024)),
-    );
-    await src.setTuneDao.addTuneToSet(setId, tuneId);
+      final src = _memDb();
+      final tuneId = await src.tuneDao.insertTune(
+        TunesCompanion.insert(name: "Cooley's", createdAt: DateTime(2024)),
+      );
+      final recId = await src.recordingDao.insertRecording(
+        RecordingsCompanion.insert(
+          name: 'A take',
+          url: 'file://${audioFile.path}',
+          createdAt: DateTime(2024),
+        ),
+      );
+      await src.tuneRecordingDao.linkTuneToRecording(tuneId, recId);
+      final setId = await src.setDao.insertSet(
+        TuneSetsCompanion.insert(name: 'My set', createdAt: DateTime(2024)),
+      );
+      await src.setTuneDao.addTuneToSet(setId, tuneId);
 
-    final records = await serializeAll(src, recordTypes: backupRecordTypes);
-    final zipBytes = await FileSyncTransport(src).buildArchive(records);
-    await src.close();
+      final records = await serializeAll(src, recordTypes: backupRecordTypes);
+      final zipBytes = await FileSyncTransport(src).buildArchive(records);
+      await src.close();
 
-    // Import into a brand-new database.
-    final dest = _memDb();
-    final recon = SyncReconciliationService(dest);
-    final changes = await FileSyncTransport(dest, source: zipBytes).pull();
-    await recon.applyFetched(changes);
+      // Import into a brand-new database.
+      final dest = _memDb();
+      final recon = SyncReconciliationService(dest);
+      final changes = await FileSyncTransport(dest, source: zipBytes).pull();
+      await recon.applyFetched(changes);
 
-    final tunes = await dest.tuneDao.getAll();
-    final recs = await dest.recordingDao.getAll();
-    final sets = await dest.setDao.getAll();
-    expect(tunes.length, 1);
-    expect(recs.length, 1);
-    expect(sets.length, 1);
-    expect((await dest.tuneRecordingDao.getAll()).length, 1);
-    expect((await dest.setTuneDao.getAll()).length, 1);
+      final tunes = await dest.tuneDao.getAll();
+      final recs = await dest.recordingDao.getAll();
+      final sets = await dest.setDao.getAll();
+      expect(tunes.length, 1);
+      expect(recs.length, 1);
+      expect(sets.length, 1);
+      expect((await dest.tuneRecordingDao.getAll()).length, 1);
+      expect((await dest.setTuneDao.getAll()).length, 1);
 
-    // Audio was materialized locally and the url rewritten to point at it.
-    final restored = recs.single;
-    expect(restored.url, startsWith('file://'));
-    final localPath = restored.url.substring('file://'.length);
-    expect(File(localPath).existsSync(), isTrue);
-    expect(File(localPath).readAsBytesSync(), audioBytes);
+      // Audio was materialized locally and the url rewritten to point at it.
+      final restored = recs.single;
+      expect(restored.url, startsWith('file://'));
+      final localPath = restored.url.substring('file://'.length);
+      expect(File(localPath).existsSync(), isTrue);
+      expect(File(localPath).readAsBytesSync(), audioBytes);
 
-    // Re-importing the same archive is a no-op (idempotent merge).
-    final changes2 = await FileSyncTransport(dest, source: zipBytes).pull();
-    await recon.applyFetched(changes2);
-    expect((await dest.tuneDao.getAll()).length, 1);
-    expect((await dest.recordingDao.getAll()).length, 1);
+      // Re-importing the same archive is a no-op (idempotent merge).
+      final changes2 = await FileSyncTransport(dest, source: zipBytes).pull();
+      await recon.applyFetched(changes2);
+      expect((await dest.tuneDao.getAll()).length, 1);
+      expect((await dest.recordingDao.getAll()).length, 1);
 
-    await dest.close();
-  });
+      await dest.close();
+    },
+  );
 
-  test('malformed bytes throw BackupFormatException, valid archive imports', () async {
-    final src = _memDb();
-    final records = await serializeAll(src, recordTypes: backupRecordTypes);
-    final bytes = await FileSyncTransport(src).buildArchive(records);
-    await src.close();
+  test(
+    'malformed bytes throw BackupFormatException, valid archive imports',
+    () async {
+      final src = _memDb();
+      final records = await serializeAll(src, recordTypes: backupRecordTypes);
+      final bytes = await FileSyncTransport(src).buildArchive(records);
+      await src.close();
 
-    final dest = _memDb();
-    expect(
-      () => FileSyncTransport(dest, source: const [1, 2, 3]).pull(),
-      throwsA(isA<BackupFormatException>()),
-    );
-    // A well-formed (empty-library) archive still parses cleanly.
-    final changes = await FileSyncTransport(dest, source: bytes).pull();
-    expect(changes.deletions, isEmpty);
-    await dest.close();
-  });
+      final dest = _memDb();
+      expect(
+        () => FileSyncTransport(dest, source: const [1, 2, 3]).pull(),
+        throwsA(isA<BackupFormatException>()),
+      );
+      // A well-formed (empty-library) archive still parses cleanly.
+      final changes = await FileSyncTransport(dest, source: bytes).pull();
+      expect(changes.deletions, isEmpty);
+      await dest.close();
+    },
+  );
 }

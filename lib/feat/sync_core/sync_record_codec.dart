@@ -143,8 +143,7 @@ Future<List<Map<String, dynamic>>> serializeAll(
 /// key is harmless — reconciliation reads fields by name).
 FetchedChanges recordsToFetchedChanges(List<Map<String, dynamic>> records) {
   final upserts = [
-    for (final r in records)
-      SyncUpsertEvent(r['recordType'] as String, r),
+    for (final r in records) SyncUpsertEvent(r['recordType'] as String, r),
   ];
   return FetchedChanges(upserts, const []);
 }

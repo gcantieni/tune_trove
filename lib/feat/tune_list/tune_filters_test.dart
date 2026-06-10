@@ -376,6 +376,39 @@ void main() {
     expect(genres, ['Irish', 'Old-time']);
   });
 
+  test('hasFacets is false for default filters', () {
+    expect(const TuneFilters().hasFacets, isFalse);
+  });
+
+  test('hasFacets is true when a facet is set', () {
+    expect(const TuneFilters().copyWith(type: TuneType.jig).hasFacets, isTrue);
+  });
+
+  test('hasFacets is false when only nameQuery or sort differ', () {
+    final f = const TuneFilters().copyWith(
+      nameQuery: 'cooley',
+      sort: TuneSort.nameAZ,
+    );
+    expect(f.hasFacets, isFalse);
+  });
+
+  test('TuneFiltersNotifier.clearFacets clears only facet fields', () {
+    final container = _container([]);
+    addTearDown(container.dispose);
+
+    final notifier = container.read(tuneFiltersProvider.notifier);
+    notifier.setType(TuneType.jig);
+    notifier.setGenre('Irish');
+    notifier.setNameQuery('cooley');
+    notifier.setSort(TuneSort.nameAZ);
+
+    notifier.clearFacets();
+    final f = container.read(tuneFiltersProvider);
+    expect(f.hasFacets, isFalse);
+    expect(f.nameQuery, 'cooley');
+    expect(f.sort, TuneSort.nameAZ);
+  });
+
   test('TuneFiltersNotifier.clear resets state', () {
     final container = _container([]);
     addTearDown(container.dispose);

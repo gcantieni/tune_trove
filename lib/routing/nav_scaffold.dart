@@ -120,14 +120,8 @@ class _BottomTabBar extends StatelessWidget {
       selectedIndex: selectedIndex ?? _tunesBranchIndex,
       onDestinationSelected: onSelected,
       destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.queue_music),
-          label: 'Sets',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.music_note),
-          label: 'Tunes',
-        ),
+        NavigationDestination(icon: Icon(Icons.queue_music), label: 'Sets'),
+        NavigationDestination(icon: Icon(Icons.music_note), label: 'Tunes'),
         NavigationDestination(
           icon: Icon(Icons.audio_file_outlined),
           label: 'Recordings',

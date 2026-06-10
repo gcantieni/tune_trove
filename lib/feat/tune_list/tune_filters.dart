@@ -63,6 +63,12 @@ class TuneFilters {
       nameQuery.isNotEmpty ||
       sort != TuneSort.grouped;
 
+  bool get hasFacets =>
+      (genre != null && genre!.isNotEmpty) ||
+      type != null ||
+      (key != null && key!.isNotEmpty) ||
+      status != null;
+
   TuneFilters copyWith({
     Object? genre = _sentinel,
     Object? type = _sentinel,
@@ -96,6 +102,8 @@ class TuneFiltersNotifier extends Notifier<TuneFilters> {
   void setStatus(TuneStatus? status) => state = state.copyWith(status: status);
   void setNameQuery(String query) => state = state.copyWith(nameQuery: query);
   void setSort(TuneSort sort) => state = state.copyWith(sort: sort);
+  void clearFacets() =>
+      state = state.copyWith(genre: null, type: null, key: null, status: null);
   void clear() => state = const TuneFilters();
 }
 
