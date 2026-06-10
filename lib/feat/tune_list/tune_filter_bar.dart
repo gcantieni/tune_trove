@@ -146,7 +146,7 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
             TuneSort.nameAZ => 'A–Z',
             TuneSort.nameZA => 'Z–A',
             TuneSort.statusTodoFirst => 'To-do first',
-            TuneSort.statusMasteredFirst => 'Mastered first',
+            TuneSort.statusMasteredFirst => 'Recall perfectly first',
           },
           isDefault: filters.sort == TuneSort.grouped,
           options: const [
@@ -160,11 +160,11 @@ class _TuneFilterBarState extends ConsumerState<TuneFilterBar> {
             _FilterOption(value: TuneSort.nameZA, label: 'Name Z–A'),
             _FilterOption(
               value: TuneSort.statusTodoFirst,
-              label: 'Status: to-do → mastered',
+              label: 'Status: to-do → recall perfectly',
             ),
             _FilterOption(
               value: TuneSort.statusMasteredFirst,
-              label: 'Status: mastered → to-do',
+              label: 'Status: recall perfectly → to-do',
             ),
           ],
           onChanged: notifier.setSort,

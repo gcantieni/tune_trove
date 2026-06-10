@@ -15,13 +15,13 @@ String tuneStatusToString(TuneStatus? status) {
     case TuneStatus.todo:
       return "Todo";
     case TuneStatus.canPlay:
-      return "Can play";
+      return "Can follow along";
     case TuneStatus.canStart:
-      return "Can start";
+      return "Can lead";
     case TuneStatus.inSet:
       return "In set";
     case TuneStatus.mastered:
-      return "Mastered";
+      return "Recall perfectly";
   }
 }
 
