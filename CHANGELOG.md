@@ -3,6 +3,13 @@
 All notable changes to Tune Trove are documented here. Versions correspond to
 the `version` field in `pubspec.yaml`. The newest release is listed first.
 
+## 1.0.33 — 2026-06-10
+
+### Added
+
+- Playback card now shows transport controls when a track is playing: skip back 10 seconds, skip forward 10 seconds, and play/pause.
+- Loop and play/pause buttons move to the transport row at the bottom of the expanded card, with the collapsed card showing only the play button.
+
 ## 1.0.32 - 2026-06-09
 
 ### Changed
