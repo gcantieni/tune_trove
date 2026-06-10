@@ -121,6 +121,38 @@ void main() {
       expect(local.stops, 1);
       expect(local.seeks, [12.5]);
     });
+
+    test('skipSeconds offsets position and clamps to [0, duration]', () async {
+      final n = notifier();
+      await n.play('app-data:a.mp3');
+      local.emit(
+        const AudioPlayerState(
+          trackUri: 'app-data:a.mp3',
+          status: AudioPlaybackStatus.playing,
+          position: 20.0,
+          duration: 60.0,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      local.seeks.clear();
+      await n.skipSeconds(10);
+      expect(local.seeks, [30.0]);
+
+      local.seeks.clear();
+      await n.skipSeconds(-10);
+      expect(local.seeks, [10.0]);
+
+      // Clamp: skipping back past zero gives 0
+      local.seeks.clear();
+      await n.skipSeconds(-100);
+      expect(local.seeks, [0.0]);
+
+      // Clamp: skipping forward past duration gives duration
+      local.seeks.clear();
+      await n.skipSeconds(100);
+      expect(local.seeks, [60.0]);
+    });
   });
 
   group('playback rate', () {

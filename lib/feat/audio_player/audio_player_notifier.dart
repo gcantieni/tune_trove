@@ -173,6 +173,11 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   Future<void> seek(double positionSeconds) =>
       _activeBackend?.seek(positionSeconds) ?? Future.value();
 
+  Future<void> skipSeconds(double seconds) {
+    final target = (state.position + seconds).clamp(0.0, state.duration);
+    return seek(target);
+  }
+
   void setPlaybackRate(double rate) {
     state = state.copyWith(playbackRate: rate);
     _rateDebounce?.cancel();

@@ -44,6 +44,8 @@ reregister-macos:
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)
 DART_DEFINES := --dart-define=GIT_COMMIT=$(GIT_COMMIT)
 
+check: format analyze test
+
 format:
 	dart format lib/
 

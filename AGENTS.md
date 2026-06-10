@@ -59,9 +59,7 @@ Follow TDD for all code changes:
 After completing any code changes, always run:
 
 ```
-make format
-make analyze
-make test
+make check
 ```
 
 When adding or changing packages in `pubspec.yaml`, run:

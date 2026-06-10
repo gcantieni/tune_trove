@@ -23,6 +23,16 @@ class PlaybackCard extends ConsumerWidget {
     final isPlaying = isCurrent && playerState.isPlaying;
     final duration = isCurrent ? playerState.duration : 0.0;
 
+    void onPlayPause() {
+      if (isPlaying) {
+        notifier.pause();
+      } else if (isCurrent && playerState.isPaused) {
+        notifier.resume();
+      } else {
+        notifier.play(trackUri);
+      }
+    }
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
@@ -41,31 +51,11 @@ class PlaybackCard extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                IconButton(
-                  icon: Icon(
-                    Icons.repeat,
-                    size: 22,
-                    color: (isCurrent && playerState.isLooping)
-                        ? Theme.of(context).colorScheme.tertiary
-                        : null,
+                if (!isCurrent)
+                  IconButton(
+                    icon: const Icon(Icons.play_circle, size: 36),
+                    onPressed: onPlayPause,
                   ),
-                  onPressed: notifier.toggleLoop,
-                ),
-                IconButton(
-                  icon: Icon(
-                    isPlaying ? Icons.pause_circle : Icons.play_circle,
-                    size: 36,
-                  ),
-                  onPressed: () {
-                    if (isPlaying) {
-                      notifier.pause();
-                    } else if (isCurrent && playerState.isPaused) {
-                      notifier.resume();
-                    } else {
-                      notifier.play(trackUri);
-                    }
-                  },
-                ),
               ],
             ),
             if (isCurrent) ...[
@@ -77,6 +67,15 @@ class PlaybackCard extends ConsumerWidget {
               ],
               const SizedBox(height: 8),
               const _SpeedSlider(),
+              const SizedBox(height: 4),
+              _TransportRow(
+                isPlaying: isPlaying,
+                isLooping: playerState.isLooping,
+                onPlayPause: onPlayPause,
+                onToggleLoop: notifier.toggleLoop,
+                onSkipBack: () => notifier.skipSeconds(-10),
+                onSkipForward: () => notifier.skipSeconds(10),
+              ),
             ],
           ],
         ),
@@ -779,6 +778,69 @@ class _ScrubbingRangeSliderState extends ConsumerState<_ScrubbingRangeSlider> {
     final sec = (totalCs % 6000) ~/ 100;
     final cs = totalCs % 100;
     return '$m:${sec.toString().padLeft(2, '0')}.${cs.toString().padLeft(2, '0')}';
+  }
+}
+
+class _TransportRow extends StatelessWidget {
+  final bool isPlaying;
+  final bool isLooping;
+  final VoidCallback onPlayPause;
+  final VoidCallback onToggleLoop;
+  final VoidCallback onSkipBack;
+  final VoidCallback onSkipForward;
+
+  const _TransportRow({
+    required this.isPlaying,
+    required this.isLooping,
+    required this.onPlayPause,
+    required this.onToggleLoop,
+    required this.onSkipBack,
+    required this.onSkipForward,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    const iconSize = 32.0;
+    const playSize = 42.0;
+    const gap = iconSize;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          iconSize: iconSize,
+          icon: Icon(
+            Icons.repeat,
+            size: iconSize,
+            color: isLooping ? scheme.tertiary : null,
+          ),
+          onPressed: onToggleLoop,
+        ),
+        const SizedBox(width: gap),
+        IconButton(
+          iconSize: iconSize,
+          icon: const Icon(Icons.replay_10, size: iconSize),
+          tooltip: 'Back 10 seconds',
+          onPressed: onSkipBack,
+        ),
+        const SizedBox(width: gap),
+        IconButton(
+          iconSize: iconSize,
+          icon: const Icon(Icons.forward_10, size: iconSize),
+          tooltip: 'Forward 10 seconds',
+          onPressed: onSkipForward,
+        ),
+        const SizedBox(width: gap),
+        IconButton(
+          iconSize: playSize,
+          icon: Icon(
+            isPlaying ? Icons.pause_circle : Icons.play_circle,
+            size: playSize,
+          ),
+          onPressed: onPlayPause,
+        ),
+      ],
+    );
   }
 }
 
